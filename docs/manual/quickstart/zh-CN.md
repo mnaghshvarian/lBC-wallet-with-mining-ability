@@ -1,0 +1,61 @@
+[English](en.md) · [所有语言](../README.md)
+
+# LBC Wallet — 快速入门
+
+LBC Wallet 是一款免费应用，可以在 Windows、Mac、Linux 和 Android 上保管、发送、接收 **LBRY Credits（LBC）**，还能用来挖矿。带图片的完整使用手册（英文）在这里：[docs/manual](../README.md)。
+
+> **警告**：LBC Wallet 是实验性软件，**未经审计**，可能存在导致资金损失的错误。**使用风险由你自行承担**，作者不对任何损失负责。请先从小额开始。免责声明全文：[DISCLAIMER](../../../DISCLAIMER.md)。
+
+## 1. 下载
+
+请只从官方页面下载：
+**<https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/releases/latest>**
+（向下滚动到 **Assets** 部分）。
+
+| 设备 | 文件 |
+| --- | --- |
+| Windows | `LBC-Wallet-Setup-x64.exe` |
+| 搭载 Apple 芯片的 Mac（M1、M2…） | `LBC-Wallet-mac-arm64.dmg` |
+| 搭载 Intel 芯片的 Mac | `LBC-Wallet-mac-x64.dmg` |
+| Ubuntu、Debian、Mint | `lbc-wallet_amd64.deb` |
+| Fedora、openSUSE | `lbc-wallet.x86_64.rpm` |
+| 其他 Linux | `LBC-Wallet-linux-x86_64.AppImage` |
+| Android 7 或更高版本 | `LBC-Wallet-android.apk` |
+
+## 2. 安装
+
+* **Windows**：双击下载的文件。如果出现“Windows 已保护你的电脑”，请点击**更多信息 → 仍要运行**。接受许可协议，然后点击**安装**。
+* **Mac**：打开 `.dmg` 文件，点击 **Agree**（同意），再把 **LBC Wallet** 拖到 **Applications**（应用程序）文件夹。第一次打开时，macOS 会阻止它运行：请打开**系统设置 → 隐私与安全性**，向下滚动，点击**仍要打开**。
+* **Linux**：双击 `.deb` 或 `.rpm` 文件，用软件中心安装。也可以先把 AppImage 设为可执行（右键点击 → 属性 → 权限 → *允许执行文件*），再双击它。
+* **Android**：在手机上打开 APK 链接，点按**仍然下载**，再点按**打开**。系统询问时，允许你的浏览器“**安装未知应用**”，然后点按**安装**。如果 Play Protect 发出警告，请点按**更多详情 → 仍然安装**。
+
+## 3. 首次启动
+
+阅读免责声明，勾选全部 3 个复选框，然后点击**我同意，继续**。点击地球图标按钮即可选择语言。
+
+## 4. 创建或恢复钱包
+
+* **新建钱包**：点击**创建新钱包**，设置名称和密码，然后**把 12 个助记词按顺序抄写在纸上**。应用会抽查其中 3 个。
+* **已有助记词**（来自本应用、LBRY Desktop、Odysee 或其他 BIP39 钱包）：点击**通过助记词恢复**，然后输入你的助记词。
+
+**助记词就是你的钱**。谁拿到它，谁就能拿走你的 LBC。千万不要告诉别人，不要在任何网站上输入，也不要拍照保存。本项目的成员绝不会向你索要助记词。
+
+## 5. 接收
+
+点击**接收**。复制你的地址（以 `b` 开头），或者向付款方出示二维码。
+
+## 6. 发送
+
+点击**发送**，粘贴地址，输入金额，点击**核对交易**，仔细检查所有信息，输入密码后再点击**发送**。付款一经发出就无法撤销。
+
+## 7. 挖矿（仅限电脑）
+
+点击**挖矿** → **开始挖矿**。默认使用 LBRYPool 矿池：你在那里累计挖到 10 LBC 后，它会自动付款到你的钱包。普通电脑能挖到的 LBC 非常少，而且耗电；如果需要，可以开启**使用电池时暂停**和**仅在空闲时挖矿**。
+
+## 8. 运行自己的节点（可选，仅限电脑）
+
+点击**节点**，选择一个有约 **150 GB** 可用空间的文件夹（**更改…**），然后点击**启动节点**。首次下载需要 1～3 天。进度达到 100% 后，钱包就会使用你自己的节点，你还可以选择**独立挖矿（全节点）**。
+
+## 帮助
+
+遇到问题？请查看[手册](../README.md#19-problems-and-solutions)中的“Problems and solutions”（问题与解决方法）一节，或者到 <https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/issues> 报告问题（千万不要透露你的助记词或密码）。

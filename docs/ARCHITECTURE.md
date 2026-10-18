@@ -1,12 +1,13 @@
 # Architecture
 
-LBC Wallet is split into a platform-agnostic **core** and a thin **desktop shell**.
-The same core is meant to power the future iOS/Android apps (see [ROADMAP.md](ROADMAP.md)).
+LBC Wallet is a TypeScript monorepo. A platform-agnostic **core** holds the wallet and mining
+logic; shared **services** turn it into an application API; one **React UI** draws every screen;
+and thin **apps** connect them to Electron (Windows, macOS, Linux) and Android.
 
 ```
 lbc-wallet/
 ├── packages/
-│   ├── core/                 @lbcwallet/core — TypeScript, no Node/Electron dependencies
+│   ├── core/                 @lbcwallet/core — no Node/Electron dependencies in the main entry
 │   │   ├── src/
 │   │   │   ├── networks.ts       LBC mainnet/testnet/regtest parameters (from lbcd chaincfg)
 │   │   │   ├── address.ts        base58check (0x55 "b…", 0x7a "r…"), bech32 "lbc1…", WIF
@@ -20,17 +21,68 @@ lbc-wallet/
 │   │   │   ├── ui.ts             key-free formatting entry for user interfaces
 │   │   │   └── node/             Node.js TCP/TLS/SOCKS5 and HTTP transports
 │   │   ├── test/                 unit tests (LBRY SDK vectors, consensus vectors)
-│   │   └── e2e/                  tests against a real lbcd (regtest) + hub emulator + test pool
+│   │   ├── e2e/                  tests against a real lbcd (regtest) + hub emulator + test pool
+│   │   └── mainnet/              read-only checks against the real network (no mining, no spending)
+│   ├── services/             @lbcwallet/services — the application API, shared by all apps
+│   │   ├── api.ts                the typed API contract (channels, views, events)
+│   │   ├── platform.ts           what services need from the OS: files, sockets, HTTPS, logs
+│   │   ├── wallet-service.ts     open/lock wallets, sync, send, contacts, notices
+│   │   ├── backend.ts            picks hubs, your own lbcd, or the built-in node
+│   │   ├── settings.ts           settings with validation of every field
+│   │   ├── handlers.ts           validates untrusted arguments of every API call
+│   │   ├── client.ts             builds `window.lbc` on top of a transport
+│   │   └── errors.ts             error codes the UI translates
+│   ├── ui/                   @lbcwallet/ui — React screens for desktop and phone
+│   │   ├── pages/ components/    every screen; phone layout below 760 px
+│   │   └── i18n/                 14 languages, plural rules, right-to-left support
 │   └── miner-wasm/           C source of the LBRY proof-of-work scanner → WebAssembly
-└── apps/
-    └── desktop/              Electron app
-        ├── src/main/             main process: wallet/miner/price services, IPC, storage
-        │   └── mining/           utility process + worker threads that run the miner
-        ├── src/preload/          contextBridge → window.lbc (typed API, no Node access)
-        ├── src/renderer/         React UI
-        ├── src/shared/api.ts     the typed IPC contract
-        └── e2e/ui.e2e.ts         Playwright test driving the real app
+├── apps/
+│   ├── desktop/              Electron app
+│   │   ├── src/main/             main process: services, IPC, miner, built-in node, menus
+│   │   │   ├── node-service.ts   runs the bundled lbcd (the built-in full node)
+│   │   │   ├── miner-service.ts  starts/pauses the miner process, estimates, logs
+│   │   │   └── mining/           utility process + worker threads that run the miner
+│   │   ├── src/preload/          contextBridge → window.lbc (typed API, no Node access)
+│   │   ├── src/renderer/         loads @lbcwallet/ui
+│   │   ├── resources/bin/        lbcd binaries per platform (built by scripts/build-lbcd.sh)
+│   │   ├── e2e/ui.e2e.ts         Playwright test driving the real app
+│   │   └── mainnet/node-sync.ts  checks that the built-in node finds peers and syncs mainnet
+│   └── mobile/               Android app (Capacitor)
+│       ├── src/                  boots the same services and UI inside the app
+│       ├── android/              native project; LbcNativePlugin.java: files, sockets, secure screens
+│       └── e2e/                  regtest test of the Android build + emulator test
+└── scripts/                  lbcd build, manual images and PDF, Android icons
 ```
+
+### One API, two transports
+
+The UI only ever talks to `window.lbc`, a typed API defined in `packages/services/src/api.ts`
+and built by `createApi()` on top of a transport:
+
+```
+             desktop                                         Android
+ ┌───────────────────────────┐                   ┌───────────────────────────────┐
+ │ renderer (sandboxed)      │                   │ WebView                        │
+ │  @lbcwallet/ui            │                   │  @lbcwallet/ui                 │
+ │  window.lbc ─ preload ────┼── Electron IPC ─┐ │  window.lbc ─ in-app transport │
+ └───────────────────────────┘                 │ │        │ (copies args/results) │
+ ┌───────────────────────────┐                 │ │        ▼                       │
+ │ main process              │◀────────────────┘ │  @lbcwallet/services          │
+ │  @lbcwallet/services      │                   │        │                       │
+ │  + miner, built-in node   │                   │  LbcNativePlugin (Java):       │
+ │  + Node.js sockets, files │                   │  sockets, files, secure screen │
+ └───────────────────────────┘                   └───────────────────────────────┘
+```
+
+* On the **desktop**, the services run in Electron's main process and the UI in a sandboxed
+  renderer; every call crosses IPC, where the sender frame and every argument are checked.
+* On **Android**, the services run inside the app next to the UI. The in-app transport copies
+  arguments and results (`structuredClone`) like IPC does, so the UI can never change service
+  state directly, and each call waits until its changes are written to disk. Sockets, durable
+  files, the clipboard and screenshot blocking are native code (`LbcNativePlugin.java`).
+* Everything that differs between platforms sits behind the `Platform` interface
+  (`packages/services/src/platform.ts`): JSON file storage, line-based sockets, HTTPS, logging.
+  The services and UI tests run the same code with in-memory files.
 
 ## Wallet core
 
@@ -87,6 +139,8 @@ Each wallet is one JSON file in the app data folder:
 * `state` — addresses, transactions, labels and contacts, sealed with the data key.
 
 Writes are atomic (temp file + fsync + rename) and the previous version is kept as `.bak`.
+On Android the files live in the app's private storage; the services read from a cache loaded at
+start-up, and writes are queued in order and flushed before an API call returns.
 
 ## Mining
 
@@ -119,6 +173,41 @@ Writes are atomic (temp file + fsync + rename) and the previous version is kept 
   extranonce, optional witness commitment), `submitblock`. Verified against lbcd regtest.
 * Every hit is re-hashed with the reference TypeScript implementation before submission.
 
+## Built-in node
+
+`apps/desktop/src/main/node-service.ts` runs **lbcd**, LBRY's official full node written in Go,
+the way the Monero GUI runs `monerod`:
+
+* `scripts/build-lbcd.sh` builds lbcd v0.22.119 from the published release source for every
+  platform (after checking the source hash) into `resources/bin/<os>-<arch>/`, and
+  electron-builder ships it in the installers. No code is changed.
+* Before starting, the service checks the chosen folder: writable, and enough free space (about
+  150 GB for mainnet). It starts lbcd at below-normal priority with `--txindex --addrindex`
+  (needed to look up a wallet's history), RPC on `127.0.0.1` with fresh random credentials,
+  outbound-only by default (`--nolisten`), and `--proxy` when SOCKS5 is on.
+* It polls the node for headers, blocks, peers and disk use to show progress and a time
+  estimate. When the best block is recent, the node counts as synced and
+  `WalletService.localNodeChanged()` swaps the wallet's backend from hubs to an `LbcdBackend`
+  on the node (and back if the node stops). Solo mining uses the same node.
+* Stopping asks lbcd to shut down cleanly over RPC and waits up to 90 seconds before forcing
+  it. Quitting the app stops the node the same way; a node that was running starts again with
+  the app next time.
+
+## Android app
+
+`apps/mobile` is a Capacitor app: the shared UI and services are bundled by Vite into the APK
+and run in the system WebView, with no remote content.
+
+* `LbcNativePlugin.java` provides what the WebView cannot do safely: raw TCP/TLS sockets for the
+  hub protocol (with host-name verification), atomic file writes in private storage, the
+  clipboard (sensitive copies are flagged and cleared), sharing, links and `FLAG_SECURE`.
+* The app has no miner and no built-in node (phones overheat and lack the space); the Mining page
+  becomes a pool-balance monitor.
+* Hardening in the manifest: no cloud backup or device transfer, no plain-text HTTP, only system
+  certificate authorities, a single exported activity.
+* The release workflow builds and signs the APK; see [BUILDING.md](BUILDING.md) for the signing
+  key.
+
 ## Desktop security model
 
 * Renderer: `sandbox`, `contextIsolation`, no `nodeIntegration`, strict CSP, navigation and
@@ -134,5 +223,7 @@ Writes are atomic (temp file + fsync + rename) and the previous version is kept 
 * The spellchecker is disabled for every session (no dictionary downloads), and the app's
   own HTTPS requests follow the SOCKS5 setting. A net-log based audit in CI checks that the
   app makes no unexpected requests.
+* Secret screens (recovery phrase, private key) turn on window content protection, which keeps
+  the window out of screenshots and screen sharing on Windows and macOS.
 
 See [SECURITY.md](SECURITY.md) for the threat model.
