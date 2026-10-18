@@ -71,18 +71,28 @@ vai fazer o pagamento.
 Clique em **Enviar**, cole o endereço, informe o valor, clique em **Revisar**, confira tudo, digite
 a sua senha e clique em **Enviar**. Os pagamentos não podem ser desfeitos.
 
-## 7. Minerar (só em computadores)
+## 7. Minerar
 
-Clique em **Mineração** → **Iniciar mineração**. O pool padrão é o LBRYPool, que paga
-automaticamente para a sua carteira assim que você tiver ganhado 10 LBC nele. Um computador comum
-rende muito pouco e gasta energia elétrica; se quiser, ative **Pausar quando estiver na bateria** e
-**Apenas com o computador ocioso**.
+Clique em **Mineração** → **Iniciar mineração** (no Android: **Mais → Mineração**). O pool padrão é
+o LBRYPool, que paga automaticamente para a sua carteira assim que você tiver ganhado 10 LBC nele.
+Um computador comum rende muito pouco e gasta energia elétrica; se quiser, ative
+**Pausar quando estiver na bateria** e **Apenas com o computador ocioso**. Um celular rende menos
+ainda: a mineração só funciona enquanto o LBC Wallet estiver aberto na tela e o celular estiver
+carregando, e ela pausa quando a bateria esquenta.
 
 ## 8. Executar o seu próprio nó (opcional, só em computadores)
 
 Clique em **Nó**, escolha uma pasta com cerca de **150 GB** de espaço livre (**Alterar…**) e
 clique em **Iniciar nó**. O primeiro download leva de um a três dias. Quando chegar a 100%, a
 carteira passa a usar o seu próprio nó, e você pode minerar no modo **Solo**.
+
+## 9. Trocar LBC e bitcoins (opcional)
+
+Em **Trocar**, você troca LBC por bitcoins diretamente com outra pessoa, sem nenhuma corretora no
+meio: ou os dois recebem o combinado, ou os dois recuperam os fundos. Um de vocês clica em
+**Iniciar uma troca** e envia o código de convite; o outro clica em **Entrar com um código**.
+Mantenha o app aberto até a troca mostrar **Concluída**. O recurso de troca é novo: comece com um
+valor pequeno. Mais detalhes: [manual, seção 21](../README.md#21-buy-sell-or-swap-lbc).
 
 ## Ajuda
 

@@ -15,23 +15,27 @@ lbc-wallet/
 │   │   │   ├── keys/             BIP39, LBRY ("lbryum") seeds, BIP32/BIP44 derivation
 │   │   │   ├── tx/               serialization, legacy sighash, signing, coin selection
 │   │   │   ├── vault.ts          scrypt + AES-256-GCM sealed boxes
-│   │   │   ├── net/              line-JSON-RPC, LBRY hub client, lbcd RPC backend
+│   │   │   ├── net/              line-JSON-RPC, LBRY hub client, lbcd RPC backend, Esplora (Bitcoin) client
 │   │   │   ├── wallet/           sync engine, SPV verification, keystore, restore scan
-│   │   │   ├── mining/           Stratum client, solo GBT work, coordinator, WASM scanner
+│   │   │   ├── mining/           Stratum client, solo GBT work, coordinator, WASM scanner, supply
+│   │   │   ├── swap/             atomic swap contract (HTLC), protocol rules, swap codes, chain access
 │   │   │   ├── ui.ts             key-free formatting entry for user interfaces
 │   │   │   └── node/             Node.js TCP/TLS/SOCKS5 and HTTP transports
 │   │   ├── test/                 unit tests (LBRY SDK vectors, consensus vectors)
-│   │   ├── e2e/                  tests against a real lbcd (regtest) + hub emulator + test pool
-│   │   └── mainnet/              read-only checks against the real network (no mining, no spending)
+│   │   ├── e2e/                  tests against a real lbcd (regtest) + hub emulator + test pool (+ btcd for swaps)
+│   │   └── mainnet/              read-only checks against the real network and the Bitcoin explorers
 │   ├── services/             @lbcwallet/services — the application API, shared by all apps
 │   │   ├── api.ts                the typed API contract (channels, views, events)
 │   │   ├── platform.ts           what services need from the OS: files, sockets, HTTPS, logs
 │   │   ├── wallet-service.ts     open/lock wallets, sync, send, contacts, notices
+│   │   ├── swap-service.ts       runs atomic swaps: codes, checks, locking, collecting, refunds
 │   │   ├── backend.ts            picks hubs, your own lbcd, or the built-in node
 │   │   ├── settings.ts           settings with validation of every field
 │   │   ├── handlers.ts           validates untrusted arguments of every API call
 │   │   ├── client.ts             builds `window.lbc` on top of a transport
-│   │   └── errors.ts             error codes the UI translates
+│   │   ├── errors.ts             error codes the UI translates
+│   │   ├── e2e/                  swaps between two wallets on lbcd + btcd regtest
+│   │   └── mainnet/              a real payment from a small test wallet (started by hand in CI)
 │   ├── ui/                   @lbcwallet/ui — React screens for desktop and phone
 │   │   ├── pages/ components/    every screen; phone layout below 760 px
 │   │   └── i18n/                 14 languages, plural rules, right-to-left support
@@ -46,9 +50,9 @@ lbc-wallet/
 │   │   ├── src/renderer/         loads @lbcwallet/ui
 │   │   ├── resources/bin/        lbcd binaries per platform (built by scripts/build-lbcd.sh)
 │   │   ├── e2e/ui.e2e.ts         Playwright test driving the real app
-│   │   └── mainnet/node-sync.ts  checks that the built-in node finds peers and syncs mainnet
+│   │   └── mainnet/              the built-in node on mainnet; the installed app used on mainnet
 │   └── mobile/               Android app (Capacitor)
-│       ├── src/                  boots the same services and UI inside the app
+│       ├── src/                  boots the same services and UI inside the app; phone miner (Web Workers)
 │       ├── android/              native project; LbcNativePlugin.java: files, sockets, secure screens
 │       └── e2e/                  regtest test of the Android build + emulator test
 └── scripts/                  lbcd build, manual images and PDF, Android icons
@@ -173,6 +177,39 @@ start-up, and writes are queued in order and flushed before an API call returns.
   extranonce, optional witness commitment), `submitblock`. Verified against lbcd regtest.
 * Every hit is re-hashed with the reference TypeScript implementation before submission.
 
+## Swaps
+
+`SwapService` (`packages/services/src/swap-service.ts`) runs LBC ↔ Bitcoin atomic swaps on top
+of the core's swap module:
+
+* **Contract** (`core/src/swap/htlc.ts`): the Decred atomicswap script, as P2SH on both chains.
+  `parseHtlc` accepts only that exact template (it re-encodes the script and compares), and
+  `extractSecret` reads the secret from any spend of the contract.
+* **Protocol rules** (`protocol.ts`): roles, lock times (joiner 48 h, starter 24 h ending at
+  least 12 h earlier), the claim margin, chain-clock lag, confirmations (12 LBC, 2 BTC), and
+  `checkContract`, which names every problem with the other side's contract.
+* **Codes** (`codes.ts`): `lbcswap:` + base64url JSON + a checksum. An invite carries the
+  amounts and the starter's key hash; a lock code carries a contract and its funding outpoint.
+* **Chains** (`chain.ts`): LBC through the wallet's own backend (hub or node). A funding payment
+  from a hub must come with a merkle proof against proof-of-work headers. Bitcoin goes through
+  every configured Esplora server (`net/esplora.ts`). Contract transactions are merged from all
+  of them, so one server can't hide the other person's claim. Funding counts only when every
+  server reports it the same way, and broadcasts go to all of them.
+* **Untrusted spends:** a reported spend of our contract counts only if it is our refund or
+  carries the secret, and a spend of theirs only if it is our claim or comes after their lock
+  time. Nothing else can exist, so a lying server can't stop a refund or a claim.
+* **The engine** checks the open wallet's active swaps every 30 seconds and moves each one
+  forward. It detects payments into both contracts, checks theirs, collects with the secret,
+  reads the secret from the other chain, and refunds after the lock time plus the chain's clock
+  lag. Swap keys and the secret are random per swap and live in the wallet's sealed state next
+  to its transactions and labels.
+* **Tests:** unit tests pin the exact contract layout and the protocol rules. They also run the
+  engine against fake servers that forge spends or hide transactions. The end-to-end
+  tests run four full scenarios between two wallets on a real `lbcd` and a real `btcd`
+  (through `core/e2e/esplora-emulator.ts`), with time rules shortened to minutes. One swap
+  completes, each side gets a refund once, and a dishonest lock code is refused. The mainnet
+  check queries the real Bitcoin explorers.
+
 ## Built-in node
 
 `apps/desktop/src/main/node-service.ts` runs **lbcd**, LBRY's official full node written in Go,
@@ -204,8 +241,13 @@ and run in the system WebView, with no remote content.
 * `LbcNativePlugin.java` provides what the WebView cannot do safely: raw TCP/TLS sockets for the
   hub protocol (with host-name verification), atomic file writes in private storage, the
   clipboard (sensitive copies are flagged and cleared), sharing, links and `FLAG_SECURE`.
-* The app has no miner and no built-in node (phones overheat and lack the space); the Mining page
-  becomes a pool-balance monitor.
+* **Phone mining** (`src/miner-service.ts`, `src/mining/`): the same Stratum client and
+  WebAssembly scanner as the desktop, with hashing in Web Workers that the coordinator drives
+  in short bursts. The pool connection uses the native sockets. `PhoneMinerService` mines only
+  while the app is in the foreground (and keeps the screen on), and pauses on Android's
+  battery and thermal signals. It reads them from `LbcNativePlugin.powerState()`: charging,
+  level, battery temperature, power saver and thermal status. Pool mode only, with no built-in
+  node, since a phone has neither the space nor the battery for it.
 * Hardening in the manifest: no cloud backup or device transfer, no plain-text HTTP, only system
   certificate authorities, a single exported activity.
 * The release workflow builds and signs the APK; see [BUILDING.md](BUILDING.md) for the signing

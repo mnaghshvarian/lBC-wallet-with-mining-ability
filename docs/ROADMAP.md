@@ -1,13 +1,15 @@
 # Roadmap
 
-## Where we are (version 1.1)
+## Where we are (version 1.2)
 
 | | Status |
 | --- | --- |
 | Desktop wallet for Windows, macOS, Linux (x64 and ARM64) | done |
 | Built-in miner (pool and solo), pause on battery, mine only when idle | done |
 | **Built-in full node** (LBRY's official `lbcd`, bundled), choose where the blockchain is stored, wallet switches to it once synced, solo mining through it | done |
-| **Android app** (APK), same wallet code and screens as desktop; pool-balance monitor instead of mining | done |
+| **Android app** (APK), a complete wallet on its own, same code and screens as desktop, **pool mining on the phone** while it is charging and cool | done |
+| **Atomic swaps LBC ↔ Bitcoin** in the wallet, person to person, no exchange or escrow | done (1.2) |
+| LBC supply figures (left to mine, reward now, next drop) | done (1.2) |
 | **14 languages**, including right-to-left Persian, Arabic and Urdu | done |
 | Disclaimer that must be accepted on first start; beginner manual with pictures | done |
 | Independent security audit | **not yet — see below** |
@@ -67,13 +69,14 @@ makes easy.
 ## 2. Android, and later iOS
 
 The Android app shipped in 1.1 (Capacitor, with a small native plugin for files, TCP/TLS
-sockets, screenshot blocking, clipboard and sharing). Next:
+sockets, screenshot blocking, clipboard and sharing). Since 1.2 it is a complete wallet on its
+own and mines through a pool. Next:
 
 * QR-code scanning for addresses, biometric unlock (Android Keystore), push-free payment
   notifications while the app is open.
-* Distribution beyond the APK: **F-Droid** (needs reproducible builds — the build already
-  avoids Google services and embedded dependency metadata) and possibly Google Play. Play
-  forbids mining on the device, which the app already respects (it only shows pool balances).
+* Distribution beyond the APK: **F-Droid** (needs reproducible builds; the build already
+  avoids Google services and embedded dependency metadata). **Google Play** does not allow apps
+  that mine on the device, so a Play version would have to leave phone mining out.
 * **iOS** is possible with the same code. Apple's rules require wallet apps to be published by
   an **organization** account (App Store Review Guideline 3.1.5(i)) and forbid on-device mining
   (3.1.5(ii)), so it needs a legal entity first.
@@ -103,11 +106,27 @@ serves.
 on one centralized exchange. An order book needs buyers and sellers on both sides. So the
 recommended path is:
 
-1. **Atomic swaps in this wallet (LBC ↔ BTC, then LTC and others).** Hash-time-locked contracts
-   (HTLC with `OP_CHECKLOCKTIMEVERIFY`) need no arbitrator, no escrow agent and no new network.
-   Each side's wallet watches its own chain, and offers can be published over a simple relay
-   (for example Nostr). The core already has the needed pieces: script building, signing, SPV
-   verification and a hub client.
+1. **Atomic swaps in this wallet — LBC ↔ BTC is done (1.2).** Hash-time-locked contracts
+   (the Decred atomicswap contract with `OP_CHECKLOCKTIMEVERIFY`) need no arbitrator, no escrow
+   agent and no new network. Each wallet watches both chains. The other side's contract is
+   checked byte by byte. LBC payments are checked with SPV proofs, and Bitcoin payments are
+   cross-checked between two explorers. Today the two people exchange short codes in any chat.
+   Next steps:
+   * **Litecoin and Dogecoin** use the same contract. What is missing is a reliable public
+     server to read their chains (an Esplora-style API) and tests against their nodes.
+   * **An offer board** (for example over Nostr), so people can find each other without a
+     chat.
+   * **Not possible the same way:** **USDT, Ether and Solana tokens** have no Bitcoin-style
+     scripts. Swapping them needs an HTLC smart contract on Ethereum or Solana, plus a wallet
+     for that chain inside the app. **Monero** has no scripts at all. LBC ↔ XMR would need
+     adaptor signatures (the protocol used for BTC ↔ XMR by COMIT and UnstoppableSwap), a large
+     cryptography project that should be audited before anyone uses it.
+   * We looked at plugging in an existing multi-coin swap engine: the Komodo DeFi Framework,
+     which GLEEC also maintains as a fork. Its coin list does include LBC. But it would add a
+     large native program (written in Rust) to every installer and to the phone app, with its own
+     peer-to-peer order book. Its LBC side also relies on Electrum servers run by a single
+     operator (cipig.net). A small contract inside the wallet, tested on real nodes, is easier
+     to review and keeps the wallet independent.
 2. **Measure demand.** If swaps attract makers and takers, add an order book with reputation
    and optional mediation.
 3. **Only then a Haveno-style fiat market**, either as a fork with LBC multisig escrow or by

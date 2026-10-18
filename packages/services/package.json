@@ -1,6 +1,6 @@
 {
   "name": "@lbcwallet/services",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Platform-independent wallet services and the app API contract, shared by the desktop and Android apps",
   "license": "MIT",
   "private": true,

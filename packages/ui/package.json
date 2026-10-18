@@ -1,6 +1,6 @@
 {
   "name": "@lbcwallet/ui",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "The LBC Wallet user interface (React), shared by the desktop and Android apps",
   "license": "MIT",
   "private": true,

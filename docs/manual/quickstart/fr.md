@@ -73,12 +73,15 @@ l’expéditeur.
 Cliquez sur **Envoyer**, collez l’adresse, saisissez le montant, cliquez sur **Vérifier**, relisez
 tout, entrez votre mot de passe et cliquez sur **Envoyer**. Les paiements sont irréversibles.
 
-## 7. Miner (ordinateurs uniquement)
+## 7. Miner
 
-Cliquez sur **Minage** → **Démarrer le minage**. Par défaut, l’application utilise le pool
-LBRYPool, qui verse automatiquement vos gains sur votre portefeuille dès que vous y avez gagné
-10 LBC. Un ordinateur ordinaire rapporte très peu et consomme de l’électricité ; si vous le
-souhaitez, activez **Mettre en pause sur batterie** et **Uniquement en cas d’inactivité**.
+Cliquez sur **Minage** → **Démarrer le minage** (sur Android : **Plus → Minage**). Par défaut,
+l’application utilise le pool LBRYPool, qui verse automatiquement vos gains sur votre portefeuille
+dès que vous y avez gagné 10 LBC. Un ordinateur ordinaire rapporte très peu et consomme de
+l’électricité ; si vous le souhaitez, activez **Mettre en pause sur batterie** et
+**Uniquement en cas d’inactivité**. Un téléphone rapporte encore moins : le minage n’y fonctionne
+que lorsque LBC Wallet est ouvert à l’écran et que le téléphone est en charge, et il se met en pause
+quand la batterie chauffe.
 
 ## 8. Faire tourner votre propre nœud (facultatif, ordinateurs uniquement)
 
@@ -86,6 +89,15 @@ Cliquez sur **Nœud**, choisissez un dossier disposant d’environ **150 Go** d
 (**Modifier…**), puis cliquez sur **Démarrer le nœud**. Le premier téléchargement prend entre un et
 trois jours. Quand il atteint 100 %, le portefeuille utilise votre propre nœud et vous pouvez miner
 en mode **Solo**.
+
+## 9. Échanger des LBC et des bitcoins (facultatif)
+
+La page **Échanger** vous permet d’échanger des LBC contre des bitcoins directement avec une autre
+personne, sans passer par une plateforme d’échange : soit vous êtes payés tous les deux, soit vous
+récupérez tous les deux vos fonds. L’un de vous deux clique sur **Démarrer un échange** et envoie le
+code d’invitation ; l’autre clique sur **Rejoindre avec un code**. Gardez l’application ouverte
+jusqu’à ce que l’échange affiche **Terminé**. La fonction d’échange est nouvelle : commencez avec
+une petite somme. Pour en savoir plus : [manuel, section 21](../README.md#21-buy-sell-or-swap-lbc).
 
 ## Aide
 

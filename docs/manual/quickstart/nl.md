@@ -69,18 +69,29 @@ zien.
 Klik op **Verzenden**, plak het adres, vul het bedrag in, klik op **Controleren**, kijk alles goed
 na, voer je wachtwoord in en klik op **Verzenden**. Betalingen kunnen niet worden teruggedraaid.
 
-## 7. Minen (alleen op computers)
+## 7. Minen
 
-Klik op **Mining** → **Minen starten**. Standaard wordt de pool LBRYPool gebruikt. Die betaalt
-automatisch uit naar je wallet zodra je daar 10 LBC hebt verdiend. Een gewone computer levert
-heel weinig op en verbruikt stroom; zet als je wilt **Pauzeren op batterij** en
-**Alleen bij inactiviteit** aan.
+Klik op **Mining** → **Minen starten** (op Android: **Meer → Mining**). Standaard wordt de pool
+LBRYPool gebruikt. Die betaalt automatisch uit naar je wallet zodra je daar 10 LBC hebt verdiend.
+Een gewone computer levert heel weinig op en verbruikt stroom; zet als je wilt
+**Pauzeren op batterij** en **Alleen bij inactiviteit** aan. Een telefoon levert nog minder op: het
+minen draait daar alleen zolang LBC Wallet open op het scherm staat en de telefoon aan het opladen
+is, en het pauzeert als de batterij warm wordt.
 
 ## 8. Je eigen node draaien (optioneel, alleen op computers)
 
 Klik op **Node**, kies een map met ongeveer **150 GB** vrije ruimte (**Wijzigen…**) en klik op
 **Node starten**. De eerste download duurt één tot drie dagen. Zodra die op 100% staat, gebruikt de
 wallet je eigen node en kun je **Solo** minen.
+
+## 9. LBC en Bitcoin ruilen (optioneel)
+
+Met **Swap** ruil je LBC tegen Bitcoin rechtstreeks met iemand anders, zonder handelsplatform
+ertussen: óf jullie worden allebei betaald, óf jullie krijgen allebei je munten terug. Een van
+jullie klikt op **Swap starten** en stuurt de uitnodigingscode; de ander klikt op
+**Deelnemen met een code**. Houd de app open tot de swap op **Voltooid** staat. Swaps zijn nieuw:
+begin met een klein bedrag. Meer informatie:
+[handleiding, onderdeel 21](../README.md#21-buy-sell-or-swap-lbc).
 
 ## Hulp
 

@@ -48,6 +48,11 @@ The Android app runs the same wallet code as the desktop app, inside the app's o
   after it was in the background.
 * **Process model** — unlike on the desktop, the wallet services and the screens run in the same
   app process (Android isolates the app as a whole). The UI contains no remote content.
+* **Mining** runs in the app itself: the WebAssembly miner works in background threads of the
+  WebView (Web Workers), and the pool connection uses the same native sockets as the hubs. It
+  runs only while the app is on the screen. It pauses when the phone is not charging (unless you
+  allow battery mining, and then still below 30 %), at a battery temperature of 40 °C (until it
+  is below 37 °C), when Android reports thermal throttling, and in battery saver.
 * **SOCKS5/Tor** is not available on Android yet.
 * **Updates** — Android only installs an update signed with the same key as the installed app.
   Builds named `…-test-key.apk` are signed with a temporary key; see the
@@ -81,6 +86,53 @@ The desktop app can run **lbcd**, LBRY's official full node, the way the Monero 
 * **Storage** — the blockchain folder you choose holds public data only (no keys). Your wallet
   files stay in the app's data folder.
 
+## Swaps (LBC ↔ Bitcoin)
+
+Swaps are **atomic swaps** with hash-time-locked contracts. Neither person, and no third party,
+can take the other's coins:
+
+* **The contract** is the one from Decred's
+  [atomicswap](https://github.com/decred/atomicswap) tool, used as a P2SH script on both chains.
+  The coins can go to the other person with the secret that matches a SHA-256 hash, or back to
+  their owner after a lock time. The person who joins makes the 32-byte secret, locks first and
+  for longer (48 hours). The person who started locks second, for 24 hours, and their lock ends at
+  least 12 hours before the joiner's.
+* **Nothing is trusted blindly.** Before the wallet locks coins or reveals the secret, it rebuilds
+  the other side's contract byte by byte and checks it. It must pay to this wallet's key, use the
+  same secret hash and have a lock time in the agreed window. The payment into it must be large
+  enough and confirmed.
+  * **LBC** needs 12 confirmations. When the wallet uses public hubs, the payment is also checked
+    with a merkle proof against proof-of-work headers.
+  * **Bitcoin** needs 2 confirmations. Every explorer (blockstream.info and mempool.space, run
+    by different companies) must report the payment the same way.
+* **Servers can lie, so the wallet checks.** A server could hide a transaction, or report one
+  that doesn't exist. Only two transactions can ever spend a swap contract: the owner's refund
+  after the lock time, or the claim that carries the secret. The wallet ignores any other
+  reported spend, so a lying server cannot block a refund or a claim. On Bitcoin every explorer
+  is asked, so one that hides the other person's claim is outvoted. On LBC the wallet reads one
+  server at a time. For large swaps, use the built-in node or your own node.
+* **Timing margins.** The person who joined reveals the secret only while the other contract
+  still has at least 4 hours left. Refunds wait until each chain's own clock has passed the lock
+  time. That clock lags real time by up to about 20 minutes on LBC and 90 minutes on Bitcoin.
+* **Keys and secret** are random for every swap. They are kept in the wallet's encrypted state,
+  like your contacts and notes. They are not derived from your recovery phrase, so **a swap can
+  only be finished or refunded on the device where it was made.** Don't uninstall the app,
+  delete the wallet or restore it on another device while a swap is active.
+* **The wallet must be open.** It collects and refunds by itself, but only while LBC Wallet runs
+  with that wallet unlocked. The person who started is most at risk: once the other person
+  collects, the wallet has to collect its own side before the other contract's lock time ends.
+  Keep the app open until the swap shows *Completed*.
+* **LBC's hashrate is small and concentrated.** On 18 October 2026, LBRYPool's statistics showed
+  538 blocks found by that one pool in 24 hours, out of about 576 for the whole network. Whoever
+  controls most of the hashrate could rewrite recent LBC blocks and so undo an LBC payment
+  into a swap. This is why the wallet waits for 12 LBC confirmations, why swaps on mainnet are
+  limited to 0.05 BTC, and why you should swap only amounts you can afford to lose.
+* **Swap codes** (invites and lock codes) contain only public data: amounts, public key hashes,
+  contracts and transaction ids. Anyone can read them, but nobody can use them to take coins.
+* **Not audited**, like the rest of the wallet. The tests run full swaps between a real `lbcd`
+  and a real Bitcoin node (`btcd`) on private test networks, including refunds and a dishonest
+  contract. The Bitcoin explorers are checked against the real Bitcoin network every week.
+
 ## What the wallet connects to
 
 | Connection | When | What it reveals |
@@ -90,6 +142,7 @@ The desktop app can run **lbcd**, LBRY's official full node, the way the Monero 
 | Other LBRY nodes (peer-to-peer), including LBRYPool's node to find the first peers | Only while the built-in node runs | Your IP address, as an LBRY node |
 | Price API (CoinPaprika, CoinGecko as fallback) | Only if *Show fiat value* is on | Your IP address |
 | Mining pool | Only while mining | Your payout address and IP address |
+| Bitcoin explorers (blockstream.info and mempool.space, or your own Esplora server) | While a swap is active, and when the swap form shows the Bitcoin fee | The contract addresses and transactions of your swaps, and your IP address (not your wallet's addresses) |
 | Pool balance API (e.g. lbrypool.net) | When the Mining page shows the pool balance | Your payout address |
 | Block explorer | Only when you click a link (opens in your browser) | The transaction or address you open |
 
@@ -98,8 +151,8 @@ Chromium's spellchecker (which would download dictionaries from Google) is turne
 automated network audit (`npm run test:privacy`, run in CI against the packaged app) fails
 if the app makes any HTTP request at startup other than the optional price feed.
 
-**Tor / SOCKS5 (desktop).** With the SOCKS5 option on, hub, pool, price and pool-balance
-connections all go through the proxy, and host names are resolved by the proxy, so DNS does not
+**Tor / SOCKS5 (desktop).** With the SOCKS5 option on, hub, pool, price, pool-balance and
+Bitcoin explorer connections all go through the proxy, and host names are resolved by the proxy, so DNS does not
 leak either. The built-in node uses the proxy for its peer connections, as described above. The
 connection to an lbcd node you configured yourself under *Settings → Network* is made directly
 (it is normally on your computer or local network).

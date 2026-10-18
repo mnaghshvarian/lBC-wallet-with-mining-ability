@@ -23,34 +23,39 @@ shows, with pictures, how to install, create a wallet, receive, send and mine.
 
 Check your download against the `SHA256SUMS-*.txt` files below.
 
-### What's new in this version
+### What's new in this version (1.2.0)
 
-* **Built-in full node** — runs LBRY's official `lbcd` (bundled, unmodified, built from its
-  verified release source). Choose where the blockchain is stored; once synced, the wallet uses
-  your own node and solo mining runs through it.
-* **Android app** — the same wallet and screens on your phone; screenshots blocked on secret
-  screens; pool-balance monitor instead of mining.
-* **14 languages** — English, Persian, Arabic, Urdu, French, German, Spanish, Portuguese, Dutch,
-  Russian, Chinese, Japanese, Korean, Thai (right-to-left layouts included).
-* **Disclaimer** to accept on first start, in every language; license page in the installers.
-* Linux **.rpm** packages and **ARM64** builds; download names without version numbers.
-* **Stuck public servers are skipped:** a server whose newest block is over an hour old (one of
-  the default servers currently is) is passed over for an up-to-date one, and the wallet moves
-  on if its server stops announcing new blocks.
-* The built-in node **finds peers even though LBRY's DNS seeds are down**: it asks LBRYPool's
-  public node for addresses when no seed answers.
-* With **Tor/SOCKS5** on, the built-in node's connections go through the proxy too.
-* Recovery-phrase and private-key screens are hidden from screenshots and screen sharing
-  (Android, Windows, macOS).
-* Fix: solo mining on fast test networks could overload the miner.
+* **Swap LBC ↔ Bitcoin with another person** — no exchange, no middleman. Atomic swaps with
+  hash-time-locked contracts: either both of you get paid, or both get your coins back after the
+  lock time.
+  * The wallet checks the other side's contract before it locks anything or reveals the secret.
+    LBC payments are verified with SPV proofs, and Bitcoin payments are cross-checked by
+    blockstream.info and mempool.space.
+  * You can use your own Bitcoin explorer in *Settings → Network*.
+  * From 20,000 sats up to 0.05 BTC while swaps are new.
+* **Mine on your Android phone.** The phone app is now a complete wallet on its own, and it
+  can mine through a pool. It mines only while the app is on the screen and the phone is
+  charging (you can allow battery mining down to 30 %). It pauses when the battery reaches
+  40 °C, when Android reports overheating, and in battery saver.
+* **How much LBC is left to mine.** A new *LBC supply* card on the Mining page shows how much
+  LBC is left, the reward now, the next reward drop and the last reward (around 2035). It is
+  computed from the chain's own reward rule.
+* **Tested like a real user:** every change now installs the Windows and macOS apps, runs the
+  full UI test on the installed app and uninstalls it. A weekly check opens the installed
+  Windows app on the real LBC network.
+* Tiny mining estimates read as normal numbers (0.0098 LBC/day, not 9.80e-3).
+* The phone shows up at the pool as worker `phone` instead of `desktop`.
 
 ### Good to know
 
 * **Unsigned builds:** Windows shows "Windows protected your PC" (click *More info → Run
   anyway*); macOS asks you to allow the app in *System Settings → Privacy & Security → Open
   Anyway*. Details in the manual.
-* **Mining income is tiny on a normal computer** (LBC is mined mostly by specialized hardware).
-  Mine to support the network, not for profit.
+* **Mining income is tiny on a normal computer, and even smaller on a phone** (LBC is mined
+  mostly by specialized hardware). Mine to support the network, not for profit.
+* **Swaps are new and not audited.** Start with the smallest amount. Keep the app open, with the
+  wallet unlocked, until the swap shows *Completed*. Finish a swap on the device where you
+  started it: its keys are not in your recovery phrase.
 * **Ubuntu 24.04+:** prefer the `.deb` over the AppImage.
 * **Android:** Android only installs an update signed with the same key as the installed app.
   If a note below says this APK uses a temporary signing key, a later version may need the old

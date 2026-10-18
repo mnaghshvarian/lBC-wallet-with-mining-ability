@@ -75,12 +75,14 @@ Klicken Sie auf **Senden**, fügen Sie die Adresse ein, geben Sie den Betrag ein
 Schaltfläche mit Ihrem Betrag, z. B. **5 LBC senden**. Zahlungen können nicht rückgängig gemacht
 werden.
 
-## 7. Mining (nur auf Computern)
+## 7. Mining
 
-Klicken Sie auf **Mining** → **Mining starten**. Voreingestellt ist der Pool LBRYPool, der
-automatisch an Ihre Wallet auszahlt, sobald Sie dort 10 LBC verdient haben. Ein normaler Computer
-verdient nur sehr wenig und verbraucht Strom; nutzen Sie, wenn Sie möchten, die Optionen
-**Im Akkubetrieb pausieren** und **Nur im Leerlauf**.
+Klicken Sie auf **Mining** → **Mining starten** (unter Android: **Mehr → Mining**). Voreingestellt
+ist der Pool LBRYPool, der automatisch an Ihre Wallet auszahlt, sobald Sie dort 10 LBC verdient
+haben. Ein normaler Computer verdient nur sehr wenig und verbraucht Strom; nutzen Sie, wenn Sie
+möchten, die Optionen **Im Akkubetrieb pausieren** und **Nur im Leerlauf**. Ein Smartphone verdient
+noch weniger: Das Mining läuft dort nur, solange LBC Wallet auf dem Bildschirm geöffnet ist und das
+Smartphone lädt, und es pausiert, wenn der Akku warm wird.
 
 ## 8. Eigenen Node betreiben (optional, nur auf Computern)
 
@@ -88,6 +90,14 @@ Klicken Sie auf **Node**, wählen Sie einen Ordner mit etwa **150 GB** freiem Sp
 (**Ändern…**) und klicken Sie auf **Node starten**. Der erste Download dauert ein bis drei Tage.
 Sobald er 100 % erreicht hat, nutzt die Wallet Ihren eigenen Node, und Sie können im Modus
 **Solo (Full Node)** minen.
+
+## 9. LBC und Bitcoin tauschen (optional)
+
+Mit **Swap** tauschen Sie LBC gegen Bitcoin direkt mit einer anderen Person, ohne Börse dazwischen:
+Entweder werden Sie beide bezahlt, oder Sie erhalten beide Ihre Coins zurück. Einer von Ihnen klickt
+auf **Swap starten** und sendet den Einladungscode; der andere klickt auf **Mit Code beitreten**.
+Lassen Sie die App geöffnet, bis der Swap **Abgeschlossen** anzeigt. Swaps sind neu: Beginnen Sie
+mit einem kleinen Betrag. Mehr dazu: [Handbuch, Abschnitt 21](../README.md#21-buy-sell-or-swap-lbc).
 
 ## Hilfe
 

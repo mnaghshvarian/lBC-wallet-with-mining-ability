@@ -63,17 +63,27 @@ Click **Receive**. Copy your address (it starts with `b`) or show the QR code to
 Click **Send**, paste the address, type the amount, click **Review**, check everything, enter
 your password and click **Send**. Payments cannot be reversed.
 
-## 7. Mine (computers only)
+## 7. Mine
 
-Click **Mining** → **Start mining**. The default is the LBRYPool pool, which pays automatically
-to your wallet once you have earned 10 LBC there. A normal computer earns very little and uses
-electricity; use **Pause on battery** and **Only when idle** if you like.
+Click **Mining** → **Start mining** (on Android: **More → Mining**). The default is the LBRYPool
+pool, which pays automatically to your wallet once you have earned 10 LBC there. A normal
+computer earns very little and uses electricity; use **Pause on battery** and **Only when idle**
+if you like. A phone earns even less: it mines only while LBC Wallet is open on the screen and
+the phone is charging, and it pauses when the battery gets warm.
 
 ## 8. Run your own node (optional, computers only)
 
 Click **Node**, choose a folder with about **150 GB** free space (**Change…**), and click
 **Start node**. The first download takes one to three days. When it reaches 100 %, the wallet uses
 your own node, and you can mine **Solo**.
+
+## 9. Swap LBC and Bitcoin (optional)
+
+**Swap** trades LBC for Bitcoin directly with another person, with no exchange in between:
+either both of you get paid, or both get your coins back. One of you clicks **Start a swap** and
+sends the invite code; the other clicks **Join with a code**. Keep the app open until the swap
+shows **Completed**. Swaps are new: start with a small amount. Details:
+[manual, section 21](../README.md#21-buy-sell-or-swap-lbc).
 
 ## Help
 

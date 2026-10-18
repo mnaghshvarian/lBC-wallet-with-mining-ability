@@ -32,18 +32,21 @@ npm test                  # unit tests: core, services, ui (incl. translation ch
 npm run build             # production build of the desktop app into apps/desktop/out
 bash scripts/build-lbcd.sh                      # lbcd for this computer
 bash scripts/build-lbcd.sh linux-x64 win-x64   # or for other targets (cross-compiles)
+bash scripts/build-btcd.sh                      # btcd (Bitcoin node) for the swap tests → .tools/btcd/btcd
 ```
 
 | Command | What it does |
 | --- | --- |
-| `LBCD_BIN=… npm run test:e2e` | Wallet, hub-protocol and mining tests against a throw-away lbcd on regtest |
+| `LBCD_BIN=… BTCD_BIN=… npm run test:e2e` | Wallet, hub-protocol and mining tests against a throw-away lbcd on regtest; with `BTCD_BIN`, also LBC ↔ Bitcoin swaps between two wallets on lbcd + btcd |
 | `LBCD_BIN=… xvfb-run -a npm run test:ui -w lbc-wallet-desktop` | Drives the built app through the disclaimer, restore, create, send, confirm, pool mining, the built-in node (sync + solo mining), settings, Persian and phone layouts; screenshots in `apps/desktop/e2e/screenshots` |
 | `APP_EXECUTABLE=… npm run test:ui -w lbc-wallet-desktop` | The same flow against a packaged build (`apps/desktop/release/<version>/linux-unpacked/lbc-wallet`) |
 | `xvfb-run -a npm run test:privacy -w lbc-wallet-desktop` | Network audit: no requests except the optional price feed |
 | `LBCD_BIN=… npm run test:e2e -w lbc-wallet-mobile` | The Android app's JavaScript stack against regtest |
 | `LBCD_BIN=… npm run test:device -w lbc-wallet-mobile` | The real Android app on a connected device/emulator against regtest (needs the debug APK) |
-| `npm run test:mainnet -w @lbcwallet/core` | Read-only mainnet check: hubs, PoW headers, SPV proofs, LBRYPool login |
+| `npm run test:mainnet -w @lbcwallet/core` | Read-only mainnet check: hubs, PoW headers, SPV proofs, LBRYPool login, the Bitcoin explorers swaps use |
 | `LBCD_BIN=… npx tsx apps/desktop/mainnet/node-sync.ts 8` | The built-in node finds peers and syncs mainnet for 8 minutes |
+| `npx tsx apps/desktop/mainnet/app-mainnet.ts` | The built (or `APP_EXECUTABLE`) app on mainnet: new wallet, sync, supply, server test, Bitcoin fee; with `MAINNET_TEST_PHRASE`, also a real 0.01 LBC payment through the Send screen |
+| `MAINNET_TEST_PHRASE=… npx tsx packages/services/mainnet/self-send.ts` | A real 0.01 LBC payment from a small test wallet to itself, waited for until it is confirmed and SPV-verified |
 | `npm run build:wasm` | Recompiles the miner from C and regenerates the embedded module |
 | `python3 scripts/manual-images.py <screenshot dir>` | Rebuilds the manual's pictures and animations from UI-test screenshots |
 | `node apps/desktop/scripts/license-text.mjs` | Regenerates the installer license page from `DISCLAIMER.md` + `LICENSE` (a test checks it) |
@@ -143,9 +146,12 @@ Desktop builds are unsigned unless these secrets exist:
 ## Continuous integration
 
 * [`ci.yml`](../.github/workflows/ci.yml), on every push: typecheck, unit tests and build on
-  Linux, Windows and macOS; the regtest suites; the desktop UI test (development and packaged
-  builds, sandbox on); the privacy audit; the Android regtest stack test, APK build and the app in
+  Linux, Windows and macOS; the regtest suites (with btcd for swaps); the desktop UI test
+  (development and packaged builds, sandbox on); the privacy audit; the installed Windows and
+  macOS apps (silent install, UI test, audit, uninstall); the Android regtest stack test, APK build and the app in
   an Android emulator; and a byte-for-byte check that the WebAssembly miner matches its C source.
 * [`mainnet.yml`](../.github/workflows/mainnet.yml), on every push and weekly: the read-only
-  mainnet check and the built-in node's mainnet sync. GitHub's terms forbid mining on Actions, so
-  nothing is mined there; mining on mainnet is tested by people (see the manual's mining section).
+  mainnet check (including the Bitcoin explorers), the built-in node's mainnet sync, and the
+  installed Windows app on mainnet. Started by hand with the `MAINNET_TEST_PHRASE` secret, it also
+  sends real payments (see [TESTING-MAINNET.md](TESTING-MAINNET.md)). GitHub's terms forbid
+  mining on Actions, so nothing is mined there; mining on mainnet is tested by people.

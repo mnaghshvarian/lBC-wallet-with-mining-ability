@@ -1,8 +1,9 @@
 # LBC Wallet
 
 **A free, non-custodial wallet for LBRY Credits (LBC) — with a built-in miner and a built-in
-full node, like the Monero GUI.** Keep, send and receive LBC, mine it with your computer, and run
-your own LBRY node. For **Windows, Mac, Linux and Android**, in **14 languages**.
+full node, like the Monero GUI.** Keep, send and receive LBC, mine it with your computer or
+phone, swap it for Bitcoin directly with another person, and run your own LBRY node. For
+**Windows, Mac, Linux and Android**, in **14 languages**.
 
 > [!CAUTION]
 > **Experimental, unaudited software — use it at your own risk.** No independent security audit
@@ -57,13 +58,18 @@ AES-256-GCM).
   a proof-of-work-valid block header — the wallet doesn't just trust the server.
 * Auto-lock, several wallets, optional fiat prices, optional **Tor/SOCKS5**.
 
-**Miner** (computers)
+**Miner**
 
 * Mine through a **pool** (LBRYPool preset, any LBRY Stratum pool) or **solo** with your own
   node. A WebAssembly SIMD implementation of LBRY's proof of work runs in a separate
   low-priority process.
 * Pause on battery, mine only when the computer is idle, live hashrate, shares, pool balance and
   earnings estimate.
+* **On Android phones too** (pool mining). It runs only while the app is on the screen and the
+  phone is charging (you can allow battery mining). It pauses when the battery gets warm
+  (40 °C) or the battery saver is on.
+* **How much LBC is left to mine:** the reward now, the next reward drop and the last reward
+  (around 2035), computed from the chain's own reward rule.
 
 > **Be realistic:** LBC is mined mostly by specialized hardware, so a normal computer earns very
 > little — often less than the electricity costs. See [docs/MINING.md](docs/MINING.md).
@@ -77,8 +83,15 @@ AES-256-GCM).
 * When the node is ready, the wallet reads the chain from it instead of public servers, and solo
   mining uses it.
 
-**Android app** — the same wallet and screens, with screenshots blocked on secret screens and no
-cloud backups of wallet files. It doesn't mine (phones overheat); it shows your pool balance.
+**Swaps: LBC ↔ Bitcoin** — trade directly with another person, with no exchange and no
+middleman. Atomic swaps with hash-time-locked contracts: either both of you get paid, or both
+get your coins back after the lock time. The other side's contract is checked before anything
+is locked. LBC payments are verified with SPV proofs, and Bitcoin payments are cross-checked by
+two independent explorers. New and unaudited, so start small (from 20,000 sats, up to 0.05 BTC).
+
+**Android app** — a complete wallet on its own (no computer needed), with the same screens.
+Pool mining while charging, screenshots blocked on secret screens, no cloud backups of wallet
+files.
 
 **14 languages** — English, فارسی, العربية, اردو, Français, Deutsch, Español, Português,
 Nederlands, Русский, 简体中文, 日本語, 한국어, ไทย (right-to-left layouts included).
@@ -95,8 +108,10 @@ Nederlands, Русский, 简体中文, 日本語, 한국어, ไทย (right
 * [Security model](docs/SECURITY.md) — what protects your funds and privacy; how to report a vulnerability
 * [Architecture](docs/ARCHITECTURE.md) — how the shared core, services, apps and miner fit together
 * [Building from source](docs/BUILDING.md) — development, tests, packaging, Android, releases
+* [Testing on the real network](docs/TESTING-MAINNET.md) — what CI checks on mainnet, the
+  real-payment test, and a checklist for testers
 * [Roadmap](docs/ROADMAP.md) — next: a decentralized (P2Pool-style) mining pool in the wallet,
-  then a decentralized exchange for LBC
+  more coins and an offer board for swaps
 
 ## How it is tested
 
@@ -106,14 +121,23 @@ Every push runs, on GitHub's servers:
   and translation checks for all 14 languages;
 * end-to-end tests against a real `lbcd` on a private test network: payments, tips, restore,
   SPV proofs over the hub protocol, blocks mined solo and through a Stratum pool;
+* **atomic swaps between two wallets on a real `lbcd` and a real Bitcoin node (`btcd`)**: a
+  completed swap, a refund on each side, and a dishonest contract that is refused;
 * the real desktop app driven by a robot (development build and the packaged, locked-down
   build): disclaimer, restore, create with backup check, send, confirm, pool mining, **starting
   the built-in node, syncing it and solo-mining through it**, settings, Persian and phone layouts;
-* the Android app in an Android emulator: restore, receive, send, confirm, screenshot blocking;
+* the **installed** Windows and macOS apps: the installer is run silently, then the whole UI test
+  runs on the installed app, followed by the privacy audit and an uninstall that keeps wallet
+  files;
+* the Android app in an Android emulator: restore, receive, send, confirm, screenshot blocking,
+  and **mining on the phone** (shares accepted, pause when unplugged);
 * a network audit (no telemetry or unexpected connections);
 * a **mainnet check** (also weekly): public LBRY servers, proof-of-work headers, real
-  transactions verified against block headers, a login to LBRYPool, and the built-in node
-  finding peers and syncing mainnet. Nothing is mined or spent in CI.
+  transactions verified against block headers, a login to LBRYPool, the Bitcoin explorers used
+  by swaps, the built-in node finding peers and syncing mainnet, and **the installed Windows
+  app opening a wallet on the real network**. Nothing is mined in CI. A real payment (through
+  the wallet code and through the Windows app's Send screen) runs when started by hand with a
+  small test wallet; see [TESTING-MAINNET.md](docs/TESTING-MAINNET.md).
 
 ## License
 

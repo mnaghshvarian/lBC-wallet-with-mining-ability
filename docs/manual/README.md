@@ -45,7 +45,8 @@ these languages.
 18. [Updating the app](#18-updating-the-app)
 19. [Problems and solutions](#19-problems-and-solutions)
 20. [Check that your download is genuine (optional)](#20-check-that-your-download-is-genuine-optional)
-21. [Glossary](#glossary)
+21. [Buy, sell or swap LBC](#21-buy-sell-or-swap-lbc)
+22. [Glossary](#glossary)
 
 ---
 
@@ -57,7 +58,8 @@ these languages.
 * **keep** your LBC safely on your own computer or phone;
 * **receive** LBC from other people, exchanges and mining pools;
 * **send** LBC to anyone;
-* **mine** LBC with your computer, like in the Monero GUI wallet;
+* **mine** LBC with your computer (like in the Monero GUI wallet) or your Android phone;
+* **swap** LBC and Bitcoin directly with another person, with no exchange in between;
 * **run your own LBRY node** (a full copy of the LBC blockchain), so you don't depend on anyone
   else's servers;
 * see and **unlock tips and supports** you received on LBRY / Odysee.
@@ -247,9 +249,10 @@ directly — this is called *sideloading* and is safe when the file comes from t
 After installing, you can switch **Allow from this source** off again for your browser
 (Settings → Apps → Chrome → Install unknown apps).
 
-**What the phone app can do:** everything except mining and running a node — phones would
-overheat and drain their battery. The **Mining** page on the phone shows your **pool balance**,
-so you can follow what your computer earns.
+**What the phone app can do:** it is a complete wallet on its own. You don't need a computer.
+You can create or restore wallets, receive, send and swap, and **mine through a pool** while the
+phone is charging (see [Mining on your phone](#mining-on-your-phone)). Only the built-in node is
+missing, because a phone has neither the space nor the battery for the whole blockchain.
 
 | Your wallet | Receive | Check before sending | In Persian |
 | --- | --- | --- | --- |
@@ -460,10 +463,46 @@ a normal computer that may take years. Solo mining needs a full node:
 
 ![Solo mining through the built-in node](images/solo-mining.png)
 
-### Following your mining on your phone
+### Mining on your phone
 
-On the Android app, open **More → Mining**. Enter the same **payout address** your computer
-mines to, and you see the **pool balance**.
+The Android app mines through a pool too. A phone is much slower than a computer and earns even
+less, so see it as a way to take part, not to earn. To protect your phone, the app mines only
+when it is safe:
+
+* **Only while LBC Wallet is on the screen.** The screen stays on while it mines. If you switch
+  to another app or lock the phone, mining pauses, and it resumes when you come back.
+* **Only while charging**, unless you switch *Only while charging* off. Even then it stops when
+  the battery is below 30 %.
+* It pauses when the **battery reaches 40 °C** and resumes below 37 °C. It also pauses when
+  Android says the phone is getting hot, and while **battery saver** is on.
+
+1. Open **More → Mining** with your wallet unlocked.
+2. Plug in the charger and tap **Start mining**.
+3. Leave the phone on a table with the app open: out of the sun, ideally out of its case.
+
+| Mining on a phone | Paused until the charger is plugged in |
+| --- | --- |
+| ![Mining on a phone](images/phone-mining.png) | ![Waiting for a charger](images/phone-mining-paused.png) |
+
+Solo mining and *Only when idle* are only on computers. Long mining sessions wear a phone's
+battery faster, so don't leave an old phone mining unattended for days.
+
+### How much LBC is left to mine?
+
+The **LBC supply** card on the Mining page answers this from the current block. It uses the same
+reward rule every LBRY node checks:
+
+![The LBC supply card](images/mining-supply.png)
+
+* **Total, ever: 1,083,202,000 LBC.** Block 0 created 400,000,000 LBC, which was LBRY's own
+  pre-mine. Everything else is paid to miners, block by block.
+* **Created so far:** about **963.4 million** LBC (October 2026). **About 119.8 million LBC**
+  are left to mine.
+* **The reward now is 135 LBC per block** (a block every 2.5 minutes). It goes down by 1 LBC in
+  steps that get slowly longer. The next step, to 134 LBC, is at block 2,204,153, about 20 days
+  after the previous one.
+* **The last block reward** is paid at block 4,063,000, **around 2035**. After that, miners earn
+  only transaction fees.
 
 ---
 
@@ -524,7 +563,9 @@ LBC Wallet includes **lbcd**, LBRY's official node software, unchanged.
   sharing your screen), block explorer link.
 * **Network:** how the wallet reads the blockchain — **Public servers** (the default, fast and
   light), **Built-in node**, or **My own node**. You can add your own LBRY servers and route
-  everything through **Tor** (SOCKS5 proxy) for more privacy.
+  everything through **Tor** (SOCKS5 proxy) for more privacy. **Bitcoin explorer for swaps**
+  lets you use your own Bitcoin server instead of blockstream.info (leave it empty if you don't
+  know what that is).
 * **Security:**
   * **Auto-lock** — the wallet locks itself after some minutes without use (15 by default) and
     when the computer sleeps.
@@ -593,6 +634,13 @@ choose another pool.
 
 **"Paused (on battery)".** Plug in your laptop, or switch off *Pause on battery*.
 
+**Mining on the phone says "Paused".** The message under the hashrate says why. Plug in the
+charger, let the phone cool down, switch off battery saver, or keep LBC Wallet on the screen.
+
+**A swap says "Waiting for the refund".** The other person didn't continue in time. Keep LBC
+Wallet open with that wallet unlocked: your coins come back by themselves after the time shown.
+Before you lock any coins, you can still **Cancel swap**.
+
 **The node finds no peers.** Finding the first peers can take a few minutes; if none answer, the
 app asks the node to try a list of known LBRY nodes. If it still shows 0 peers after 10 minutes,
 check that your firewall allows LBC Wallet to connect to the internet (the node uses port 9246).
@@ -629,9 +677,93 @@ how the files were made.
 
 ---
 
+## 21. Buy, sell or swap LBC
+
+### On an exchange
+
+Today LBC trades on very few markets. In October 2026 the only market that price trackers such
+as [CoinPaprika](https://coinpaprika.com/coin/lbc-lbry-credits/) still follow is **LBC/USDT on
+MEXC**, with only a few hundred US dollars of trading per day. That means:
+
+* **The price can jump** with a single large order, and selling a large amount may move it a lot.
+* **An exchange holds your coins** while they are there (it is *custodial*). It can freeze
+  withdrawals, ask for identity documents, delist LBC or close. Move your LBC back to your own
+  wallet when you're done, and never leave more there than you can afford to lose.
+* **Check the exchange's own page** for the LBC network, its deposit address and any deposit
+  tag, and send a small amount first.
+* Exchanges are not available everywhere. Follow the law of your country.
+
+LBC Wallet is not connected to any exchange, and this is not a recommendation to buy or sell.
+
+### Swap LBC and Bitcoin with another person
+
+The **Swap** page trades LBC for Bitcoin (or Bitcoin for LBC) directly with someone you know,
+for example from the LBRY community chat. **No exchange and no middleman** is involved. It uses
+an *atomic swap*: each of you locks your coins in a contract on its own blockchain, and the
+contracts are linked so that **either both of you get paid, or both of you get your coins back**.
+Nobody can take your coins without giving you theirs.
+
+**What you need:** LBC Wallet for the LBC side, any Bitcoin wallet to pay Bitcoin from (if you
+give Bitcoin), and a Bitcoin address of yours to receive Bitcoin or a refund. The smallest swap is
+**20,000 sats of Bitcoin** (0.0002 BTC, about 16 US dollars in October 2026). Below that, Bitcoin
+fees would eat too much. The largest is **0.05 BTC**, while swaps are new.
+
+**How it goes:**
+
+1. Agree on the amounts with the other person, for example in a chat.
+2. One of you clicks **Swap → Start a swap**, chooses what they give, enters the amounts and
+   their Bitcoin address, and clicks **Create the invite**. They send the **invite code** to the
+   other person. The code holds only public information.
+
+   ![An invite to send](images/swap-invite.png)
+
+3. The other person clicks **Join with a code** and pastes it. **The person who joins locks
+   first.** If they give Bitcoin, the wallet shows a Bitcoin address and the exact amount: pay
+   it from any Bitcoin wallet in a single payment. If they give LBC, the wallet locks it after
+   they enter their password. Then the wallet shows a **lock code** to send back.
+
+   ![Paying the Bitcoin into the contract](images/swap-pay-btc.png)
+
+4. The person who started pastes that lock code. The wallet waits until the other coins are
+   safely confirmed (2 Bitcoin blocks, about 20 minutes; or 12 LBC blocks, about 30 minutes) and
+   checks them. Then it is their turn to lock: LBC with their password, or Bitcoin by paying the
+   address and amount the wallet shows. The wallet then shows their own lock code to send back.
+
+   ![Your coins are locked: send your lock code](images/swap-send-lock.png)
+
+5. The person who joined pastes it. From here **the two wallets finish the swap by
+   themselves**: each collects the other's coins. Both show **Completed**.
+
+*(Pictures with sample amounts.)*
+
+> [!IMPORTANT]
+> * **Keep LBC Wallet open, with that wallet unlocked, until the swap shows "Completed".** The
+>   wallet has to act before the lock times end. If the swap stops halfway, your coins come
+>   back by themselves after the lock time (24 hours for the person who started, 48 hours for
+>   the person who joined), but only while the app is open.
+> * **Finish the swap on the same device.** Its keys are kept in that wallet on that device, not
+>   in your recovery phrase. Don't uninstall the app or delete the wallet while a swap runs.
+> * **Pay exactly the amount shown, in one payment,** and only to the address shown in your own
+>   LBC Wallet, never to an address someone sends you in a chat.
+> * Swaps are new and **not audited**. Start with the smallest amount.
+> * The wallet reads the Bitcoin blockchain through blockstream.info and double-checks
+>   everything with mempool.space, so those two services see the contract addresses (not your
+>   wallet). You can use your own Bitcoin server instead (**Settings → Network**).
+
+**Why only Bitcoin?** An atomic swap needs both blockchains to support the same kind of locked
+contract. Bitcoin, Litecoin and Dogecoin do. Litecoin or Dogecoin may come later, once there is
+a reliable public server to read their blockchains. **USDT, Ethereum and Solana** would need a
+contract written for those networks. **Monero** works very differently and needs much more
+complex cryptography. Those may come later; until then there is no safe way to swap them
+without a middleman. See the [roadmap](../ROADMAP.md).
+
+---
+
 ## Glossary
 
 * **Address** — like an account number for receiving LBC. Real LBC addresses start with `b`.
+* **Atomic swap** — a trade of two coins on two blockchains where either both payments happen
+  or neither does. No middleman holds the coins.
 * **Block** — a batch of transactions added to the blockchain about every 2.5 minutes.
 * **Blockchain** — the public record of all LBC transactions, kept by thousands of computers.
 * **Confirmation** — each new block after the one containing your payment. More confirmations
@@ -640,12 +772,14 @@ how the files were made.
 * **Hashrate** — how fast your computer mines (hashes per second, H/s).
 * **Hub / server** — a public LBRY server that helps light wallets read the blockchain. It never
   sees your keys.
+* **Lock time** — in a swap, the time after which locked coins can go back to their owner.
 * **LBC / dewies** — LBRY Credits; 1 LBC = 100,000,000 dewies.
 * **Mining** — using computing power to create new blocks; miners earn new LBC and fees.
 * **Node (full node)** — a program that keeps and checks the whole blockchain.
 * **Non-custodial** — you hold your own keys; no company can freeze or move your coins.
 * **Pool** — a group of miners who share their rewards.
 * **Recovery phrase (seed)** — the 12 or 24 words that can restore your wallet. Keep them secret.
+* **sats** — the smallest unit of Bitcoin: 100,000,000 sats = 1 BTC.
 * **Share** — a piece of mining work counted by the pool.
 * **Solo mining** — mining alone; rare but full rewards.
 * **Tips and supports** — LBC sent to creators on LBRY/Odysee, or put behind content to boost it.

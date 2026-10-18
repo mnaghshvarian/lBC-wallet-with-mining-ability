@@ -71,18 +71,29 @@ va a enviar el pago.
 Haz clic en **Enviar**, pega la dirección, indica la cantidad, haz clic en **Revisar**, comprueba
 todo, escribe tu contraseña y haz clic en **Enviar**. Los pagos no se pueden deshacer.
 
-## 7. Minar (solo en computadoras)
+## 7. Minar
 
-Haz clic en **Minería** → **Iniciar minería**. De forma predeterminada se usa el pool LBRYPool,
-que paga automáticamente a tu billetera cuando hayas ganado 10 LBC en él. Una computadora normal
-gana muy poco y consume electricidad; si quieres, activa **Pausar con batería** y
-**Solo con la computadora inactiva**.
+Haz clic en **Minería** → **Iniciar minería** (en Android: **Más → Minería**). De forma
+predeterminada se usa el pool LBRYPool, que paga automáticamente a tu billetera cuando hayas ganado
+10 LBC en él. Una computadora normal gana muy poco y consume electricidad; si quieres, activa
+**Pausar con batería** y **Solo con la computadora inactiva**. Un teléfono gana todavía menos: la
+minería solo funciona mientras LBC Wallet está abierto en la pantalla y el teléfono se está
+cargando, y se pausa cuando la batería se calienta.
 
 ## 8. Ejecutar tu propio nodo (opcional, solo en computadoras)
 
 Haz clic en **Nodo**, elige una carpeta con unos **150 GB** de espacio libre (**Cambiar…**) y haz
 clic en **Iniciar nodo**. La primera descarga tarda entre uno y tres días. Cuando llegue al 100 %,
 la billetera usará tu propio nodo y podrás minar en modo **En solitario**.
+
+## 9. Intercambiar LBC y bitcoins (opcional)
+
+**Intercambiar** te permite cambiar LBC por bitcoins directamente con otra persona, sin ningún
+exchange de por medio: o los dos reciben lo acordado, o los dos recuperan sus fondos. Uno de los dos
+hace clic en **Iniciar un intercambio** y envía el código de invitación; el otro hace clic en
+**Unirse con un código**. Mantén la app abierta hasta que el intercambio muestre **Completado**. La
+función de intercambio es nueva: empieza con una cantidad pequeña. Más detalles:
+[manual, sección 21](../README.md#21-buy-sell-or-swap-lbc).
 
 ## Ayuda
 
