@@ -24,12 +24,16 @@ export function forceKill(child: ChildProcess): void {
   else child.kill('SIGKILL');
 }
 
-/** Runs the app from the electron-vite build output with the development Electron binary. */
-export async function launchDev(dataDir: string): Promise<RunningApp> {
+/**
+ * Runs the app from the electron-vite build output with the development Electron binary.
+ * With `record`, the window is recorded to a video (saved when the app closes).
+ */
+export async function launchDev(dataDir: string, record?: { dir: string; width: number; height: number }): Promise<RunningApp> {
   const app = await electron.launch({
     executablePath: electronPath as unknown as string,
     args: ['--no-sandbox', appDir],
     env: { ...process.env, LBC_WALLET_DATA_DIR: dataDir, ...(process.env.LBCD_BIN ? { LBC_WALLET_LBCD_BIN: process.env.LBCD_BIN } : {}) },
+    ...(record ? { recordVideo: { dir: record.dir, size: { width: record.width, height: record.height } } } : {}),
   });
   return { page: await app.firstWindow(), electron: app, close: () => app.close() };
 }
