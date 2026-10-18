@@ -91,6 +91,8 @@ const LOCK_FEE_MARGIN = 1_000_000n;
 const ACTIVE: MarketTradeRecord['status'][] = ['waiting', 'invited', 'swapping'];
 const SWAP_ENDED = ['completed', 'refunded', 'cancelled', 'failed'];
 const LOCK_SENT_STAGES = ['send-lock', 'checking', 'claiming'];
+/** A taker's lock may show up this long after its deadline (a payment sent just in time). */
+const LOCK_GRACE = 5 * 60;
 
 function termsOf(o: MarketOfferRecord): OfferTerms {
   const left = BigInt(o.left);
@@ -126,8 +128,8 @@ export class MarketService {
   private readonly pubkeys = new Map<string, string>();
   /** Takes answered with a decline (they leave no record). */
   private readonly declined = new Set<string>();
-  /** Open offers of the wallet last seen open, to take them down when it locks. */
-  private lastOpen: { offers: MarketOfferRecord[] } | null = null;
+  /** Open offers of the wallet last seen open, to take them down when it locks or another opens. */
+  private lastOpen: { state: MarketState; offers: MarketOfferRecord[] } | null = null;
 
   constructor(
     private readonly platform: Platform,
@@ -231,6 +233,7 @@ export class MarketService {
       return;
     }
     const state = w.state();
+    if (this.lastOpen && this.lastOpen.state !== state) await this.walletGone();
     const before = JSON.stringify(state);
     const busy = state.offers.some((o) => o.status === 'open') || state.trades.some((t) => ACTIVE.includes(t.status) || !!t.outbox);
     if (!watching && !busy) {
@@ -260,7 +263,7 @@ export class MarketService {
     this.subscribeMessages(pool, state);
     this.renewOffers(state);
     this.resend(state);
-    this.lastOpen = { offers: state.offers.filter((o) => o.status === 'open').map((o) => ({ ...o })) };
+    this.lastOpen = { state, offers: state.offers.filter((o) => o.status === 'open').map((o) => ({ ...o })) };
     this.pruneBoard();
     this.scheduleChanged();
   }
@@ -565,46 +568,50 @@ export class MarketService {
   // ---------------------------------------------------------------- trades over time
 
   private async advanceTrades(state: MarketState): Promise<void> {
-    const now = this.nowSec();
     const swaps = new Map(this.deps.swaps.list().map((v) => [v.id, v]));
     for (const t of state.trades) {
       if (!ACTIVE.includes(t.status)) continue;
-      const age = now - Math.floor(t.createdAt / 1000);
-      const view = t.swapId ? swaps.get(t.swapId) : undefined;
-      if (t.status === 'waiting') {
-        if (age > this.timing.inviteWait) this.end(state, t, 'expired');
-        continue;
+      try {
+        await this.advance(state, t, t.swapId ? swaps.get(t.swapId) : undefined);
+      } catch (err) {
+        this.log('warn', `trade ${t.id}: ${(err as Error).message}`);
       }
-      if (t.swapId && !view) {
-        this.end(state, t, 'cancelled');
-        continue;
-      }
-      if (!view) continue;
-      if (SWAP_ENDED.includes(view.stage)) {
-        this.end(state, t, view.stage === 'completed' ? 'done' : 'cancelled');
-        continue;
-      }
-      // Our coins are locked: send our lock code (once per code).
-      if (view.code && view.ours?.txid && LOCK_SENT_STAGES.includes(view.stage) && view.code !== t.sentLock) {
-        t.sentLock = view.code;
-        await this.send(state, t, { type: 'lock', trade: t.id, code: view.code });
-      }
-      if (t.role === 'maker' && t.status === 'invited' && view.stage === 'send-invite' && age > this.timing.makerWait) {
-        // The taker never locked: give up (nothing of ours is locked yet).
-        this.deps.swaps.cancel(view.id);
-        await this.send(state, t, { type: 'decline', trade: t.id, reason: 'expired' });
-        this.end(state, t, 'expired');
-      } else if (t.role === 'taker' && view.lockBy && now > view.lockBy && !view.ours?.txid && view.cancellable) {
-        // Too late to lock: the maker gives up soon. A Bitcoin contract is still watched for a late payment.
-        this.deps.swaps.cancel(view.id);
-        this.end(state, t, 'expired');
-      }
+    }
+  }
+
+  private async advance(state: MarketState, t: MarketTradeRecord, view: SwapView | undefined): Promise<void> {
+    const now = this.nowSec();
+    const age = now - Math.floor(t.createdAt / 1000);
+    if (t.status === 'waiting') {
+      if (age > this.timing.inviteWait) this.end(state, t, 'expired');
+      return;
+    }
+    if (t.swapId && !view) return this.end(state, t, 'cancelled');
+    if (!view) return;
+    if (SWAP_ENDED.includes(view.stage)) return this.end(state, t, view.stage === 'completed' ? 'done' : 'cancelled');
+    // Our coins are locked: send our lock code (once per code).
+    if (view.code && view.ours?.txid && LOCK_SENT_STAGES.includes(view.stage) && view.code !== t.sentLock) {
+      t.sentLock = view.code;
+      await this.send(state, t, { type: 'lock', trade: t.id, code: view.code });
+    }
+    if (t.role === 'maker' && t.status === 'invited' && view.stage === 'send-invite' && age > this.timing.makerWait) {
+      // The taker never locked: give up (nothing of ours is locked yet).
+      this.deps.swaps.cancel(view.id);
+      await this.send(state, t, { type: 'decline', trade: t.id, reason: 'expired' });
+      this.end(state, t, 'expired');
+    } else if (t.role === 'taker' && view.lockBy && now > view.lockBy + LOCK_GRACE && !view.ours?.txid && view.cancellable) {
+      // Too late to lock (a payment made just in time has had a few minutes to show up): the
+      // maker gives up soon. A Bitcoin contract is still watched, and refunded, if paid late.
+      this.deps.swaps.cancel(view.id);
+      this.end(state, t, 'expired');
     }
   }
 
   private end(state: MarketState, t: MarketTradeRecord, status: MarketTradeRecord['status']): void {
     t.status = status;
     t.updatedAt = Date.now();
+    // A last message (a decline) has had its delivery attempt; an ended trade sends nothing more.
+    delete t.outbox;
     this.log('info', `trade ${t.id}: ${status}`);
     if (t.role !== 'maker' || status === 'done' || t.returned) return;
     // The amount was taken off the offer for this trade: it is available again.
