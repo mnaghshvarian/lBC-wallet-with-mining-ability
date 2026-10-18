@@ -555,6 +555,12 @@ export class MarketService {
   private onLock(trade: MarketTradeRecord, code: string): void {
     if (trade.gotLock === code || !trade.swapId || (trade.status !== 'invited' && trade.status !== 'swapping')) return;
     try {
+      // Only for this trade's own swap: a peer may not hand codes to any other swap of this wallet.
+      const info = this.deps.swaps.inspect(code);
+      if (info.type !== 'lock' || info.id !== trade.swapId) {
+        this.log('warn', `trade ${trade.id}: ignoring a lock code for another swap`);
+        return;
+      }
       this.deps.swaps.accept({ code });
       trade.gotLock = code;
       trade.status = 'swapping';

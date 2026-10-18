@@ -146,7 +146,8 @@ everything in the section above applies to its trades. On top of that:
   messages but cannot forge or change them.
 * **The swap checks do not change.** An invite from the other wallet must state exactly the
   amounts that were taken, and the joining wallet then checks the contracts on both chains as in
-  any swap. A lock code that does not pay this wallet is refused.
+  any swap. A lock code that does not pay this wallet is refused, and a trade's messages are
+  accepted only from that trade's other key and only for that trade's own swap.
 * **Fresh keys.** Each offer has its own Nostr key, and each take another, kept in the wallet's
   encrypted state. Relays see that two keys exchange a few messages, and when, but not what they
   say or which wallets they belong to.

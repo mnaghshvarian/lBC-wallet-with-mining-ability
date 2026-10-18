@@ -934,9 +934,9 @@ themselves.
 
 * **"Connected to 0 of 5 relays"** — check your internet connection. Some networks block
   WebSocket connections; try another network, or other relays in **Settings → Network**.
-* **"Expired — no answer in time"** — the wallet that posted the offer was not open. Nothing of
+* **Expired** ("No answer in time") — the wallet that posted the offer was not open. Nothing of
   yours was locked; try another offer.
-* **"Declined"** — the offer was already taken, closed, or its price changed. Nothing was locked.
+* **Declined** — the offer was already taken, closed, or its price changed. Nothing was locked.
 * **"Not on any relay yet"** under your offer — no relay could be reached; the wallet keeps
   trying.
 * **The market price is not shown** — the price services could not be reached. Check the price

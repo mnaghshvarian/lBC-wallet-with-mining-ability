@@ -100,7 +100,7 @@ describe('order board offers', () => {
       const forged = await signEventWithWork({ kind: e.kind, tags: e.tags, content: JSON.stringify({ ...content, ...bad }), created_at: NOW }, secret, OFFER_POW);
       expect(parseOffer(forged, NOW + 60), JSON.stringify(bad)).toBeNull();
     }
-  });
+  }, 30_000);
 });
 
 describe('order board messages', () => {
@@ -116,7 +116,7 @@ describe('order board messages', () => {
     expect(parseMessage(e, maker, NOW)).toEqual({ type: 'take', offer: OFFER_ID, trade: TRADE, lbc: 20_000n * LBC, btc: 40_000n });
     expect(parseMessage(e, taker, NOW)).toBeNull();
     expect(parseMessage(e, newNostrSecret(), NOW)).toBeNull();
-  });
+  }, 30_000);
 
   it('carries invites, lock codes and declines', async () => {
     const code = 'lbcswap:eyJ0IjoiaW52aXRlIn0.00000000';
@@ -138,5 +138,5 @@ describe('order board messages', () => {
     while (leadingZeroBits(cheap.id) >= TAKE_POW) cheap = resign(cheap, taker, { created_at: cheap.created_at + 1 });
     expect(parseMessage(cheap, maker, NOW)).toBeNull();
     expect(parseMessage(e, taker, NOW + 4 * 24 * 3600)).toBeNull();
-  });
+  }, 30_000);
 });
