@@ -157,7 +157,13 @@ function TxDrawer({ txid, onClose }: { txid: string; onClose: () => void }) {
           <div className="k">Date</div>
           <div>{dateTime(tx.time)}</div>
           <div className="k">Status</div>
-          <div>{tx.status === 'pending' ? 'Waiting for confirmation' : `${number(tx.confirmations)} confirmations`}</div>
+          <div>{tx.status === 'pending' ? 'Waiting for confirmation' : `${number(tx.confirmations)} confirmation${tx.confirmations === 1 ? '' : 's'}`}</div>
+          {tx.status !== 'pending' && (
+            <>
+              <div className="k">Inclusion proof</div>
+              <div>{tx.verified === true ? 'Verified against the block header' : tx.verified === false ? 'Did not match the block header' : 'Not verified yet'}</div>
+            </>
+          )}
           {tx.height > 0 && (
             <>
               <div className="k">Block</div>

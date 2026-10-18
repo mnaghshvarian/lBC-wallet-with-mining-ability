@@ -13,11 +13,9 @@
     "dev": "npm run dev -w lbc-wallet-desktop",
     "build": "npm run build -w lbc-wallet-desktop",
     "dist": "npm run dist -w lbc-wallet-desktop",
-    "test": "npm run test -w @lbcwallet/core",
+    "test": "npm run test -w @lbcwallet/core -w lbc-wallet-desktop",
     "test:e2e": "npm run test:e2e -w @lbcwallet/core",
     "typecheck": "npm run typecheck -w @lbcwallet/core && npm run typecheck -w lbc-wallet-desktop",
-    "lint": "eslint .",
-    "format": "prettier --write .",
     "regtest": "tsx packages/core/e2e/dev-regtest.ts"
   },
   "engines": {

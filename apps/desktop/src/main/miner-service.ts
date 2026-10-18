@@ -7,18 +7,12 @@ import type { SettingsStore } from './settings';
 import type { MinerStartMessage } from './mining/miner-process';
 import { logger } from './log';
 import { CLIENT_NAME } from './backend';
+import { pauseReason, type PauseReason } from './mining/pause';
+import { parsePoolUrl } from './mining/pool-url';
 
 const log = logger('miner');
 
-export function parsePoolUrl(url: string): { host: string; port: number; tls: boolean } {
-  const text = url.trim();
-  const m = /^(?:(stratum\+tcp|stratum\+ssl|stratum\+tls|stratum|tcp|ssl):\/\/)?([^:/\s]+):(\d{1,5})\/?$/i.exec(text);
-  if (!m) throw new Error('Pool address must look like stratum+tcp://host:port');
-  const port = Number(m[3]);
-  if (port < 1 || port > 65535) throw new Error('Invalid pool port');
-  const scheme = (m[1] ?? 'stratum+tcp').toLowerCase();
-  return { host: m[2]!, port, tls: scheme.includes('ssl') || scheme.includes('tls') };
-}
+const PAUSE_CHECK_MS = 5_000;
 
 function stoppedStats(threads: number): MinerStatsView {
   return {
@@ -53,36 +47,65 @@ export interface MinerServiceDeps {
 }
 
 /**
- * Controls the miner utility process (start/stop, battery pause) and derives
- * earnings estimates. Mining continues while the wallet is locked: it only
- * needs a payout address, never keys.
+ * Controls the miner utility process (start/stop, pausing on battery or while
+ * the computer is in use) and derives earnings estimates. Mining continues
+ * while the wallet is locked: it only needs a payout address, never keys.
  */
 export class MinerService {
   private child: UtilityProcess | null = null;
   private stats: MinerStatsView;
   private logs: MinerLogEntry[] = [];
   private payout: string | null = null;
-  private pausedOnBattery = false;
+  private paused: PauseReason | null = null;
+  private pauseTimer: ReturnType<typeof setInterval> | null = null;
+  private pauseBusy = false;
   private wantRunning = false;
   private perThreadRate = 0;
   private poolBalanceCache: { at: number; address: string; value: PoolBalanceView | null } | null = null;
 
   constructor(private readonly deps: MinerServiceDeps) {
     this.stats = stoppedStats(deps.settings.get().mining.threads);
-    powerMonitor.on('on-battery', () => {
-      if (this.deps.settings.get().mining.pauseOnBattery && this.isActive) {
-        this.addLog('info', 'running on battery — mining paused');
-        this.pausedOnBattery = true;
-        void this.stopProcess().then(() => this.publish({ ...stoppedStats(this.stats.threads), pausedOnBattery: true }));
-      }
-    });
-    powerMonitor.on('on-ac', () => {
-      if (this.pausedOnBattery && this.wantRunning) {
-        this.pausedOnBattery = false;
-        this.addLog('info', 'back on AC power — resuming mining');
-        void this.start().catch((e) => this.addLog('error', (e as Error).message));
-      }
-    });
+    powerMonitor.on('on-battery', () => void this.applyPause());
+    powerMonitor.on('on-ac', () => void this.applyPause());
+  }
+
+  private currentPauseReason(): PauseReason | null {
+    return pauseReason(this.deps.settings.get().mining, { onBattery: powerMonitor.isOnBatteryPower(), idleSeconds: powerMonitor.getSystemIdleTime() });
+  }
+
+  /** Pauses or resumes switched-on mining to match the power and idle state. */
+  private async applyPause(): Promise<void> {
+    if (!this.wantRunning || this.pauseBusy) return;
+    this.pauseBusy = true;
+    try {
+      await this.applyPauseOnce();
+    } finally {
+      this.pauseBusy = false;
+    }
+  }
+
+  private async applyPauseOnce(): Promise<void> {
+    const reason = this.currentPauseReason();
+    if (reason === this.paused) return;
+    if (reason) {
+      await this.stopProcess();
+      if (!this.wantRunning) return;
+      this.paused = reason;
+      const minutes = this.deps.settings.get().mining.idleMinutes;
+      this.addLog('info', reason === 'battery' ? 'on battery power — mining paused until the charger is connected' : `computer in use — mining resumes after ${minutes} min without input`);
+      this.publish({ ...stoppedStats(this.stats.threads), paused: reason });
+      return;
+    }
+    const was = this.paused;
+    this.paused = null;
+    this.addLog('info', was === 'battery' ? 'back on AC power — resuming mining' : 'computer idle — resuming mining');
+    try {
+      const settings = this.deps.settings.get();
+      await this.launch(settings, this.resolvePayout(settings));
+    } catch (err) {
+      this.addLog('error', (err as Error).message);
+      this.publish({ ...stoppedStats(this.stats.threads), state: 'error', error: (err as Error).message });
+    }
   }
 
   private get isActive(): boolean {
@@ -90,7 +113,7 @@ export class MinerService {
   }
 
   status(): MinerStatsView {
-    return { ...this.stats, payoutAddress: this.payout ?? undefined, pausedOnBattery: this.pausedOnBattery };
+    return { ...this.stats, payoutAddress: this.payout ?? undefined, paused: this.paused ?? undefined };
   }
 
   getLogs(): MinerLogEntry[] {
@@ -130,15 +153,28 @@ export class MinerService {
 
   async start(): Promise<MinerStatsView> {
     const settings = this.deps.settings.get();
-    const m = settings.mining;
     const payout = this.resolvePayout(settings);
-    if (powerMonitor.isOnBatteryPower() && m.pauseOnBattery) {
-      this.wantRunning = true;
-      this.pausedOnBattery = true;
-      this.addLog('info', 'on battery power — mining will start when the charger is connected');
-      this.publish({ ...stoppedStats(m.threads), pausedOnBattery: true });
+    this.startMessage(settings, payout); // validate now, even if mining starts paused
+    await this.stopProcess();
+    this.payout = payout;
+    this.wantRunning = true;
+    this.paused = null;
+    this.pauseTimer ??= setInterval(() => void this.applyPause(), PAUSE_CHECK_MS);
+    const reason = this.currentPauseReason();
+    if (reason) {
+      this.paused = reason;
+      const minutes = settings.mining.idleMinutes;
+      this.addLog('info', reason === 'battery' ? 'on battery power — mining will start when the charger is connected' : `mining will start after ${minutes} min without keyboard or mouse input`);
+      this.publish({ ...stoppedStats(settings.mining.threads), paused: reason });
       return this.status();
     }
+    await this.launch(settings, payout);
+    return this.status();
+  }
+
+  /** The miner process configuration; throws a user-facing error when the settings are incomplete. */
+  private startMessage(settings: Settings, payout: string): MinerStartMessage {
+    const m = settings.mining;
     const message: MinerStartMessage = {
       type: 'start',
       mode: m.mode,
@@ -167,10 +203,16 @@ export class MinerService {
         payoutScriptHex: toHex(addressToScript(payout, getNetwork(settings.network))),
       };
     }
+    return message;
+  }
+
+  /** Starts the miner process with the current settings (unless mining was switched off meanwhile). */
+  private async launch(settings: Settings, payout: string): Promise<void> {
+    const m = settings.mining;
+    const message = this.startMessage(settings, payout);
     await this.stopProcess();
+    if (!this.wantRunning) return;
     this.payout = payout;
-    this.wantRunning = true;
-    this.pausedOnBattery = false;
     const child = utilityProcess.fork(this.workerPath('minerProcess.js'), [], { serviceName: 'LBC Miner', stdio: 'pipe' });
     this.child = child;
     child.stdout?.on('data', (d: Buffer) => log('info', `[miner-process] ${d.toString().trim()}`));
@@ -206,7 +248,6 @@ export class MinerService {
     });
     this.addLog('info', `starting ${m.mode} mining with ${m.threads} thread${m.threads === 1 ? '' : 's'} → ${payout}`);
     this.publish({ ...stoppedStats(m.threads), state: 'starting', mode: m.mode, startedAt: Date.now() });
-    return this.status();
   }
 
   private async stopProcess(): Promise<void> {
@@ -234,11 +275,18 @@ export class MinerService {
     });
   }
 
+  private stopPauseWatch(): void {
+    if (this.pauseTimer) clearInterval(this.pauseTimer);
+    this.pauseTimer = null;
+  }
+
   async stop(): Promise<MinerStatsView> {
+    const wasOn = this.wantRunning || this.isActive;
     this.wantRunning = false;
-    this.pausedOnBattery = false;
+    this.paused = null;
+    this.stopPauseWatch();
     await this.stopProcess();
-    if (this.isActive) this.addLog('info', 'mining stopped');
+    if (wasOn) this.addLog('info', 'mining stopped');
     this.publish(stoppedStats(this.deps.settings.get().mining.threads));
     return this.status();
   }
@@ -298,6 +346,7 @@ export class MinerService {
 
   async shutdown(): Promise<void> {
     this.wantRunning = false;
+    this.stopPauseWatch();
     await this.stopProcess();
   }
 }

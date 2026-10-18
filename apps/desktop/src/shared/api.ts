@@ -27,6 +27,9 @@ export interface MiningSettings {
   threads: number;
   lowPriority: boolean;
   pauseOnBattery: boolean;
+  /** Mine only after the computer has been idle (no keyboard/mouse input) for idleMinutes. */
+  onlyWhenIdle: boolean;
+  idleMinutes: number;
   /** yiimp-style API base for showing pool balance, e.g. https://lbrypool.net */
   poolApi: string;
 }
@@ -215,7 +218,8 @@ export interface MinerStatsView {
   error?: string;
   server?: string;
   payoutAddress?: string;
-  pausedOnBattery?: boolean;
+  /** Mining is switched on but paused: laptop on battery, or the computer is in use ("only when idle"). */
+  paused?: 'battery' | 'in-use';
 }
 
 export interface MinerEstimateView {

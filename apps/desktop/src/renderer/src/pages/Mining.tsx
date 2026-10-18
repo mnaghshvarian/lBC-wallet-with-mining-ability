@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BatteryCharging, Cpu, Gauge, Pickaxe, Play, Server, Square, Trophy, Wallet } from 'lucide-react';
+import { BatteryCharging, Cpu, Gauge, Moon, Pickaxe, Play, Server, Square, Trophy, Wallet } from 'lucide-react';
 import { useApp, errorMessage } from '../store';
 import { Badge, Button, Callout, Field, Segmented, Toggle } from '../components/ui';
 import { AddressText, Sparkline } from '../components/display';
@@ -26,6 +26,8 @@ export function Mining() {
   const logRef = useRef<HTMLDivElement>(null);
   const m = settings.mining;
   const active = !!miner && miner.state !== 'stopped' && miner.state !== 'error';
+  /** Switched on: running, or paused until power/idle conditions allow it. */
+  const switchedOn = active || !!miner?.paused;
   const poolPreset = POOLS.find((p) => p.url === m.poolUrl)?.id ?? 'custom';
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function Mining() {
   const toggle = async () => {
     setBusy(true);
     try {
-      if (active || miner?.pausedOnBattery) await window.lbc.miner.stop();
+      if (switchedOn) await window.lbc.miner.stop();
       else await window.lbc.miner.start();
     } catch (err) {
       toast({ kind: 'error', title: 'Mining', message: errorMessage(err) });
@@ -75,7 +77,8 @@ export function Mining() {
   const uptime = miner?.startedAt && active ? now - miner.startedAt : 0;
   const stateLabel = useMemo(() => {
     if (!miner) return 'Stopped';
-    if (miner.pausedOnBattery) return 'Paused (on battery)';
+    if (miner.paused === 'battery') return 'Paused (on battery)';
+    if (miner.paused === 'in-use') return 'Waiting for idle';
     switch (miner.state) {
       case 'starting':
         return 'Starting…';
@@ -109,7 +112,15 @@ export function Mining() {
               <Pickaxe size={46} />
             </div>
             <div className="stack tight" style={{ flex: 1, minWidth: 0 }}>
-              <div className="muted small">{active ? 'Current hashrate' : 'Miner is idle'}</div>
+              <div className="muted small">
+                {active
+                  ? 'Current hashrate'
+                  : miner?.paused === 'in-use'
+                    ? `Paused while you use the computer — resumes after ${m.idleMinutes} min idle`
+                    : miner?.paused === 'battery'
+                      ? 'Paused while on battery power'
+                      : 'Miner is idle'}
+              </div>
               <div className="hashrate-big">{formatHashrate(miner?.hashrate ?? 0)}</div>
               <div className="small text-2">
                 {active ? (
@@ -124,9 +135,9 @@ export function Mining() {
               </div>
               {miner?.error && <div className="error-text">{miner.error}</div>}
               <div className="row" style={{ marginTop: 8 }}>
-                <Button variant={active ? 'danger' : 'violet'} size="lg" loading={busy} onClick={() => void toggle()} disabled={!payout && !active}>
-                  {active || miner?.pausedOnBattery ? <Square size={16} /> : <Play size={16} />}
-                  {active || miner?.pausedOnBattery ? 'Stop mining' : 'Start mining'}
+                <Button variant={switchedOn ? 'danger' : 'violet'} size="lg" loading={busy} onClick={() => void toggle()} disabled={!payout && !switchedOn}>
+                  {switchedOn ? <Square size={16} /> : <Play size={16} />}
+                  {switchedOn ? 'Stop mining' : 'Start mining'}
                 </Button>
               </div>
             </div>
@@ -140,7 +151,9 @@ export function Mining() {
           <div className="card-header">
             <h3>Estimated earnings</h3>
           </div>
-          {estimate && estimate.basis !== 'none' ? (
+          {settings.network !== 'mainnet' ? (
+            <div className="muted small">Earnings estimates are shown on mainnet only — difficulty on test networks is artificial.</div>
+          ) : estimate && estimate.basis !== 'none' ? (
             <div className="stack tight">
               <div className="hashrate-big" style={{ fontSize: 26 }}>
                 {estimate.lbcPerDay > 0 ? `≈ ${estimate.lbcPerDay < 0.01 ? estimate.lbcPerDay.toExponential(2) : number(estimate.lbcPerDay, 3)} LBC/day` : '—'}
@@ -155,7 +168,6 @@ export function Mining() {
                 <div>{daysText(estimate.daysPerBlock)}</div>
               </div>
               {estimate.lbcPerDay === 0 && <div className="hint">Start mining for a minute to measure your hashrate.</div>}
-              {settings.network !== 'mainnet' && <div className="hint">Test network: difficulty is artificial, so these numbers mean nothing here.</div>}
             </div>
           ) : (
             <div className="muted small">Estimates appear once the wallet knows the current network difficulty.</div>
@@ -308,6 +320,24 @@ export function Mining() {
               </div>
               <Toggle checked={m.pauseOnBattery} onChange={(v) => setMining({ pauseOnBattery: v })} label="Pause on battery" />
             </div>
+            <div className="setting-row">
+              <div className="text">
+                <div className="title row">
+                  <Moon size={15} /> Only when idle
+                </div>
+                <div className="desc">Mines after {m.idleMinutes} min without keyboard or mouse input and pauses the moment you're back.</div>
+              </div>
+              <Toggle checked={m.onlyWhenIdle} onChange={(v) => setMining({ onlyWhenIdle: v })} label="Only when idle" />
+            </div>
+            {m.onlyWhenIdle && (
+              <Field label="Start mining after">
+                <Segmented
+                  value={String(m.idleMinutes)}
+                  options={[1, 3, 5, 10, 15, 30].map((n) => ({ value: String(n), label: `${n} min` }))}
+                  onChange={(v) => setMining({ idleMinutes: Number(v) })}
+                />
+              </Field>
+            )}
           </fieldset>
         </div>
 
