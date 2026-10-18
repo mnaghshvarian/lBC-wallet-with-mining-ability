@@ -88,6 +88,11 @@ export function number(n: number, digits = 0): string {
   return n.toLocaleString(locale, { maximumFractionDigits: digits, minimumFractionDigits: digits });
 }
 
+/** A small amount by its first digits that aren't zero: 0.0098, not 9.8e-3. */
+export function significant(n: number, digits = 2): string {
+  return n.toLocaleString(locale, { maximumSignificantDigits: digits });
+}
+
 /**
  * A temperature in the UI language (e.g. "40°C", Arabic "40°م"), isolated so a
  * right-to-left sentence cannot reorder it into "C° 40".
@@ -95,6 +100,11 @@ export function number(n: number, digits = 0): string {
 export function celsius(value: number): string {
   const text = new Intl.NumberFormat(locale, { style: 'unit', unit: 'celsius', maximumFractionDigits: 0 }).format(value);
   return `\u2068${text}\u2069`;
+}
+
+/** A list in the UI language: "a, b and c", Chinese "a、b和c". */
+export function list(items: string[]): string {
+  return new Intl.ListFormat(locale, { type: 'conjunction' }).format(items);
 }
 
 export function compact(n: number): string {

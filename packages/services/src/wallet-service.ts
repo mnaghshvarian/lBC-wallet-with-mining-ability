@@ -1,6 +1,9 @@
 import {
   WalletEngine,
   WalletSession,
+  addressToScript,
+  backendSwapChain,
+  equalBytes,
   candidateSchemes,
   checkPhrase,
   createWalletFile,
@@ -42,6 +45,7 @@ import { createBackend, type LocalNode } from './backend.js';
 import { UserError } from './errors.js';
 import type { SettingsStore } from './settings.js';
 import { scopedLogger, type Logger, type Platform } from './platform.js';
+import type { SwapWallet } from './swap-service.js';
 
 
 export interface WalletServiceEvents {
@@ -471,6 +475,43 @@ export class WalletService {
     this.log('info', `broadcast ${txid}`);
     this.touch();
     return { txid };
+  }
+
+  // ---------------------------------------------------------------- swaps
+
+  /** The open wallet as the swap service sees it; null while locked. */
+  swapWallet(): SwapWallet | null {
+    const session = this.session;
+    const engine = this.engine;
+    if (!session || !engine) return null;
+    const network = session.network;
+    return {
+      network: network.name,
+      watchOnly: session.watchOnly,
+      records: () => engine.state.swaps ?? [],
+      saveRecords: (records) => {
+        if (this.engine !== engine) return; // locked meanwhile
+        engine.state.swaps = records;
+        engine.stateChanged();
+      },
+      receiveAddress: () => engine.newReceiveAddress().address,
+      lbc: backendSwapChain({
+        backend: () => engine.chain,
+        network,
+        tip: () => engine.state.tip,
+        feeRate: () => this.settings.get().feePerByte,
+        broadcast: (tx) => engine.broadcast(tx),
+      }),
+      pay: async (address, amount, password, label) => {
+        const draft = this.prepareSend({ address, amount: amount.toString() });
+        // Find the contract output before paying, so nothing can fail after the payment.
+        const script = addressToScript(address, network);
+        const vout = engine.getDraft(draft.id)?.payment.tx.outputs.findIndex((o) => o.value === amount && equalBytes(o.script, script)) ?? -1;
+        if (vout < 0) throw new UserError('operationFailed', { detail: 'the payment to the contract is missing from the transaction' });
+        const { txid } = await this.send({ draftId: draft.id, password, label });
+        return { txid, vout };
+      },
+    };
   }
 
   // ---------------------------------------------------------------- contacts & export

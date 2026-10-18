@@ -70,6 +70,8 @@ export interface Settings {
   node: NodeSettings;
   explorerTxUrl: string;
   explorerAddressUrl: string;
+  /** Atomic swaps: an Esplora server for the Bitcoin side; empty = blockstream.info, checked against mempool.space. */
+  swap: { btcExplorer: string };
   lastWalletId: string | null;
   developerMode: boolean;
 }
@@ -306,7 +308,7 @@ export interface HubTestResult {
 
 /** A notification for the user. The UI words it from `code` and `params` in the chosen language. */
 export interface NoticeView {
-  kind: 'received' | 'confirmed' | 'dropped' | 'block-found' | 'locked' | 'node' | 'error';
+  kind: 'received' | 'confirmed' | 'dropped' | 'block-found' | 'locked' | 'node' | 'swap' | 'error';
   code: NoticeCode;
   params?: Record<string, string | number>;
 }
@@ -323,6 +325,12 @@ export type NoticeCode =
   | 'nodeSynced'
   /** params: detail */
   | 'nodeStopped'
+  /** The other side's coins are locked and confirmed: lock yours. params: coin */
+  | 'swapReadyToLock'
+  /** params: coin (received) */
+  | 'swapCompleted'
+  /** params: coin (returned) */
+  | 'swapRefunded'
   /** params: message */
   | 'error';
 
@@ -361,6 +369,81 @@ export interface NodeRequirementsView {
   systemRamGb: number;
   defaultDataDir: string;
 }
+
+export type SwapCoinName = 'LBC' | 'BTC';
+
+/**
+ * Where a swap stands, from this wallet's side:
+ * send-invite — share the invite and wait for the other person's lock code;
+ * lock — lock your coins now; pay-btc — pay the Bitcoin contract from another wallet;
+ * send-lock — share your lock code and wait; checking — waiting for the other
+ * side's coins to confirm; claiming — collecting their coins; refund-waiting —
+ * your coins come back after the lock time; refunding — refund sent.
+ */
+export type SwapStage =
+  | 'send-invite'
+  | 'lock'
+  | 'pay-btc'
+  | 'send-lock'
+  | 'checking'
+  | 'claiming'
+  | 'refund-waiting'
+  | 'refunding'
+  | 'completed'
+  | 'refunded'
+  | 'cancelled'
+  | 'failed';
+
+export interface SwapContractView {
+  coin: SwapCoinName;
+  address: string;
+  /** Unix time after which the coins can go back to the side that locked them. */
+  locktime: number;
+  txid?: string;
+  /** Locked amount in the coin's smallest unit (dewies or satoshis). */
+  value?: string;
+  confirmations: number;
+  /** Confirmations the other side waits for. */
+  required: number;
+}
+
+export interface SwapView {
+  id: string;
+  /** starter: created the invite and locks second; joiner: joined and locks first. */
+  role: 'starter' | 'joiner';
+  give: SwapCoinName;
+  get: SwapCoinName;
+  /** Agreed amounts: dewies and satoshis. */
+  lbc: Dewies;
+  btc: string;
+  stage: SwapStage;
+  createdAt: number;
+  updatedAt: number;
+  /** The code to send to the other person now. */
+  code?: string;
+  /** Waiting for the other person's lock code. */
+  expectsCode: boolean;
+  /** Bitcoin to pay to the contract from another wallet (stage pay-btc), in satoshis. */
+  payTo?: { address: string; amount: string };
+  ours?: SwapContractView;
+  theirs?: SwapContractView;
+  claimTxid?: string;
+  refundTxid?: string;
+  /** Where your new coins go, and where a refund goes. */
+  receiveTo: string;
+  refundTo: string;
+  /** From when your locked coins can come back if the swap does not finish (Unix time). */
+  refundAt?: number;
+  /** Nothing of yours is locked yet. */
+  cancellable: boolean;
+  problem?: { code: string; params?: Record<string, string | number> };
+  events: { at: number; code: string; params?: Record<string, string | number> }[];
+}
+
+/** What a pasted swap code is, before anything is done with it. */
+export type SwapCodeView =
+  | { type: 'invite'; id: string; network: NetworkName; youGive: SwapCoinName; lbc: Dewies; btc: string; known: boolean }
+  | { type: 'lock'; id: string; network: NetworkName; coin: SwapCoinName; known: boolean };
 
 /** Everything the preload exposes as `window.lbc`. */
 export interface LbcApi {
@@ -438,6 +521,22 @@ export interface LbcApi {
   price: {
     get(): Promise<PriceView | null>;
   };
+  swap: {
+    list(): Promise<SwapView[]>;
+    /** Starts a swap; the view carries the invite code for the other person. */
+    start(params: { give: SwapCoinName; lbc: Dewies; btc: string; btcAddress: string }): Promise<SwapView>;
+    inspect(code: string): Promise<SwapCodeView>;
+    /** Joins from an invite code. */
+    join(params: { code: string; btcAddress: string }): Promise<SwapView>;
+    /** Takes the other person's lock code. */
+    accept(params: { code: string }): Promise<SwapView>;
+    /** Locks your coins: pays LBC from the wallet, or shows where to pay the Bitcoin. */
+    lock(params: { id: string; password?: string }): Promise<SwapView>;
+    cancel(id: string): Promise<SwapView>;
+    remove(id: string): Promise<void>;
+    /** Current Bitcoin fee for claiming or refunding a contract, or null when unknown. */
+    btcFee(): Promise<{ satPerVbyte: number; claimSats: string } | null>;
+  };
   on<E extends keyof LbcEvents>(event: E, handler: (payload: LbcEvents[E]) => void): () => void;
 }
 
@@ -449,10 +548,11 @@ export interface LbcEvents {
   'miner:log': MinerLogEntry;
   'node:status': NodeStatusView;
   'price:update': PriceView;
+  'swap:changed': SwapView;
   notice: NoticeView;
 }
 
-export const EVENT_CHANNELS: (keyof LbcEvents)[] = ['wallet:changed', 'wallet:locked', 'network:status', 'miner:stats', 'miner:log', 'node:status', 'price:update', 'notice'];
+export const EVENT_CHANNELS: (keyof LbcEvents)[] = ['wallet:changed', 'wallet:locked', 'network:status', 'miner:stats', 'miner:log', 'node:status', 'price:update', 'swap:changed', 'notice'];
 
 /** How every API call answers: a value, or a user-facing error with a translatable code. */
 export type ApiResult<T> = { ok: true; value: T } | { ok: false; error: string; code?: string; params?: Record<string, string | number> };

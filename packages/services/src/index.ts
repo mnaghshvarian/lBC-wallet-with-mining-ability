@@ -10,3 +10,4 @@ export * from './handlers.js';
 export * from './client.js';
 export * from './memory-files.js';
 export * from './pool-url.js';
+export * from './swap-service.js';

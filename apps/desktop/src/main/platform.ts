@@ -37,6 +37,12 @@ export function desktopPlatform(dataDir: string): Platform {
       const body = await res.text();
       return body.trim() ? (JSON.parse(body) as unknown) : null;
     },
+    postText: async (url, body) => {
+      const res = await net.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'text/plain' } });
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
+      return text;
+    },
     cpuCount: cpus().length,
   };
 }

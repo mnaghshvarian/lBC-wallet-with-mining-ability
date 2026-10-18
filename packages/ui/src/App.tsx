@@ -12,6 +12,7 @@ import { Send } from './pages/Send';
 import { Receive } from './pages/Receive';
 import { ActivityPage } from './pages/Activity';
 import { Mining } from './pages/Mining';
+import { Swap } from './pages/Swap';
 import { Contacts } from './pages/Contacts';
 import { SettingsPage } from './pages/Settings';
 import { Terms } from './pages/Terms';
@@ -69,6 +70,9 @@ export function App() {
       break;
     case 'mining':
       page = <Mining />;
+      break;
+    case 'swap':
+      page = <Swap />;
       break;
     case 'node':
       page = <NodePage />;

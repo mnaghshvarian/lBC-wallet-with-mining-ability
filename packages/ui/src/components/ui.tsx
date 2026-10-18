@@ -218,7 +218,7 @@ export function Toasts() {
         <div className="toast" key={toast.id} onClick={() => dismiss(toast.id)}>
           {toast.kind === 'error' || toast.kind === 'dropped' ? (
             <XCircle size={20} color="var(--danger)" />
-          ) : toast.kind === 'locked' || toast.kind === 'node' ? (
+          ) : toast.kind === 'locked' || toast.kind === 'node' || toast.kind === 'swap' ? (
             <Info size={20} color="var(--info)" />
           ) : (
             <CheckCircle2 size={20} color="var(--positive)" />

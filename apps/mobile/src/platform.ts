@@ -25,6 +25,13 @@ export function androidPlatform(info: DeviceInfo, files: DurableFiles, sockets: 
       const text = typeof r.data === 'string' ? r.data : JSON.stringify(r.data ?? '');
       return text.trim() ? JSON.parse(text) : null;
     },
+    postText: async (url: string, body: string) => {
+      if (!url.startsWith('https://')) throw new Error('only https URLs are allowed');
+      const r = await CapacitorHttp.post({ url, data: body, headers: { 'Content-Type': 'text/plain' }, responseType: 'text', connectTimeout: 15_000, readTimeout: 30_000 });
+      const text = typeof r.data === 'string' ? r.data : JSON.stringify(r.data ?? '');
+      if (r.status < 200 || r.status >= 300) throw new Error(`HTTP ${r.status}: ${text.slice(0, 300)}`);
+      return text;
+    },
     cpuCount: Math.max(1, navigator.hardwareConcurrency || 1),
   };
 }

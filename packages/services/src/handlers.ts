@@ -6,6 +6,7 @@ import type { MiningInfo } from './mining-info.js';
 import type { Platform } from './platform.js';
 import type { PriceService } from './price-service.js';
 import type { SettingsStore } from './settings.js';
+import type { SwapService } from './swap-service.js';
 import type { WalletService } from './wallet-service.js';
 
 /** One API channel: validates its untrusted arguments, then does the work. */
@@ -29,6 +30,20 @@ export interface CoreServices {
   wallets: WalletService;
   price: PriceService;
   miningInfo: MiningInfo;
+  swaps: SwapService;
+}
+
+/** An amount in the smallest unit, as a decimal string. */
+function units(v: unknown, field: string): string {
+  const t = text(v, field, 20);
+  if (!/^\d{1,18}$/.test(t)) throw new UserError('invalidAmount');
+  return t;
+}
+
+function swapId(v: unknown): string {
+  const id = text(v, 'id', 16);
+  if (!/^[0-9a-f]{16}$/.test(id)) throw new UserError('swapUnknown');
+  return id;
 }
 
 /** Handlers for everything that works the same on every platform. */
@@ -152,6 +167,27 @@ export function createCoreHandlers(s: CoreServices): Handlers {
 
     // ---------------------------------------------------------------- price
     'price:get': () => s.price.get(),
+
+    // ---------------------------------------------------------------- swaps
+    'swap:list': () => s.swaps.list(),
+    'swap:start': (params: unknown) => {
+      const p = (params ?? {}) as Record<string, unknown>;
+      if (p.give !== 'LBC' && p.give !== 'BTC') throw new UserError('invalidAmount');
+      return s.swaps.start({ give: p.give, lbc: units(p.lbc, 'lbc'), btc: units(p.btc, 'btc'), btcAddress: text(p.btcAddress, 'btcAddress', 100) });
+    },
+    'swap:inspect': (code: unknown) => s.swaps.inspect(text(code, 'code', 2000)),
+    'swap:join': (params: unknown) => {
+      const p = (params ?? {}) as Record<string, unknown>;
+      return s.swaps.join({ code: text(p.code, 'code', 2000), btcAddress: text(p.btcAddress, 'btcAddress', 100) });
+    },
+    'swap:accept': (params: unknown) => s.swaps.accept({ code: text(((params ?? {}) as Record<string, unknown>).code, 'code', 2000) }),
+    'swap:lock': (params: unknown) => {
+      const p = (params ?? {}) as Record<string, unknown>;
+      return s.swaps.lock({ id: swapId(p.id), password: p.password === undefined ? undefined : text(p.password, 'password', 1000) });
+    },
+    'swap:cancel': (id: unknown) => s.swaps.cancel(swapId(id)),
+    'swap:remove': (id: unknown) => s.swaps.remove(swapId(id)),
+    'swap:btcFee': () => s.swaps.btcFee(),
   };
 }
 

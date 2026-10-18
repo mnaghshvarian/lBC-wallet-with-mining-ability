@@ -63,6 +63,11 @@ describe('settings sanitizing', () => {
     expect(s.node).toEqual({ enabled: false, dataDir: '', listen: false, peers: [] });
   });
 
+  it('names the miner after the device', () => {
+    expect(new SettingsStore(memoryFiles(), CPUS).get().mining.workerName).toBe('desktop');
+    expect(new SettingsStore(memoryFiles(), CPUS, 'phone').get().mining.workerName).toBe('phone');
+  });
+
   it('persists updates and notifies listeners', () => {
     const files = memoryFiles();
     const store = new SettingsStore(files, CPUS);

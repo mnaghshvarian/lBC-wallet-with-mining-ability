@@ -4,7 +4,7 @@ import { supplyFacts } from '@lbcwallet/core/ui';
 import { useApp, useT, errorMessage, viewError } from '../store';
 import { Badge, Button, Callout, Field, Segmented, Toggle } from '../components/ui';
 import { AddressText, Sparkline } from '../components/display';
-import { celsius, compact, daysText, duration, formatFiat, formatHashrate, number, percent, relativeTime } from '../lib/format';
+import { celsius, compact, daysText, duration, formatFiat, formatHashrate, number, percent, relativeTime, significant } from '../lib/format';
 import { PHONE_MINING, type MinerEstimateView, type MinerPauseReason, type MiningSettings, type PoolBalanceView } from '@lbcwallet/services/api';
 import type { Translate } from '../i18n';
 
@@ -418,7 +418,7 @@ function Miner() {
           ) : estimate && estimate.basis !== 'none' ? (
             <div className="stack tight">
               <div className="hashrate-big" style={{ fontSize: 26 }}>
-                {estimate.lbcPerDay > 0 ? t('mining.perDay', { amount: estimate.lbcPerDay < 0.01 ? estimate.lbcPerDay.toExponential(2) : number(estimate.lbcPerDay, 3) }) : '—'}
+                {estimate.lbcPerDay > 0 ? t('mining.perDay', { amount: estimate.lbcPerDay < 0.01 ? significant(estimate.lbcPerDay) : number(estimate.lbcPerDay, 3) }) : '—'}
               </div>
               {estimate.fiatPerDay !== null && estimate.lbcPerDay > 0 && price && <div className="small text-2">{t('mining.fiatPerDay', { amount: formatFiat(estimate.fiatPerDay, price.currency) })}</div>}
               <div className="kv" style={{ marginTop: 10 }}>

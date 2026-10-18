@@ -28,11 +28,12 @@ export type Route =
   | { name: 'receive' }
   | { name: 'activity'; txid?: string }
   | { name: 'mining' }
+  | { name: 'swap' }
   | { name: 'node' }
   | { name: 'contacts' }
   | { name: 'settings'; tab?: string };
 
-export const WALLET_ROUTES = new Set(['overview', 'send', 'receive', 'activity', 'mining', 'node', 'contacts', 'settings']);
+export const WALLET_ROUTES = new Set(['overview', 'send', 'receive', 'activity', 'mining', 'swap', 'node', 'contacts', 'settings']);
 
 export interface Toast {
   id: number;
@@ -105,6 +106,12 @@ export function noticeText(n: NoticeView, t: Translate): { title: string; messag
       return { title: t('notice.nodeSynced.title'), message: t('notice.nodeSynced.message', p) };
     case 'nodeStopped':
       return { title: t('notice.nodeStopped.title'), message: t('notice.nodeStopped.message', p) };
+    case 'swapReadyToLock':
+      return { title: t('notice.swapReadyToLock.title'), message: t('notice.swapReadyToLock.message', p) };
+    case 'swapCompleted':
+      return { title: t('notice.swapCompleted.title'), message: t('notice.swapCompleted.message', p) };
+    case 'swapRefunded':
+      return { title: t('notice.swapRefunded.title'), message: t('notice.swapRefunded.message', p) };
     default:
       return { title: t('notice.error'), message: String(p.message ?? '') };
   }

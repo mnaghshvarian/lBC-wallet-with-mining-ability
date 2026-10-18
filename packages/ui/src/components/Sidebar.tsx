@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Activity,
   ArrowDownLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   ChevronsUpDown,
   HardDrive,
@@ -25,6 +26,7 @@ const NAV: NavItem[] = [
   { route: 'receive', key: 'nav.receive', icon: ArrowDownLeft },
   { route: 'activity', key: 'nav.activity', icon: Activity },
   { route: 'mining', key: 'nav.mining', icon: Pickaxe },
+  { route: 'swap', key: 'nav.swap', icon: ArrowLeftRight },
   { route: 'node', key: 'nav.node', icon: HardDrive },
   { route: 'contacts', key: 'nav.contacts', icon: Users },
   { route: 'settings', key: 'nav.settings', icon: SettingsIcon },

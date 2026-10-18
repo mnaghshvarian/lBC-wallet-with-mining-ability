@@ -284,7 +284,8 @@
     "settings": "Instellingen",
     "more": "Meer",
     "lock": "Wallet vergrendelen",
-    "switchWallet": "Vergrendelen en van wallet wisselen"
+    "switchWallet": "Vergrendelen en van wallet wisselen",
+    "swap": "Swap"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -434,7 +435,9 @@
     "deleteButton": "Wallet verwijderen",
     "deletePermanently": "Definitief verwijderen",
     "deleteWarning": "Zorg dat je je herstelzin hebt opgeschreven.",
-    "deleteWarningStrong": "Zonder herstelzin ben je het geld in “{name}” voorgoed kwijt."
+    "deleteWarningStrong": "Zonder herstelzin ben je het geld in “{name}” voorgoed kwijt.",
+    "swapExplorer": "Bitcoin-explorer voor swaps",
+    "swapExplorerHint": "Voor swaps leest de wallet de Bitcoin-blockchain via een Esplora-server. Laat dit veld leeg om blockstream.info te gebruiken, met mempool.space als controle, of voer je eigen server in. Die server ziet de Bitcoin-adressen van de swap en je IP-adres."
   },
   "error": {
     "invalidWalletId": "Ongeldige wallet-ID",
@@ -488,7 +491,24 @@
     "operationFailed": "{detail}",
     "minerCrashed": "De miner is onverwacht gestopt. Zie het logboek hieronder voor details.",
     "soloUnsupported": "Voor solo minen is een full node nodig, maar op dit apparaat draait er geen. Kies voor minen in een pool.",
-    "minerEngineFailed": "De miner kon niet starten op dit apparaat ({detail}). Het kan helpen om “Android System WebView” bij te werken via de Play Store."
+    "minerEngineFailed": "De miner kon niet starten op dit apparaat ({detail}). Het kan helpen om “Android System WebView” bij te werken via de Play Store.",
+    "swapUnsupported": "Swaps zijn niet beschikbaar op dit apparaat.",
+    "swapCodeInvalid": "{detail}",
+    "swapWrongNetwork": "Deze swap hoort bij het netwerk {network}. Wissel eerst van netwerk via Instellingen.",
+    "swapUnknown": "Deze wallet heeft geen swap met die code. Open de wallet waarmee je de swap hebt gestart of eraan hebt deelgenomen.",
+    "swapWrongCode": "Dit is niet de code die deze swap nu nodig heeft.",
+    "swapOwnCode": "Dit is je eigen code: stuur hem naar de ander.",
+    "swapAlreadyJoined": "Je neemt al deel aan deze swap.",
+    "swapAlreadyHaveLock": "Deze swap heeft al een vergrendelcode van de ander.",
+    "swapContractMismatch": "Het contract van de andere partij betaalt niet uit aan deze wallet. Controleer of jullie allebei de codes van deze swap hebben gebruikt.",
+    "swapAmountTooSmall": "Swaps zijn mogelijk vanaf {lbc} LBC en {btc} BTC: bij kleinere bedragen zou het meeste opgaan aan netwerkkosten.",
+    "swapAmountTooLarge": "Zolang swaps nog nieuw zijn, is het maximum {btc} BTC.",
+    "swapBtcAddressInvalid": "Ongeldig Bitcoin-adres ({detail})",
+    "swapNotReady": "Dat kan bij deze swap nu niet.",
+    "swapTooLate": "Te laat om te vergrendelen: de munten van de andere partij blijven nog minder dan {hours} uur vergrendeld. Start een nieuwe swap.",
+    "swapNoExplorer": "Stel eerst via Instellingen een Bitcoin-explorerserver (Esplora) voor swaps in.",
+    "swapCannotCancel": "Je munten zijn al vergrendeld; ze komen na de vergrendeltijd automatisch terug als de swap niet wordt afgerond.",
+    "swapStillActive": "Deze swap loopt nog."
   },
   "notice": {
     "received": {
@@ -531,7 +551,19 @@
       "title": "De node is gestopt",
       "message": "De ingebouwde node is onverwacht gestopt ({detail}). Tot hij weer draait, gebruikt de wallet openbare servers."
     },
-    "error": "Er ging iets mis"
+    "error": "Er ging iets mis",
+    "swapReadyToLock": {
+      "title": "Swap: jij bent aan de beurt",
+      "message": "De munten van de ander zijn vergrendeld en bevestigd. Open de pagina “Swap” om je {coin} te vergrendelen."
+    },
+    "swapCompleted": {
+      "title": "Swap voltooid",
+      "message": "Je {coin} is binnen."
+    },
+    "swapRefunded": {
+      "title": "Swap beëindigd",
+      "message": "Je hebt je {coin} teruggekregen."
+    }
   },
   "create": {
     "defaultName": "Mijn LBC Wallet",
@@ -889,5 +921,139 @@
     "issued": "Tot nu toe aangemaakt",
     "total": "Maximale hoeveelheid",
     "hint": "Berekend volgens de beloningsregels van LBRY, die elke node controleert: de beloning daalt telkens met 1 LBC, in stappen die steeds langer duren, tot ze nul is. Daarna verdienen miners alleen nog transactiekosten. In blok 0 is 400.000.000 LBC aangemaakt (de pre-mine van LBRY); alle overige LBC wordt aan miners uitbetaald."
+  },
+  "swap": {
+    "title": "Swap",
+    "sub": "Ruil LBC en Bitcoin rechtstreeks met iemand anders – zonder handelsplatform, zonder tussenpersoon.",
+    "newSwap": "Swap starten",
+    "joinSwap": "Deelnemen met een code",
+    "list": "Je swaps",
+    "none": "Nog geen swaps.",
+    "how": {
+      "title": "Zo werkt een swap",
+      "text": "Jij en de ander spreken de bedragen af, bijvoorbeeld in een chat. Een van jullie start een swap en stuurt de uitnodigingscode; de ander neemt deel. Jullie vergrendelen allebei munten in een contract, elk op de bijbehorende blockchain, en jullie wallets ronden de swap zelf af: óf jullie worden allebei betaald, óf jullie krijgen allebei je munten terug na de vergrendeltijd. Niemand krijgt jouw munten zonder dat jij die van de ander krijgt."
+    },
+    "safety": {
+      "title": "Voordat je gaat ruilen",
+      "text": "Swaps zijn nieuw en niet geaudit: begin met kleine bedragen. Houd LBC Wallet open en deze wallet ontgrendeld tot de swap op “Voltooid” staat – de wallet moet in actie komen voordat de vergrendeltijden aflopen. De Bitcoin-kant wordt gevolgd via blockstream.info en gecontroleerd met mempool.space (Instellingen → Netwerk)."
+    },
+    "start": {
+      "title": "Swap starten",
+      "agreeFirst": "Spreek eerst de bedragen af met de ander. Jij vergrendelt als tweede, nadat de munten van de ander zijn bevestigd.",
+      "direction": "Jij geeft",
+      "giveLbc": "LBC voor Bitcoin",
+      "giveBtc": "Bitcoin voor LBC",
+      "lbcAmount": "Bedrag in LBC",
+      "btcAmount": "Bedrag in Bitcoin",
+      "price": "Prijs: 1 LBC = {price} BTC ({lbcPerBtc} LBC per BTC)",
+      "btcReceive": "Je Bitcoin-adres om de Bitcoin te ontvangen",
+      "btcRefund": "Je Bitcoin-adres voor een terugbetaling",
+      "btcAddressHint": "Een Bitcoin-adres van jezelf (bc1…, 1… of 3…), bijvoorbeeld uit je Bitcoin-wallet.",
+      "fee": "Bitcoin-netwerkkosten voor het ophalen of de terugbetaling: nu ongeveer {sats} sats ({rate} sat/vB).",
+      "create": "Uitnodiging aanmaken"
+    },
+    "join": {
+      "title": "Deelnemen aan een swap",
+      "paste": "Plak de uitnodigingscode die je hebt gekregen",
+      "isLock": "Dit is een vergrendelcode. Open de swap waar hij bij hoort (in “Je swaps”) en plak hem daar.",
+      "known": "Je hebt deze swap al; open hem in “Je swaps”.",
+      "summary": "Jij geeft {give} en krijgt {get}",
+      "firstNote": "Jij vergrendelt eerst. Als de ander niet doorgaat, krijg je je munten na 48 uur terug.",
+      "join": "Deelnemen"
+    },
+    "stage": {
+      "send-invite": "Uitnodiging sturen",
+      "lock": "Jouw beurt: vergrendelen",
+      "pay-btc": "Bitcoin betalen",
+      "send-lock": "Vergrendelcode sturen",
+      "checking": "Wacht op bevestigingen",
+      "claiming": "Bezig met ophalen",
+      "refund-waiting": "Wacht op terugbetaling",
+      "refunding": "Terugbetaling verzonden",
+      "completed": "Voltooid",
+      "refunded": "Terugbetaald",
+      "cancelled": "Geannuleerd",
+      "failed": "Mislukt"
+    },
+    "stageText": {
+      "send-invite": "Stuur deze uitnodigingscode naar degene met wie je de swap hebt afgesproken. Die vergrendelt eerst de {other} en stuurt je dan een vergrendelcode: plak die hieronder.",
+      "lockStarter": "De {get} van de ander is vergrendeld en bevestigd. Vergrendel nu je {give}; je wallet haalt daarna vanzelf de munten van de ander op.",
+      "lockJoiner": "Jij vergrendelt eerst je {give}. Als de ander niet doorgaat, krijg je die na 48 uur terug.",
+      "pay-btc": "Stuur vanuit je Bitcoin-wallet precies het onderstaande bedrag naar dit adres, in één betaling. LBC Wallet merkt de betaling vanzelf op.",
+      "sendLockStarter": "Je {give} is vergrendeld. Stuur deze vergrendelcode naar de ander. Zodra die jouw {coin} ophaalt, haalt deze wallet vanzelf de {other} op.",
+      "sendLockJoiner": "Je {give} is vergrendeld. Stuur deze vergrendelcode naar de ander en plak de vergrendelcode van de ander hieronder zodra je die hebt.",
+      "checking": "De {other} van de ander is vergrendeld: {n} van {required} bevestigingen. Je hoeft alleen nog te wachten (ongeveer 20 minuten bij Bitcoin, 30 bij LBC).",
+      "claiming": "Je wallet haalt {get} op. Dat duurt een blok of twee.",
+      "refund-waiting": "De swap is niet afgerond. Je {give} komt na {time} vanzelf naar je terug. Houd LBC Wallet open en deze wallet ontgrendeld.",
+      "refunding": "Je {give} is onderweg terug naar je.",
+      "completed": "Je hebt {get} ontvangen.",
+      "refunded": "Je hebt je {give} teruggekregen.",
+      "cancelled": "De swap is geannuleerd voordat er munten van jou waren vergrendeld.",
+      "failed": "De ander heeft de munten teruggenomen voordat deze wallet ze kon ophalen. Houd LBC Wallet open tijdens swaps."
+    },
+    "problem": {
+      "their-contract-invalid": "Het contract van de andere partij is niet wat er is afgesproken ({reasons}). De swap is gestopt; betaal er niets voor.",
+      "too-late-to-lock": "Te laat om te vergrendelen: de munten van de andere partij zouden niet lang genoeg vergrendeld blijven. Er is niets van jou vergrendeld.",
+      "too-late-to-claim": "De andere partij heeft te laat vergrendeld, dus deze wallet maakt het geheim nu niet bekend. Je munten komen na de vergrendeltijd terug.",
+      "underpaid": "De Bitcoin-betaling ({paid}) is minder dan de afgesproken {expected}. De andere partij accepteert die niet; het bedrag komt na de vergrendeltijd terug.",
+      "explorer": "De Bitcoin-explorer is nu niet bereikbaar ({detail}). Er wordt opnieuw geprobeerd.",
+      "claim-failed": "De andere partij heeft de munten teruggenomen voordat het ophalen door deze wallet was bevestigd.",
+      "cancelled": "Geannuleerd."
+    },
+    "reason": {
+      "not-a-contract": "geen swapcontract",
+      "wrong-recipient": "het betaalt niet uit aan deze wallet",
+      "amount-too-low": "het bedrag is te laag",
+      "wrong-secret-hash": "het gebruikt een ander geheim",
+      "locktime-too-early": "het ontgrendelt te vroeg",
+      "locktime-too-late": "het blijft te lang vergrendeld",
+      "unconfirmed": "nog niet bevestigd"
+    },
+    "event": {
+      "created": "Uitnodiging aangemaakt",
+      "joined": "Deelgenomen aan de swap",
+      "contract": "Contract aangemaakt",
+      "locked": "Je munten vergrendeld",
+      "payment-seen": "Bitcoin-betaling gezien",
+      "their-lock": "Vergrendelcode van de ander ontvangen",
+      "their-lock-confirmed": "Munten van de ander bevestigd",
+      "their-lock-invalid": "Contract van de ander afgewezen",
+      "secret": "Geheim gezien op de blockchain",
+      "claim-sent": "Ophalen gestart",
+      "completed": "Voltooid",
+      "claim-failed": "Ophalen mislukt",
+      "refund-sent": "Terugbetaling verzonden",
+      "refunded": "Terugbetaald",
+      "cancelled": "Geannuleerd",
+      "failed": "Mislukt"
+    },
+    "role": {
+      "starter": "Jij hebt de swap gestart (jij vergrendelt als tweede)",
+      "joiner": "Jij neemt deel (jij vergrendelt eerst)"
+    },
+    "roleLabel": "Rol",
+    "codeLabel": "Code om te sturen",
+    "codeHint": "De code bevat alleen openbare gegevens: bedragen, adressen en het contract. Stuur hem in je chat naar de ander.",
+    "copyCode": "Code kopiëren",
+    "pasteLock": "Plak de vergrendelcode van de ander",
+    "continue": "Doorgaan",
+    "lockLbc": "{amount} vergrendelen",
+    "lockBtc": "Betaaladres tonen",
+    "payAddress": "Bitcoin-adres van het contract",
+    "payAmount": "Exact bedrag",
+    "paying": "Wacht op je betaling…",
+    "cancel": "Swap annuleren",
+    "cancelConfirm": "Annuleren? Alleen als je nog niets voor deze swap hebt betaald.",
+    "remove": "Uit de lijst verwijderen",
+    "details": "Details",
+    "receiveTo": "Ontvangstadres",
+    "refundTo": "Adres voor terugbetaling",
+    "ours": "Jouw contract",
+    "theirs": "Contract van de ander",
+    "confirmations": "{n} van {required} bevestigingen",
+    "refundFrom": "Kan na {time} terug naar de eigenaar",
+    "claimTx": "Ophaaltransactie",
+    "refundTx": "Terugbetalingstransactie",
+    "history": "Geschiedenis"
   }
 }

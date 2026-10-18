@@ -932,8 +932,16 @@ a:hover {
   border-radius: 12px;
   cursor: pointer;
 }
-.list-row:hover {
+.list-row:hover,
+.list-row.active {
   background: var(--surface-2);
+}
+button.list-row {
+  width: 100%;
+  border: none;
+  color: inherit;
+  font: inherit;
+  background: none;
 }
 .list-row + .list-row {
   border-top: 1px solid var(--border);

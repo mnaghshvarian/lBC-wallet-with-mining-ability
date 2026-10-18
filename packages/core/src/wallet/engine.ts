@@ -543,6 +543,11 @@ export class WalletEngine extends Emitter<EngineEvents> {
     return this.state.tip?.height ?? 0;
   }
 
+  /** The chain backend the wallet syncs from (atomic swaps read contracts through it). */
+  get chain(): ChainBackend {
+    return this.backend;
+  }
+
   private confirmations(height: number): number {
     return height > 0 && this.tipHeight >= height ? this.tipHeight - height + 1 : 0;
   }

@@ -12,3 +12,6 @@ apps/desktop/e2e/screenshots/
 
 # lbcd binaries built by scripts/build-lbcd.sh
 apps/desktop/resources/bin/
+
+# btcd for the swap tests, built by scripts/build-btcd.sh
+.tools/

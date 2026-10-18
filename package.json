@@ -14,7 +14,7 @@
     "build": "npm run build -w lbc-wallet-desktop",
     "dist": "npm run dist -w lbc-wallet-desktop",
     "test": "npm run test -w @lbcwallet/core -w @lbcwallet/services -w @lbcwallet/ui -w lbc-wallet-desktop -w lbc-wallet-mobile",
-    "test:e2e": "npm run test:e2e -w @lbcwallet/core",
+    "test:e2e": "npm run test:e2e -w @lbcwallet/core -w @lbcwallet/services",
     "typecheck": "npm run typecheck -w @lbcwallet/core -w @lbcwallet/services -w @lbcwallet/ui -w lbc-wallet-desktop -w lbc-wallet-mobile",
     "regtest": "tsx packages/core/e2e/dev-regtest.ts",
     "build:android": "npm run build:android:release -w lbc-wallet-mobile",

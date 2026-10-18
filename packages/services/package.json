@@ -12,7 +12,8 @@
   },
   "scripts": {
     "test": "vitest run --dir test",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p e2e/tsconfig.json",
+    "test:e2e": "vitest run --dir e2e --no-file-parallelism"
   },
   "dependencies": {
     "@lbcwallet/core": "*"

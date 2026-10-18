@@ -152,7 +152,7 @@ export function Overview() {
                 </div>
               </div>
             ) : (
-              <div className="small text-2">{canMine ? t('overview.mineInvite') : t('overview.mineMobile')}</div>
+              <div className="small text-2">{!canMine ? t('overview.mineMobile') : info?.capabilities.soloMining ? t('overview.mineInvite') : t('mining.subPhone')}</div>
             )}
             <Button size="sm" block style={{ marginTop: 14 }} onClick={() => navigate({ name: 'mining' })}>
               {canMine ? t('overview.openMining') : t('overview.openPoolStats')}

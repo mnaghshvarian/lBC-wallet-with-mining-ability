@@ -1,7 +1,7 @@
 /// <reference path="../../../packages/ui/src/env.d.ts" />
 import { App as CapApp } from '@capacitor/app';
 import { SystemBars, SystemBarsStyle } from '@capacitor/core';
-import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, WalletService } from '@lbcwallet/services';
+import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, SwapService, WalletService } from '@lbcwallet/services';
 import { goBack, mountApp } from '@lbcwallet/ui';
 import { durableFiles } from './files';
 import { createAndroidHandlers } from './handlers';
@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   const info = await LbcNative.info();
   const files = await durableFiles(LbcNative, (message) => console.error(`[files] ${message}`));
   const platform = androidPlatform(info, files, new NativeSockets(LbcNative));
-  const settings = new SettingsStore(files, platform.cpuCount);
+  const settings = new SettingsStore(files, platform.cpuCount, 'phone');
   const bus = new EventBus();
 
   const price = new PriceService(platform, settings, (p) => bus.emit('price:update', p));
@@ -46,8 +46,14 @@ async function main(): Promise<void> {
         onLog: (e) => bus.emit('miner:log', e),
       })
     : null;
+  const swaps = new SwapService(platform, settings, {
+    wallet: () => wallets.swapWallet(),
+    changed: (v) => bus.emit('swap:changed', v),
+    notice: (n) => bus.emit('notice', n),
+  });
+  swaps.watch();
   const handlers = {
-    ...createCoreHandlers({ platform, settings, wallets, price, miningInfo }),
+    ...createCoreHandlers({ platform, settings, wallets, price, miningInfo, swaps }),
     ...createAndroidHandlers({ info, native: LbcNative, settings, wallets, miningInfo, miner }),
   };
   window.lbc = createApi(inAppTransport(handlers, bus, { flush: files.flush, activity: () => wallets.touch(), log: (m) => platform.log('error', 'api', m) }));
@@ -65,6 +71,8 @@ async function main(): Promise<void> {
     const minutes = settings.get().autoLockMinutes;
     if (wallets.isOpen && minutes > 0 && Date.now() - pausedAt >= minutes * 60_000) void wallets.lock('timeout');
     void miner?.setForeground(true);
+    // Catch up with swaps at once (timers do not run in the background).
+    void swaps.poll();
   });
   void CapApp.addListener('backButton', () => {
     if (!goBack()) void CapApp.minimizeApp();

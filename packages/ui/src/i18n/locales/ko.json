@@ -277,7 +277,8 @@
     "settings": "설정",
     "more": "더보기",
     "lock": "지갑 잠금",
-    "switchWallet": "잠그고 지갑 전환"
+    "switchWallet": "잠그고 지갑 전환",
+    "swap": "스왑"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -425,7 +426,9 @@
     "deleteButton": "지갑 삭제",
     "deletePermanently": "영구 삭제",
     "deleteWarning": "복구 문구를 적어 두었는지 꼭 확인하세요.",
-    "deleteWarningStrong": "복구 문구가 없으면 “{name}”의 자금을 영원히 잃게 돼요."
+    "deleteWarningStrong": "복구 문구가 없으면 “{name}”의 자금을 영원히 잃게 돼요.",
+    "swapExplorer": "스왑용 비트코인 탐색기",
+    "swapExplorerHint": "스왑은 Esplora 서버에서 비트코인 체인 정보를 읽어요. 비워 두면 blockstream.info를 사용하고 mempool.space로 교차 확인해요. 내 서버를 입력할 수도 있어요. 이 서버는 스왑에 쓰이는 비트코인 주소와 내 IP 주소를 볼 수 있어요."
   },
   "error": {
     "invalidWalletId": "지갑 ID가 올바르지 않아요",
@@ -479,7 +482,24 @@
     "operationFailed": "{detail}",
     "minerCrashed": "채굴기가 예기치 않게 멈췄어요. 자세한 내용은 아래 로그를 확인하세요.",
     "soloUnsupported": "솔로 채굴에는 풀 노드가 필요한데, 이 기기에서는 풀 노드를 실행하지 않아요. 채굴 풀을 선택하세요.",
-    "minerEngineFailed": "이 기기에서 채굴기를 시작하지 못했어요({detail}). Play 스토어에서 “Android System WebView”를 업데이트하면 해결될 수 있어요."
+    "minerEngineFailed": "이 기기에서 채굴기를 시작하지 못했어요({detail}). Play 스토어에서 “Android System WebView”를 업데이트하면 해결될 수 있어요.",
+    "swapUnsupported": "이 기기에서는 스왑을 사용할 수 없어요.",
+    "swapCodeInvalid": "{detail}",
+    "swapWrongNetwork": "이 스왑은 {network} 네트워크에 있어요. 먼저 설정에서 네트워크를 전환하세요.",
+    "swapUnknown": "이 지갑에는 해당 코드의 스왑이 없어요. 스왑을 시작하거나 참여할 때 사용한 지갑을 여세요.",
+    "swapWrongCode": "지금 이 스왑에 필요한 코드가 아니에요.",
+    "swapOwnCode": "내가 만든 코드예요. 이 코드는 상대방에게 보내세요.",
+    "swapAlreadyJoined": "이미 이 스왑에 참여했어요.",
+    "swapAlreadyHaveLock": "이 스왑에는 이미 상대방의 잠금 코드가 있어요.",
+    "swapContractMismatch": "상대방 컨트랙트의 지급 대상이 이 지갑이 아니에요. 두 사람 모두 이 스왑의 코드를 사용했는지 확인하세요.",
+    "swapAmountTooSmall": "스왑은 최소 {lbc} LBC와 {btc} BTC부터 가능해요. 이보다 적은 금액은 대부분 네트워크 수수료로 나가요.",
+    "swapAmountTooLarge": "스왑은 아직 새로운 기능이라 최대 {btc} BTC까지만 가능해요.",
+    "swapBtcAddressInvalid": "비트코인 주소가 올바르지 않아요 ({detail})",
+    "swapNotReady": "지금은 이 스왑에서 그 작업을 할 수 없어요.",
+    "swapTooLate": "잠그기에는 너무 늦었어요. 상대방 코인의 잠금 기간이 {hours}시간도 남지 않았어요. 새 스왑을 시작하세요.",
+    "swapNoExplorer": "먼저 설정에서 스왑용 비트코인 탐색기(Esplora) 서버를 지정하세요.",
+    "swapCannotCancel": "내 코인이 이미 잠겼어요. 스왑이 끝나지 않으면 잠금 기간이 지난 후 자동으로 돌아와요.",
+    "swapStillActive": "이 스왑은 아직 진행 중이에요."
   },
   "notice": {
     "received": {
@@ -518,7 +538,19 @@
       "title": "노드가 멈췄어요",
       "message": "내장 노드가 예기치 않게 멈췄어요({detail}). 노드가 다시 실행될 때까지 지갑은 공개 서버를 사용해요."
     },
-    "error": "문제가 발생했어요"
+    "error": "문제가 발생했어요",
+    "swapReadyToLock": {
+      "title": "스왑: 내 차례예요",
+      "message": "상대방의 코인이 잠기고 확정됐어요. 스왑 페이지를 열고 내 {coin}를 잠그세요."
+    },
+    "swapCompleted": {
+      "title": "스왑이 완료됐어요",
+      "message": "{coin}가 도착했어요."
+    },
+    "swapRefunded": {
+      "title": "스왑이 종료됐어요",
+      "message": "내 {coin}가 돌아왔어요."
+    }
   },
   "create": {
     "defaultName": "내 LBC 지갑",
@@ -862,5 +894,139 @@
     "issued": "현재까지 발행량",
     "total": "최대 공급량",
     "hint": "모든 노드가 검증하는 LBRY의 보상 규칙에 따른 수치예요. 블록 보상은 1 LBC씩 단계적으로 줄어들다가 결국 0이 되며, 각 단계의 기간은 갈수록 길어져요. 그 후에는 채굴자가 거래 수수료만 받아요. 블록 0에서 400,000,000 LBC가 발행됐고(LBRY의 사전 채굴), 그 밖의 LBC는 모두 채굴자에게 지급돼요."
+  },
+  "swap": {
+    "title": "스왑",
+    "sub": "LBC와 비트코인을 다른 사람과 직접 교환하세요 — 거래소도, 중개인도 없이.",
+    "newSwap": "스왑 시작",
+    "joinSwap": "코드로 참여",
+    "list": "내 스왑",
+    "none": "아직 스왑이 없어요.",
+    "how": {
+      "title": "스왑은 이렇게 진행돼요",
+      "text": "상대방과 채팅 등으로 금액을 정해요. 한 사람이 스왑을 시작해 초대 코드를 보내면 다른 사람이 참여해요. 두 사람이 각자 자기 코인을 해당 체인의 컨트랙트에 잠그면, 나머지는 지갑이 알아서 마무리해요. 두 사람 모두 상대방의 코인을 받거나, 잠금 기간이 지난 후 두 사람 모두 자기 코인을 돌려받거나 둘 중 하나예요. 누구도 자기 코인을 내주지 않고는 내 코인을 가져갈 수 없어요."
+    },
+    "safety": {
+      "title": "스왑하기 전에",
+      "text": "스왑은 새로운 기능이고 아직 보안 감사를 받지 않았어요. 소액으로 시작하세요. 스왑이 “완료”로 표시될 때까지 LBC Wallet을 열어 두고 이 지갑의 잠금을 해제한 상태로 유지하세요. 잠금 기간이 끝나기 전에 지갑이 직접 처리해야 하기 때문이에요. 비트코인 쪽 정보는 blockstream.info에서 읽어 오고 mempool.space로 교차 확인해요(설정 → 네트워크)."
+    },
+    "start": {
+      "title": "스왑 시작하기",
+      "agreeFirst": "먼저 상대방과 금액을 합의하세요. 상대방이 먼저 코인을 잠그고, 그 코인이 확정된 후에 내가 잠가요.",
+      "direction": "내가 줄 코인",
+      "giveLbc": "LBC (비트코인으로 교환)",
+      "giveBtc": "비트코인 (LBC로 교환)",
+      "lbcAmount": "LBC 금액",
+      "btcAmount": "비트코인 금액",
+      "price": "가격: 1 LBC = {price} BTC (1 BTC당 {lbcPerBtc} LBC)",
+      "btcReceive": "비트코인을 받을 내 주소",
+      "btcRefund": "환불받을 내 비트코인 주소",
+      "btcAddressHint": "내 비트코인 주소(bc1…, 1… 또는 3…)라면 무엇이든 괜찮아요. 예를 들어 사용 중인 비트코인 지갑의 주소를 입력하세요.",
+      "fee": "수령 또는 환불 시 비트코인 네트워크 수수료: 현재 약 {sats} sats ({rate} sat/vB)",
+      "create": "초대 코드 만들기"
+    },
+    "join": {
+      "title": "스왑 참여하기",
+      "paste": "받은 초대 코드를 붙여넣으세요",
+      "isLock": "이 코드는 잠금 코드예요. “내 스왑”에서 이 코드에 해당하는 스왑을 열고 거기에 붙여넣으세요.",
+      "known": "이미 있는 스왑이에요. “내 스왑”에서 열어 보세요.",
+      "summary": "{give}를 주고 {get}를 받아요",
+      "firstNote": "내가 먼저 잠가요. 상대방이 진행하지 않으면 48시간 후에 내 코인이 돌아와요.",
+      "join": "스왑 참여"
+    },
+    "stage": {
+      "send-invite": "초대 코드 보내기",
+      "lock": "잠글 차례",
+      "pay-btc": "비트코인 송금",
+      "send-lock": "잠금 코드 보내기",
+      "checking": "컨펌 대기 중",
+      "claiming": "수령 중",
+      "refund-waiting": "환불 대기 중",
+      "refunding": "환불 진행 중",
+      "completed": "완료",
+      "refunded": "환불 완료",
+      "cancelled": "취소됨",
+      "failed": "실패"
+    },
+    "stageText": {
+      "send-invite": "스왑하기로 한 상대방에게 이 초대 코드를 보내세요. 상대방이 먼저 {other}를 잠그고 잠금 코드를 보내 주면 아래에 붙여넣으세요.",
+      "lockStarter": "상대방의 {get}가 잠기고 확정됐어요. 지금 내 {give}를 잠그세요. 그러면 지갑이 상대방의 코인을 자동으로 수령해요.",
+      "lockJoiner": "먼저 내 {give}를 잠가요. 상대방이 진행하지 않으면 48시간 후에 다시 돌아와요.",
+      "pay-btc": "사용 중인 비트코인 지갑에서 아래 금액을 정확히 이 주소로 한 번에 송금하세요. 송금은 LBC Wallet이 자동으로 감지해요.",
+      "sendLockStarter": "내 {give}가 잠겼어요. 이 잠금 코드를 상대방에게 보내세요. 상대방이 내 {coin}를 수령하면 이 지갑도 상대방의 {other}를 자동으로 수령해요.",
+      "sendLockJoiner": "내 {give}가 잠겼어요. 이 잠금 코드를 상대방에게 보내고, 상대방의 잠금 코드를 받으면 아래에 붙여넣으세요.",
+      "checking": "상대방의 {other}가 잠겼어요. 현재 컨펌 {required}회 중 {n}회예요. 이제 기다리기만 하면 돼요(비트코인은 약 20분, LBC는 약 30분).",
+      "claiming": "지갑이 {get}를 수령하고 있어요. 블록 1~2개 정도 걸려요.",
+      "refund-waiting": "스왑이 완료되지 않았어요. 내 {give}는 {time} 이후에 자동으로 돌아와요. LBC Wallet을 열어 두고 이 지갑의 잠금을 해제한 상태로 유지하세요.",
+      "refunding": "내 {give}가 돌아오는 중이에요.",
+      "completed": "{get}를 받았어요.",
+      "refunded": "내 {give}가 돌아왔어요.",
+      "cancelled": "내 코인이 잠기기 전에 스왑이 취소됐어요.",
+      "failed": "이 지갑이 수령하기 전에 상대방이 자기 코인을 돌려받았어요. 스왑하는 동안에는 LBC Wallet을 열어 두세요."
+    },
+    "problem": {
+      "their-contract-invalid": "상대방의 컨트랙트가 합의한 내용과 달라요({reasons}). 스왑이 중단됐어요. 이 스왑에 아무것도 송금하지 마세요.",
+      "too-late-to-lock": "잠그기에는 너무 늦었어요. 상대방의 코인이 충분히 오래 잠겨 있지 않을 거예요. 내 코인은 하나도 잠기지 않았어요.",
+      "too-late-to-claim": "상대방이 너무 늦게 잠가서 이 지갑은 지금 비밀값을 공개하지 않아요. 내 코인은 잠금 기간이 지난 후 돌아와요.",
+      "underpaid": "비트코인 송금액({paid})이 합의한 금액 {expected}보다 적어요. 상대방은 이 송금을 받지 않아요. 보낸 비트코인은 잠금 기간이 지난 후 돌아와요.",
+      "explorer": "지금은 비트코인 탐색기에 연결할 수 없어요({detail}). 다시 시도하는 중이에요.",
+      "claim-failed": "이 지갑의 수령 거래가 확정되기 전에 상대방이 자기 코인을 돌려받았어요.",
+      "cancelled": "취소됐어요."
+    },
+    "reason": {
+      "not-a-contract": "스왑 컨트랙트가 아님",
+      "wrong-recipient": "지급 대상이 이 지갑이 아님",
+      "amount-too-low": "금액이 너무 적음",
+      "wrong-secret-hash": "다른 비밀값을 사용함",
+      "locktime-too-early": "잠금이 너무 일찍 풀림",
+      "locktime-too-late": "너무 오래 잠겨 있음",
+      "unconfirmed": "아직 확정되지 않음"
+    },
+    "event": {
+      "created": "초대 코드 생성됨",
+      "joined": "스왑에 참여함",
+      "contract": "컨트랙트 생성됨",
+      "locked": "내 코인 잠김",
+      "payment-seen": "비트코인 송금 확인됨",
+      "their-lock": "상대방 잠금 코드 받음",
+      "their-lock-confirmed": "상대방 코인 확정됨",
+      "their-lock-invalid": "상대방 컨트랙트 거부됨",
+      "secret": "체인에서 비밀값 확인됨",
+      "claim-sent": "수령 거래 전송됨",
+      "completed": "완료",
+      "claim-failed": "수령 실패",
+      "refund-sent": "환불 거래 전송됨",
+      "refunded": "환불 완료",
+      "cancelled": "취소됨",
+      "failed": "실패"
+    },
+    "role": {
+      "starter": "내가 시작함 (두 번째로 잠금)",
+      "joiner": "내가 참여함 (먼저 잠금)"
+    },
+    "roleLabel": "역할",
+    "codeLabel": "보낼 코드",
+    "codeHint": "금액, 주소, 컨트랙트 같은 공개 정보만 들어 있어요. 상대방과의 채팅으로 보내세요.",
+    "copyCode": "코드 복사",
+    "pasteLock": "상대방의 잠금 코드를 붙여넣으세요",
+    "continue": "계속",
+    "lockLbc": "{amount} 잠그기",
+    "lockBtc": "송금할 주소 보기",
+    "payAddress": "컨트랙트의 비트코인 주소",
+    "payAmount": "정확한 금액",
+    "paying": "송금을 기다리는 중…",
+    "cancel": "스왑 취소",
+    "cancelConfirm": "취소할까요? 이 스왑에 아직 아무것도 송금하지 않았을 때만 취소하세요.",
+    "remove": "목록에서 제거",
+    "details": "세부 정보",
+    "receiveTo": "받을 주소",
+    "refundTo": "환불받을 주소",
+    "ours": "내 컨트랙트",
+    "theirs": "상대방 컨트랙트",
+    "confirmations": "컨펌 {required}회 중 {n}회",
+    "refundFrom": "{time} 이후 원래 주인에게 환불 가능",
+    "claimTx": "수령 거래",
+    "refundTx": "환불 거래",
+    "history": "진행 기록"
   }
 }

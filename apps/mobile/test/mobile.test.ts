@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, WalletService, type Platform } from '@lbcwallet/services';
+import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, SwapService, WalletService, type Platform } from '@lbcwallet/services';
 import { durableFiles, type FileBackend } from '../src/files';
 import { NativeSockets } from '../src/sockets';
 import { EventBus, inAppTransport } from '../src/transport';
@@ -233,7 +233,7 @@ describe('services over the Android adapters', () => {
       notice: (n) => bus.emit('notice', n),
     });
     const miningInfo = new MiningInfo(platform, settings, { walletAddress: () => wallets.miningAddress(), chainTip: () => wallets.tipBits(), price: () => null });
-    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo }), ...createAndroidHandlers({ info: INFO, native: {} as LbcNativePlugin, settings, wallets, miningInfo, miner: null }) };
+    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo, swaps: new SwapService(platform, settings, { wallet: () => wallets.swapWallet(), changed: () => undefined, notice: () => undefined }) }), ...createAndroidHandlers({ info: INFO, native: {} as LbcNativePlugin, settings, wallets, miningInfo, miner: null }) };
     const api = createApi(inAppTransport(handlers, bus, { flush: files.flush, activity: () => wallets.touch(), log: () => undefined }));
 
     const mnemonic = await api.wallets.generateMnemonic(12);

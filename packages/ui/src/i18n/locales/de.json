@@ -284,7 +284,8 @@
     "settings": "Einstellungen",
     "more": "Mehr",
     "lock": "Wallet sperren",
-    "switchWallet": "Sperren und Wallet wechseln"
+    "switchWallet": "Sperren und Wallet wechseln",
+    "swap": "Swap"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -434,7 +435,9 @@
     "deleteButton": "Wallet löschen",
     "deletePermanently": "Endgültig löschen",
     "deleteWarning": "Stellen Sie sicher, dass Sie Ihre Wiederherstellungsphrase aufgeschrieben haben.",
-    "deleteWarningStrong": "Ohne sie ist das Guthaben in „{name}“ für immer verloren."
+    "deleteWarningStrong": "Ohne sie ist das Guthaben in „{name}“ für immer verloren.",
+    "swapExplorer": "Bitcoin-Explorer für Swaps",
+    "swapExplorerHint": "Für Swaps liest die Wallet die Bitcoin-Blockchain über einen Esplora-Server. Lassen Sie das Feld leer, um blockstream.info zu nutzen (abgeglichen mit mempool.space), oder geben Sie Ihren eigenen Server ein. Der Server sieht die Bitcoin-Adressen des Swaps und Ihre IP-Adresse."
   },
   "error": {
     "invalidWalletId": "Ungültige Wallet-ID",
@@ -488,7 +491,24 @@
     "operationFailed": "{detail}",
     "minerCrashed": "Der Miner wurde unerwartet beendet. Details finden Sie im Protokoll unten.",
     "soloUnsupported": "Solo-Mining benötigt einen Full Node, doch auf diesem Gerät läuft keiner. Wählen Sie stattdessen Pool-Mining.",
-    "minerEngineFailed": "Der Miner konnte auf diesem Gerät nicht starten ({detail}). Es kann helfen, „Android System WebView“ im Play Store zu aktualisieren."
+    "minerEngineFailed": "Der Miner konnte auf diesem Gerät nicht starten ({detail}). Es kann helfen, „Android System WebView“ im Play Store zu aktualisieren.",
+    "swapUnsupported": "Swaps sind auf diesem Gerät nicht verfügbar.",
+    "swapCodeInvalid": "{detail}",
+    "swapWrongNetwork": "Dieser Swap gehört zum Netzwerk {network}. Wechseln Sie zuerst in den Einstellungen das Netzwerk.",
+    "swapUnknown": "In dieser Wallet gibt es keinen Swap mit diesem Code. Öffnen Sie die Wallet, mit der Sie den Swap gestartet haben oder ihm beigetreten sind.",
+    "swapWrongCode": "Das ist nicht der Code, den dieser Swap jetzt benötigt.",
+    "swapOwnCode": "Das ist Ihr eigener Code: Senden Sie ihn an die andere Person.",
+    "swapAlreadyJoined": "Sie sind diesem Swap bereits beigetreten.",
+    "swapAlreadyHaveLock": "Für diesen Swap liegt bereits ein Sperrcode der anderen Person vor.",
+    "swapContractMismatch": "Der Vertrag der Gegenseite zahlt nicht an diese Wallet aus. Prüfen Sie, ob Sie beide die Codes dieses Swaps verwendet haben.",
+    "swapAmountTooSmall": "Swaps sind ab {lbc} LBC und {btc} BTC möglich: Kleinere Beträge würden größtenteils von den Netzwerkgebühren aufgezehrt.",
+    "swapAmountTooLarge": "Solange die Swap-Funktion neu ist, sind Swaps auf {btc} BTC begrenzt.",
+    "swapBtcAddressInvalid": "Ungültige Bitcoin-Adresse ({detail})",
+    "swapNotReady": "Das ist bei diesem Swap gerade nicht möglich.",
+    "swapTooLate": "Zu spät zum Sperren: Die Sperrfrist der Gegenseite endet in weniger als {hours} Stunden. Starten Sie einen neuen Swap.",
+    "swapNoExplorer": "Legen Sie zuerst in den Einstellungen einen Bitcoin-Explorer-Server (Esplora) für Swaps fest.",
+    "swapCannotCancel": "Ihre Coins sind bereits gesperrt; sie kommen nach Ablauf der Sperrfrist automatisch zu Ihnen zurück, falls der Swap nicht abgeschlossen wird.",
+    "swapStillActive": "Dieser Swap läuft noch."
   },
   "notice": {
     "received": {
@@ -531,7 +551,19 @@
       "title": "Der Node wurde beendet",
       "message": "Der integrierte Node wurde unerwartet beendet ({detail}). Bis er wieder läuft, verwendet die Wallet öffentliche Server."
     },
-    "error": "Etwas ist schiefgelaufen"
+    "error": "Etwas ist schiefgelaufen",
+    "swapReadyToLock": {
+      "title": "Swap: Sie sind dran",
+      "message": "Die Coins der anderen Person sind gesperrt und bestätigt. Öffnen Sie die Seite „Swap“, um Ihre {coin} zu sperren."
+    },
+    "swapCompleted": {
+      "title": "Swap abgeschlossen",
+      "message": "Ihre {coin} sind eingegangen."
+    },
+    "swapRefunded": {
+      "title": "Swap beendet",
+      "message": "Sie haben Ihre {coin} zurückerhalten."
+    }
   },
   "create": {
     "defaultName": "Meine LBC Wallet",
@@ -889,5 +921,139 @@
     "issued": "Bisher erzeugt",
     "total": "Maximale Gesamtmenge",
     "hint": "Berechnet nach den Belohnungsregeln von LBRY, die jeder Node prüft: Die Belohnung sinkt stufenweise um je 1 LBC, und die Stufen werden mit der Zeit immer länger. Sobald die Belohnung bei null angekommen ist, verdienen Miner nur noch Transaktionsgebühren. Mit Block 0 wurden 400.000.000 LBC erzeugt (das Pre-Mine von LBRY); alle übrigen LBC werden an Miner ausgezahlt."
+  },
+  "swap": {
+    "title": "Swap",
+    "sub": "Tauschen Sie LBC und Bitcoin direkt mit einer anderen Person – ohne Börse, ohne Mittelsmann.",
+    "newSwap": "Swap starten",
+    "joinSwap": "Mit Code beitreten",
+    "list": "Ihre Swaps",
+    "none": "Noch keine Swaps.",
+    "how": {
+      "title": "So funktioniert ein Swap",
+      "text": "Sie und die andere Person einigen sich auf die Beträge, zum Beispiel in einem Chat. Einer von Ihnen startet einen Swap und sendet den Einladungscode, der andere tritt bei. Jeder von Ihnen sperrt Coins in einem Vertrag auf der jeweiligen Blockchain, und Ihre Wallets schließen den Swap selbstständig ab: Entweder werden Sie beide bezahlt, oder Sie erhalten beide Ihre Coins nach Ablauf der Sperrfrist zurück. Niemand kann Ihre Coins bekommen, ohne Ihnen im Gegenzug seine zu geben."
+    },
+    "safety": {
+      "title": "Bevor Sie tauschen",
+      "text": "Swaps sind neu und wurden nicht auditiert: Beginnen Sie mit kleinen Beträgen. Lassen Sie LBC Wallet geöffnet und diese Wallet entsperrt, bis der Swap „Abgeschlossen“ anzeigt – die Wallet muss handeln, bevor die Sperrfristen ablaufen. Die Bitcoin-Daten kommen von blockstream.info und werden mit mempool.space abgeglichen (Einstellungen → Netzwerk)."
+    },
+    "start": {
+      "title": "Swap starten",
+      "agreeFirst": "Einigen Sie sich zuerst mit der anderen Person auf die Beträge. Sie sperren an zweiter Stelle, nachdem deren Coins bestätigt sind.",
+      "direction": "Sie geben",
+      "giveLbc": "LBC gegen Bitcoin",
+      "giveBtc": "Bitcoin gegen LBC",
+      "lbcAmount": "LBC-Betrag",
+      "btcAmount": "Bitcoin-Betrag",
+      "price": "Preis: 1 LBC = {price} BTC ({lbcPerBtc} LBC pro BTC)",
+      "btcReceive": "Ihre Bitcoin-Adresse für den Empfang",
+      "btcRefund": "Ihre Bitcoin-Adresse für eine Rückerstattung",
+      "btcAddressHint": "Eine beliebige eigene Bitcoin-Adresse (bc1…, 1… oder 3…), zum Beispiel aus Ihrer Bitcoin-Wallet.",
+      "fee": "Bitcoin-Netzwerkgebühr für Abholung oder Rückerstattung: derzeit etwa {sats} sats ({rate} sat/vB).",
+      "create": "Einladung erstellen"
+    },
+    "join": {
+      "title": "Einem Swap beitreten",
+      "paste": "Fügen Sie den Einladungscode ein, den Sie erhalten haben",
+      "isLock": "Das ist ein Sperrcode. Öffnen Sie den zugehörigen Swap (unter „Ihre Swaps“) und fügen Sie ihn dort ein.",
+      "known": "Diesen Swap haben Sie bereits; öffnen Sie ihn unter „Ihre Swaps“.",
+      "summary": "Sie geben {give} und erhalten {get}",
+      "firstNote": "Sie sperren zuerst. Wenn die andere Person den Swap nicht fortsetzt, kommen Ihre Coins nach 48 Stunden zu Ihnen zurück.",
+      "join": "Swap beitreten"
+    },
+    "stage": {
+      "send-invite": "Einladung senden",
+      "lock": "Jetzt sperren",
+      "pay-btc": "Bitcoin zahlen",
+      "send-lock": "Sperrcode senden",
+      "checking": "Wartet auf Bestätigungen",
+      "claiming": "Wird abgeholt",
+      "refund-waiting": "Wartet auf Rückerstattung",
+      "refunding": "Rückerstattung gesendet",
+      "completed": "Abgeschlossen",
+      "refunded": "Zurückerstattet",
+      "cancelled": "Abgebrochen",
+      "failed": "Fehlgeschlagen"
+    },
+    "stageText": {
+      "send-invite": "Senden Sie diesen Einladungscode an die Person, mit der Sie den Swap vereinbart haben. Diese Person sperrt zuerst ihre {other} und sendet Ihnen dann einen Sperrcode: Fügen Sie ihn unten ein.",
+      "lockStarter": "Die {get} der anderen Person sind gesperrt und bestätigt. Sperren Sie jetzt Ihre {give}; Ihre Wallet holt deren Coins dann selbstständig ab.",
+      "lockJoiner": "Sie sperren Ihre {give} zuerst. Wenn die andere Person den Swap nicht fortsetzt, kommen sie nach 48 Stunden zu Ihnen zurück.",
+      "pay-btc": "Senden Sie aus Ihrer Bitcoin-Wallet genau den unten angegebenen Betrag in einer einzigen Zahlung an diese Adresse. LBC Wallet erkennt die Zahlung selbstständig.",
+      "sendLockStarter": "Ihre {give} sind gesperrt. Senden Sie diesen Sperrcode an die andere Person. Sobald sie Ihre {coin} abholt, holt diese Wallet deren {other} selbstständig ab.",
+      "sendLockJoiner": "Ihre {give} sind gesperrt. Senden Sie diesen Sperrcode an die andere Person und fügen Sie deren Sperrcode unten ein, sobald Sie ihn erhalten.",
+      "checking": "Die {other} der anderen Person sind gesperrt: {n} von {required} Bestätigungen. Sie müssen nur noch warten (bei Bitcoin etwa 20 Minuten, bei LBC etwa 30).",
+      "claiming": "Ihre Wallet holt gerade {get} ab. Das dauert ein bis zwei Blöcke.",
+      "refund-waiting": "Der Swap wurde nicht abgeschlossen. Ihre {give} kommen ab {time} von selbst zu Ihnen zurück. Lassen Sie LBC Wallet geöffnet und diese Wallet entsperrt.",
+      "refunding": "Ihre {give} sind auf dem Rückweg zu Ihnen.",
+      "completed": "Sie haben {get} erhalten.",
+      "refunded": "Sie haben Ihre {give} zurückerhalten.",
+      "cancelled": "Der Swap wurde abgebrochen, bevor Coins von Ihnen gesperrt wurden.",
+      "failed": "Die andere Person hat ihre Coins zurückgeholt, bevor diese Wallet sie abholen konnte. Lassen Sie LBC Wallet während laufender Swaps geöffnet."
+    },
+    "problem": {
+      "their-contract-invalid": "Der Vertrag der Gegenseite entspricht nicht der Vereinbarung ({reasons}). Der Swap wurde gestoppt; zahlen Sie nichts dafür.",
+      "too-late-to-lock": "Zu spät zum Sperren: Die Coins der Gegenseite würden nicht lange genug gesperrt bleiben. Von Ihren Coins wurde nichts gesperrt.",
+      "too-late-to-claim": "Die Gegenseite hat zu spät gesperrt, daher gibt diese Wallet das Geheimnis jetzt nicht preis. Ihre Coins kommen nach Ablauf der Sperrfrist zu Ihnen zurück.",
+      "underpaid": "Die Bitcoin-Zahlung ({paid}) ist geringer als die vereinbarten {expected}. Die Gegenseite wird sie nicht annehmen; Sie erhalten den Betrag nach Ablauf der Sperrfrist zurück.",
+      "explorer": "Der Bitcoin-Explorer ist gerade nicht erreichbar ({detail}). Es wird erneut versucht.",
+      "claim-failed": "Die Gegenseite hat ihre Coins zurückgeholt, bevor die Abholung durch diese Wallet bestätigt war.",
+      "cancelled": "Abgebrochen."
+    },
+    "reason": {
+      "not-a-contract": "kein Swap-Vertrag",
+      "wrong-recipient": "er zahlt nicht an diese Wallet aus",
+      "amount-too-low": "der Betrag ist zu niedrig",
+      "wrong-secret-hash": "er nutzt ein anderes Geheimnis",
+      "locktime-too-early": "die Sperrfrist endet zu früh",
+      "locktime-too-late": "die Sperrfrist ist zu lang",
+      "unconfirmed": "noch nicht bestätigt"
+    },
+    "event": {
+      "created": "Einladung erstellt",
+      "joined": "Dem Swap beigetreten",
+      "contract": "Vertrag erstellt",
+      "locked": "Ihre Coins gesperrt",
+      "payment-seen": "Bitcoin-Zahlung erkannt",
+      "their-lock": "Sperrcode der Gegenseite erhalten",
+      "their-lock-confirmed": "Coins der Gegenseite bestätigt",
+      "their-lock-invalid": "Vertrag der Gegenseite abgelehnt",
+      "secret": "Geheimnis auf der Blockchain erkannt",
+      "claim-sent": "Abholung gestartet",
+      "completed": "Abgeschlossen",
+      "claim-failed": "Abholung fehlgeschlagen",
+      "refund-sent": "Rückerstattung gesendet",
+      "refunded": "Zurückerstattet",
+      "cancelled": "Abgebrochen",
+      "failed": "Fehlgeschlagen"
+    },
+    "role": {
+      "starter": "Sie haben den Swap gestartet (Sie sperren an zweiter Stelle)",
+      "joiner": "Sie sind beigetreten (Sie sperren zuerst)"
+    },
+    "roleLabel": "Rolle",
+    "codeLabel": "Code zum Senden",
+    "codeHint": "Er enthält nur öffentliche Daten: Beträge, Adressen und den Vertrag. Senden Sie ihn im Chat an die andere Person.",
+    "copyCode": "Code kopieren",
+    "pasteLock": "Sperrcode der Gegenseite einfügen",
+    "continue": "Weiter",
+    "lockLbc": "{amount} sperren",
+    "lockBtc": "Zahlungsadresse anzeigen",
+    "payAddress": "Bitcoin-Adresse des Vertrags",
+    "payAmount": "Genauer Betrag",
+    "paying": "Wartet auf Ihre Zahlung…",
+    "cancel": "Swap abbrechen",
+    "cancelConfirm": "Abbrechen? Nur, wenn Sie für diesen Swap noch nichts bezahlt haben.",
+    "remove": "Aus der Liste entfernen",
+    "details": "Details",
+    "receiveTo": "Empfangsadresse",
+    "refundTo": "Rückerstattungsadresse",
+    "ours": "Ihr Vertrag",
+    "theirs": "Vertrag der Gegenseite",
+    "confirmations": "{n} von {required} Bestätigungen",
+    "refundFrom": "Kann ab {time} an den Eigentümer zurückgehen",
+    "claimTx": "Transaktion zur Abholung",
+    "refundTx": "Transaktion zur Rückerstattung",
+    "history": "Verlauf"
   }
 }

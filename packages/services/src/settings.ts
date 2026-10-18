@@ -7,7 +7,8 @@ export const SETTINGS_FILE = 'settings.json';
 /** UI languages the app ships with. */
 export const LANGUAGES = ['en', 'fa', 'ar', 'fr', 'de', 'zh-CN', 'ja', 'ko', 'th', 'nl', 'es', 'pt', 'ru', 'ur'] as const;
 
-export function defaultSettings(cpuCount: number): Settings {
+/** `device` names the miner at the pool by default ("desktop" or "phone"). */
+export function defaultSettings(cpuCount: number, device: 'desktop' | 'phone' = 'desktop'): Settings {
   const threads = Math.max(1, Math.floor(cpuCount / 2));
   return {
     network: 'mainnet',
@@ -29,7 +30,7 @@ export function defaultSettings(cpuCount: number): Settings {
       mode: 'pool',
       poolUrl: DEFAULT_POOL,
       payoutAddress: '',
-      workerName: 'desktop',
+      workerName: device,
       poolPassword: 'x',
       threads,
       lowPriority: true,
@@ -41,6 +42,7 @@ export function defaultSettings(cpuCount: number): Settings {
     node: { enabled: false, dataDir: '', listen: false, peers: [] },
     explorerTxUrl: 'https://explorer.lbry.com/tx/{txid}',
     explorerAddressUrl: 'https://explorer.lbry.com/address/{address}',
+    swap: { btcExplorer: '' },
     lastWalletId: null,
     developerMode: false,
   };
@@ -129,9 +131,18 @@ export function sanitize(input: Partial<Settings> | null | undefined, base: Sett
     },
     explorerTxUrl: str(i.explorerTxUrl, base.explorerTxUrl, 300),
     explorerAddressUrl: str(i.explorerAddressUrl, base.explorerAddressUrl, 300),
+    swap: { btcExplorer: btcExplorer(i.swap?.btcExplorer, base.swap.btcExplorer) },
     lastWalletId: i.lastWalletId === null || typeof i.lastWalletId === 'string' ? i.lastWalletId : base.lastWalletId,
     developerMode: bool(i.developerMode, base.developerMode),
   };
+}
+
+/** An Esplora base URL: https, or http to this computer (a local test server). */
+function btcExplorer(v: unknown, fallback: string): string {
+  if (typeof v !== 'string') return fallback;
+  const url = v.trim().replace(/\/+$/, '').slice(0, 300);
+  if (url === '') return '';
+  return /^https:\/\/[^\s/]+/.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(url) ? url : fallback;
 }
 
 export class SettingsStore {
@@ -141,9 +152,10 @@ export class SettingsStore {
   constructor(
     private readonly files: JsonFiles,
     private readonly cpuCount: number,
+    device: 'desktop' | 'phone' = 'desktop',
   ) {
     const loaded = files.read<Partial<Settings>>(SETTINGS_FILE);
-    const defaults = defaultSettings(cpuCount);
+    const defaults = defaultSettings(cpuCount, device);
     const merged = loaded
       ? { ...defaults, ...loaded, mining: { ...defaults.mining, ...(loaded.mining ?? {}) }, node: { ...defaults.node, ...(loaded.node ?? {}) } }
       : null;

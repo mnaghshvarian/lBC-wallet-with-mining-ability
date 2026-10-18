@@ -45,9 +45,11 @@ jobs:
           go-version: '1.24'
       - name: Build lbcd (the bundled full node) from its verified release source
         run: bash scripts/build-lbcd.sh linux-x64
+      - name: Build btcd (Bitcoin side of the swap tests) from its verified release source
+        run: bash scripts/build-btcd.sh
       - run: npm ci
-      - name: Wallet, hub protocol and mining end-to-end tests
-        run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" npm run test:e2e
+      - name: Wallet, hub protocol, mining and atomic swap end-to-end tests
+        run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" BTCD_BIN="$PWD/.tools/btcd/btcd" npm run test:e2e
       - name: Desktop UI end-to-end test
         run: |
           npm run build

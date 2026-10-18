@@ -1,4 +1,5 @@
 import type { HistoryItem, MerkleProof } from '../net/backend.js';
+import type { SwapRecord } from '../swap/record.js';
 
 export interface AddressRecord {
   address: string;
@@ -47,6 +48,8 @@ export interface WalletState {
   /** Highest receiving index handed out via "new address". */
   issuedReceive: number;
   lastSyncAt?: number;
+  /** Atomic swaps, with their keys and secrets. */
+  swaps?: SwapRecord[];
 }
 
 export function emptyWalletState(): WalletState {

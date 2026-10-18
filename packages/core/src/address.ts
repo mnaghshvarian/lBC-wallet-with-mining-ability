@@ -9,6 +9,12 @@ const base58check = makeBase58check(sha256);
 
 export type AddressType = 'p2pkh' | 'p2sh' | 'p2wpkh' | 'p2wsh' | 'p2tr';
 
+/**
+ * What address encoding depends on: an LBC network's parameters, or Bitcoin's
+ * (for atomic swaps). `symbol` names the coin in error messages (default LBC).
+ */
+export type AddressParams = Pick<NetworkParams, 'pubKeyHashPrefix' | 'scriptHashPrefix' | 'bech32Hrp'> & { symbol?: string };
+
 export interface DecodedAddress {
   type: AddressType;
   /** Hash or witness program. */
@@ -20,21 +26,21 @@ export function encodeBase58Address(version: number, hash: Uint8Array): string {
   return base58check.encode(concatBytes(new Uint8Array([version]), hash));
 }
 
-export function p2pkhAddress(pubkeyHash: Uint8Array, network: NetworkParams): string {
+export function p2pkhAddress(pubkeyHash: Uint8Array, network: AddressParams): string {
   return encodeBase58Address(network.pubKeyHashPrefix, pubkeyHash);
 }
 
-export function addressFromPublicKey(publicKey: Uint8Array, network: NetworkParams): string {
+export function addressFromPublicKey(publicKey: Uint8Array, network: AddressParams): string {
   return p2pkhAddress(hash160(publicKey), network);
 }
 
-export function encodeSegwitAddress(version: number, program: Uint8Array, network: NetworkParams): string {
+export function encodeSegwitAddress(version: number, program: Uint8Array, network: AddressParams): string {
   const words = [version, ...bech32.toWords(program)];
   return version === 0 ? bech32.encode(network.bech32Hrp, words) : bech32m.encode(network.bech32Hrp, words);
 }
 
 /** Decodes and validates an address for the given network. Throws a user-readable error. */
-export function decodeAddress(address: string, network: NetworkParams): DecodedAddress {
+export function decodeAddress(address: string, network: AddressParams): DecodedAddress {
   const text = address.trim();
   if (!text) throw new Error('Address is empty');
 
@@ -79,10 +85,10 @@ export function decodeAddress(address: string, network: NetworkParams): DecodedA
   const hash = payload.slice(1);
   if (version === network.pubKeyHashPrefix) return { type: 'p2pkh', hash };
   if (version === network.scriptHashPrefix) return { type: 'p2sh', hash };
-  throw new Error('This is not an LBC address for this network');
+  throw new Error(`Not ${network.symbol === 'BTC' ? 'a Bitcoin' : 'an LBC'} address for this network`);
 }
 
-export function isValidAddress(address: string, network: NetworkParams): boolean {
+export function isValidAddress(address: string, network: AddressParams): boolean {
   try {
     decodeAddress(address, network);
     return true;
@@ -92,7 +98,7 @@ export function isValidAddress(address: string, network: NetworkParams): boolean
 }
 
 /** Output script that pays to `address`. */
-export function addressToScript(address: string, network: NetworkParams): Uint8Array {
+export function addressToScript(address: string, network: AddressParams): Uint8Array {
   const d = decodeAddress(address, network);
   switch (d.type) {
     case 'p2pkh':
@@ -111,7 +117,7 @@ export function addressToScript(address: string, network: NetworkParams): Uint8A
  * the same mapping the hubs use to index history. Returns null for
  * non-standard and data-carrier outputs.
  */
-export function scriptToAddress(script: Uint8Array, network: NetworkParams): string | null {
+export function scriptToAddress(script: Uint8Array, network: AddressParams): string | null {
   const c = classifyOutput(script);
   switch (c.type) {
     case 'p2pkh':

@@ -8,7 +8,7 @@
  */
 import net from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, WalletService, type LbcApi, type Platform } from '@lbcwallet/services';
+import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, SwapService, WalletService, type LbcApi, type Platform } from '@lbcwallet/services';
 import { lbcdAvailable, startRegtest, waitFor, type RegtestNode } from '../../../packages/core/e2e/harness';
 import { startRegtestHub, type RegtestHub } from '../../../packages/core/e2e/regtest-hub';
 import { startTestPool, type TestPool } from '../../../packages/core/e2e/test-pool';
@@ -130,7 +130,7 @@ describe.skipIf(!lbcdAvailable())('Android wallet stack against lbcd regtest', (
       onStats: (st) => bus.emit('miner:stats', st),
       onLog: (e) => bus.emit('miner:log', e),
     });
-    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo }), ...createAndroidHandlers({ info, native: {} as LbcNativePlugin, settings, wallets, miningInfo, miner }) };
+    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo, swaps: new SwapService(platform, settings, { wallet: () => wallets.swapWallet(), changed: () => undefined, notice: () => undefined }) }), ...createAndroidHandlers({ info, native: {} as LbcNativePlugin, settings, wallets, miningInfo, miner }) };
     api = createApi(inAppTransport(handlers, bus, { flush: files.flush, activity: () => wallets.touch(), log: (m) => console.error(m) }));
   }, 90_000);
 

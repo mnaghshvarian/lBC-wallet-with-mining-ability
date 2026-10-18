@@ -2,7 +2,7 @@ import { app, BrowserWindow, Menu, nativeTheme, powerMonitor, session, shell, ty
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { MiningInfo, PriceService, SettingsStore, WalletService, type LbcEvents, type Settings } from '@lbcwallet/services';
+import { MiningInfo, PriceService, SettingsStore, SwapService, WalletService, type LbcEvents, type Settings } from '@lbcwallet/services';
 import { MinerService } from './miner-service';
 import { NodeService } from './node-service';
 import { registerIpc } from './ipc';
@@ -107,8 +107,15 @@ if (!app.requestSingleInstanceLock()) {
       },
     });
 
-    registerIpc({ platform, wallets, settings, miner, price, miningInfo, node, isTrustedUrl }, () => mainWindow);
+    const swaps = new SwapService(platform, settings, {
+      wallet: () => wallets.swapWallet(),
+      changed: (v) => send('swap:changed', v),
+      notice: (n) => send('notice', n),
+    });
+
+    registerIpc({ platform, wallets, settings, miner, price, miningInfo, node, swaps, isTrustedUrl }, () => mainWindow);
     price.start();
+    swaps.watch();
     // Restart the built-in node if it was running when the app last closed.
     if (settings.get().node.enabled && node.available) {
       void node.start().catch((e) => log('warn', 'node', `could not start the built-in node: ${(e as Error).message}`));
@@ -141,6 +148,7 @@ if (!app.requestSingleInstanceLock()) {
       event.preventDefault();
       shuttingDown = true;
       price.stop();
+      swaps.unwatch();
       Promise.allSettled([miner.shutdown(), wallets.shutdown(), node.shutdown()]).finally(() => {
         log('info', 'app', 'shut down cleanly');
         app.exit(0);

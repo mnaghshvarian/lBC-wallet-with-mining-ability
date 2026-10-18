@@ -291,7 +291,8 @@
     "settings": "Paramètres",
     "more": "Plus",
     "lock": "Verrouiller le portefeuille",
-    "switchWallet": "Verrouiller et changer de portefeuille"
+    "switchWallet": "Verrouiller et changer de portefeuille",
+    "swap": "Échanger"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -443,7 +444,9 @@
     "deleteButton": "Supprimer le portefeuille",
     "deletePermanently": "Supprimer définitivement",
     "deleteWarning": "Assurez-vous d’avoir noté votre phrase de récupération.",
-    "deleteWarningStrong": "Sans elle, les fonds de « {name} » sont perdus à jamais."
+    "deleteWarningStrong": "Sans elle, les fonds de « {name} » sont perdus à jamais.",
+    "swapExplorer": "Explorateur Bitcoin pour les échanges",
+    "swapExplorerHint": "Les échanges consultent la blockchain Bitcoin via un serveur Esplora. Laissez ce champ vide pour utiliser blockstream.info (vérifié auprès de mempool.space) ou indiquez votre propre serveur. Ce serveur voit les adresses Bitcoin de vos échanges ainsi que votre adresse IP."
   },
   "error": {
     "invalidWalletId": "Identifiant de portefeuille invalide",
@@ -497,7 +500,24 @@
     "operationFailed": "{detail}",
     "minerCrashed": "Le mineur s’est arrêté de façon inattendue. Consultez le journal ci-dessous pour plus de détails.",
     "soloUnsupported": "Le minage en solo nécessite un nœud complet, et cet appareil n’en fait pas tourner. Choisissez le minage en pool.",
-    "minerEngineFailed": "Le mineur n’a pas pu démarrer sur cet appareil ({detail}). Mettre à jour « Android System WebView » depuis le Play Store peut résoudre le problème."
+    "minerEngineFailed": "Le mineur n’a pas pu démarrer sur cet appareil ({detail}). Mettre à jour « Android System WebView » depuis le Play Store peut résoudre le problème.",
+    "swapUnsupported": "Les échanges ne sont pas disponibles sur cet appareil.",
+    "swapCodeInvalid": "{detail}",
+    "swapWrongNetwork": "Cet échange a lieu sur le réseau {network}. Changez d’abord de réseau dans les paramètres.",
+    "swapUnknown": "Ce portefeuille n’a aucun échange correspondant à ce code. Ouvrez le portefeuille avec lequel vous avez démarré ou rejoint l’échange.",
+    "swapWrongCode": "Ce n’est pas le code qu’attend cet échange à cette étape.",
+    "swapOwnCode": "C’est votre propre code : envoyez-le à l’autre personne.",
+    "swapAlreadyJoined": "Vous avez déjà rejoint cet échange.",
+    "swapAlreadyHaveLock": "Cet échange a déjà reçu le code de blocage de l’autre personne.",
+    "swapContractMismatch": "Le contrat de l’autre partie ne verse pas les fonds à ce portefeuille. Vérifiez que vous avez bien utilisé, tous les deux, les codes de cet échange.",
+    "swapAmountTooSmall": "Le minimum par échange est de {lbc} LBC et {btc} BTC : en dessous, l’essentiel du montant partirait en frais de réseau.",
+    "swapAmountTooLarge": "Les échanges étant une nouveauté, ils sont pour l’instant limités à {btc} BTC.",
+    "swapBtcAddressInvalid": "Adresse Bitcoin invalide ({detail})",
+    "swapNotReady": "Cet échange ne permet pas cette action pour le moment.",
+    "swapTooLate": "Trop tard pour bloquer : il reste moins de {hours} heures avant la fin du blocage des fonds de l’autre partie. Démarrez un nouvel échange.",
+    "swapNoExplorer": "Indiquez d’abord dans les paramètres un serveur Esplora (explorateur Bitcoin) pour les échanges.",
+    "swapCannotCancel": "Vos fonds sont déjà bloqués ; ils vous reviendront automatiquement après le délai de blocage si l’échange n’aboutit pas.",
+    "swapStillActive": "Cet échange est toujours en cours."
   },
   "notice": {
     "received": {
@@ -544,7 +564,19 @@
       "title": "Le nœud s’est arrêté",
       "message": "Le nœud intégré s’est arrêté de façon inattendue ({detail}). Le portefeuille utilise des serveurs publics jusqu’à ce qu’il redémarre."
     },
-    "error": "Une erreur s’est produite"
+    "error": "Une erreur s’est produite",
+    "swapReadyToLock": {
+      "title": "Échange : à vous de jouer",
+      "message": "Les fonds de l’autre personne sont bloqués et confirmés. Ouvrez la page Échanger pour bloquer vos {coin}."
+    },
+    "swapCompleted": {
+      "title": "Échange terminé",
+      "message": "Vos {coin} sont arrivés."
+    },
+    "swapRefunded": {
+      "title": "Échange non abouti",
+      "message": "Vos {coin} vous sont revenus."
+    }
   },
   "create": {
     "defaultName": "Mon portefeuille LBC",
@@ -916,5 +948,139 @@
     "issued": "Créés à ce jour",
     "total": "Offre totale à terme",
     "hint": "D’après les règles de récompense de LBRY, que chaque nœud vérifie : la récompense baisse de 1 LBC à chaque palier, et les paliers s’allongent avec le temps, jusqu’à ce qu’elle atteigne zéro. Ensuite, les mineurs ne gagnent plus que les frais de transaction. Le bloc 0 a créé 400 000 000 LBC (le pré-minage de LBRY) ; tous les autres LBC sont versés aux mineurs."
+  },
+  "swap": {
+    "title": "Échanger",
+    "sub": "Échangez des LBC contre des bitcoins, ou l’inverse, directement avec une autre personne — sans plateforme d’échange ni intermédiaire.",
+    "newSwap": "Démarrer un échange",
+    "joinSwap": "Rejoindre avec un code",
+    "list": "Vos échanges",
+    "none": "Aucun échange pour l’instant.",
+    "how": {
+      "title": "Comment fonctionne un échange",
+      "text": "L’autre personne et vous convenez des montants, par exemple par message. L’un de vous deux démarre un échange et envoie le code d’invitation ; l’autre le rejoint. Chacun bloque ses fonds dans un contrat sur la blockchain correspondante (LBC ou Bitcoin), puis vos portefeuilles terminent l’échange d’eux-mêmes : soit vous êtes payés tous les deux, soit vous récupérez tous les deux vos fonds après le délai de blocage. Personne ne peut prendre vos fonds sans vous donner les siens."
+    },
+    "safety": {
+      "title": "Avant d’échanger",
+      "text": "La fonction d’échange est nouvelle et n’a pas été auditée : commencez par de petits montants. Gardez LBC Wallet ouvert, avec ce portefeuille déverrouillé, jusqu’à ce que l’échange affiche « Terminé » — le portefeuille doit agir avant la fin des délais de blocage. Côté Bitcoin, les données proviennent de blockstream.info et sont vérifiées auprès de mempool.space (Paramètres → Réseau)."
+    },
+    "start": {
+      "title": "Démarrer un échange",
+      "agreeFirst": "Mettez-vous d’abord d’accord sur les montants avec l’autre personne. Vous bloquez en second, une fois ses fonds confirmés.",
+      "direction": "Vous donnez",
+      "giveLbc": "Des LBC contre des bitcoins",
+      "giveBtc": "Des bitcoins contre des LBC",
+      "lbcAmount": "Montant en LBC",
+      "btcAmount": "Montant en bitcoins",
+      "price": "Prix : 1 LBC = {price} BTC ({lbcPerBtc} LBC par BTC)",
+      "btcReceive": "Votre adresse Bitcoin, pour recevoir les bitcoins",
+      "btcRefund": "Votre adresse Bitcoin, pour un éventuel remboursement",
+      "btcAddressHint": "N’importe laquelle de vos adresses Bitcoin (bc1…, 1… ou 3…), par exemple une adresse de votre portefeuille Bitcoin.",
+      "fee": "Frais de réseau Bitcoin pour l’encaissement ou le remboursement : environ {sats} sats ({rate} sat/vB) en ce moment.",
+      "create": "Créer l’invitation"
+    },
+    "join": {
+      "title": "Rejoindre un échange",
+      "paste": "Collez le code d’invitation que vous avez reçu",
+      "isLock": "C’est un code de blocage. Collez-le dans l’échange auquel il correspond, que vous trouverez dans « Vos échanges ».",
+      "known": "Cet échange existe déjà ; ouvrez-le dans « Vos échanges ».",
+      "summary": "Vous donnez {give} et recevez {get}",
+      "firstNote": "Vous bloquez en premier. Si l’autre personne ne poursuit pas l’échange, vos fonds vous reviennent au bout de 48 heures.",
+      "join": "Rejoindre l’échange"
+    },
+    "stage": {
+      "send-invite": "Envoyer l’invitation",
+      "lock": "À vous de bloquer",
+      "pay-btc": "Payer en bitcoins",
+      "send-lock": "Envoyer votre code de blocage",
+      "checking": "En attente de confirmations",
+      "claiming": "Encaissement en cours",
+      "refund-waiting": "En attente du remboursement",
+      "refunding": "Remboursement envoyé",
+      "completed": "Terminé",
+      "refunded": "Remboursé",
+      "cancelled": "Annulé",
+      "failed": "Échoué"
+    },
+    "stageText": {
+      "send-invite": "Envoyez ce code d’invitation à la personne avec qui vous avez convenu de l’échange. Elle bloquera d’abord ses {other} et vous enverra un code de blocage : collez-le ci-dessous.",
+      "lockStarter": "Les {get} de l’autre personne sont bloqués et confirmés. Bloquez maintenant vos {give} ; votre portefeuille encaissera ensuite automatiquement les {get}.",
+      "lockJoiner": "Vous bloquez vos {give} en premier. Si l’autre personne ne poursuit pas l’échange, ils vous reviennent au bout de 48 heures.",
+      "pay-btc": "Depuis votre portefeuille Bitcoin, envoyez exactement le montant ci-dessous à cette adresse, en un seul paiement. LBC Wallet détecte le paiement automatiquement.",
+      "sendLockStarter": "Vos {give} sont bloqués. Envoyez ce code de blocage à l’autre personne. Quand elle encaissera vos {coin}, ce portefeuille encaissera automatiquement ses {other}.",
+      "sendLockJoiner": "Vos {give} sont bloqués. Envoyez ce code de blocage à l’autre personne, puis collez son code de blocage ci-dessous dès que vous le recevrez.",
+      "checking": "Les {other} de l’autre personne sont bloqués : {n} sur {required} confirmations. Il n’y a plus qu’à attendre (environ 20 minutes côté Bitcoin, 30 côté LBC).",
+      "claiming": "Votre portefeuille est en train d’encaisser {get}. Comptez un ou deux blocs.",
+      "refund-waiting": "L’échange n’a pas abouti. Vos {give} vous reviendront automatiquement après le {time}. Gardez LBC Wallet ouvert, avec ce portefeuille déverrouillé.",
+      "refunding": "Vos {give} sont en cours de remboursement.",
+      "completed": "Vous avez reçu {get}.",
+      "refunded": "Vos {give} vous sont revenus.",
+      "cancelled": "L’échange a été annulé avant que vos fonds ne soient bloqués.",
+      "failed": "L’autre personne a repris ses fonds avant que ce portefeuille ait pu les encaisser. Gardez LBC Wallet ouvert pendant les échanges."
+    },
+    "problem": {
+      "their-contract-invalid": "Le contrat de l’autre partie ne correspond pas à ce qui a été convenu ({reasons}). L’échange a été arrêté ; ne payez rien pour cet échange.",
+      "too-late-to-lock": "Trop tard pour bloquer : les fonds de l’autre partie ne resteraient pas bloqués assez longtemps. Aucun de vos fonds n’a été bloqué.",
+      "too-late-to-claim": "L’autre partie a bloqué ses fonds trop tard : ce portefeuille ne révélera donc pas le secret maintenant. Vos fonds vous reviendront après le délai de blocage.",
+      "underpaid": "Le paiement Bitcoin ({paid}) est inférieur au montant convenu ({expected}). L’autre partie ne l’acceptera pas ; il vous reviendra après le délai de blocage.",
+      "explorer": "Impossible de joindre l’explorateur Bitcoin pour le moment ({detail}). Nouvelle tentative en cours.",
+      "claim-failed": "L’autre partie a repris ses fonds avant que l’encaissement par ce portefeuille soit confirmé.",
+      "cancelled": "Annulé."
+    },
+    "reason": {
+      "not-a-contract": "pas un contrat d’échange",
+      "wrong-recipient": "il ne verse rien à ce portefeuille",
+      "amount-too-low": "le montant est trop faible",
+      "wrong-secret-hash": "il utilise un autre secret",
+      "locktime-too-early": "il se débloque trop tôt",
+      "locktime-too-late": "il reste bloqué trop longtemps",
+      "unconfirmed": "pas encore confirmé"
+    },
+    "event": {
+      "created": "Invitation créée",
+      "joined": "Échange rejoint",
+      "contract": "Contrat créé",
+      "locked": "Blocage de vos fonds",
+      "payment-seen": "Paiement Bitcoin détecté",
+      "their-lock": "Code de blocage de l’autre personne reçu",
+      "their-lock-confirmed": "Fonds de l’autre personne confirmés",
+      "their-lock-invalid": "Contrat de l’autre personne rejeté",
+      "secret": "Secret repéré sur la blockchain",
+      "claim-sent": "Encaissement en cours",
+      "completed": "Terminé",
+      "claim-failed": "Échec de l’encaissement",
+      "refund-sent": "Remboursement envoyé",
+      "refunded": "Remboursé",
+      "cancelled": "Annulé",
+      "failed": "Échoué"
+    },
+    "role": {
+      "starter": "Vous l’avez démarré (vous bloquez en second)",
+      "joiner": "Vous l’avez rejoint (vous bloquez en premier)"
+    },
+    "roleLabel": "Rôle",
+    "codeLabel": "Code à envoyer",
+    "codeHint": "Il ne contient que des données publiques : montants, adresses et contrat. Envoyez-le dans votre conversation avec l’autre personne.",
+    "copyCode": "Copier le code",
+    "pasteLock": "Collez le code de blocage de l’autre personne",
+    "continue": "Continuer",
+    "lockLbc": "Bloquer {amount}",
+    "lockBtc": "Voir où payer",
+    "payAddress": "Adresse Bitcoin du contrat",
+    "payAmount": "Montant exact",
+    "paying": "En attente de votre paiement…",
+    "cancel": "Annuler l’échange",
+    "cancelConfirm": "Annuler ? Seulement si vous n’avez rien payé pour cet échange.",
+    "remove": "Retirer de la liste",
+    "details": "Détails",
+    "receiveTo": "Adresse de réception",
+    "refundTo": "Adresse de remboursement",
+    "ours": "Votre contrat",
+    "theirs": "Contrat de l’autre personne",
+    "confirmations": "{n} sur {required} confirmations",
+    "refundFrom": "Peut revenir à son propriétaire après le {time}",
+    "claimTx": "Transaction d’encaissement",
+    "refundTx": "Transaction de remboursement",
+    "history": "Historique"
   }
 }

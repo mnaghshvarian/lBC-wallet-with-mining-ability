@@ -277,7 +277,8 @@
     "settings": "设置",
     "more": "更多",
     "lock": "锁定钱包",
-    "switchWallet": "锁定并切换钱包"
+    "switchWallet": "锁定并切换钱包",
+    "swap": "兑换"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -425,7 +426,9 @@
     "deleteButton": "删除钱包",
     "deletePermanently": "永久删除",
     "deleteWarning": "请确认你已抄写好助记词。",
-    "deleteWarningStrong": "如果没有助记词，“{name}”中的资金将永久丢失。"
+    "deleteWarningStrong": "如果没有助记词，“{name}”中的资金将永久丢失。",
+    "swapExplorer": "用于兑换的比特币区块浏览器",
+    "swapExplorerHint": "兑换功能通过 Esplora 服务器读取比特币区块链。留空则使用 blockstream.info，并与 mempool.space 交叉核对；你也可以填写自己的服务器。该服务器能看到兑换所用的比特币地址以及你的 IP 地址。"
   },
   "error": {
     "invalidWalletId": "钱包 ID 无效",
@@ -479,7 +482,24 @@
     "operationFailed": "{detail}",
     "minerCrashed": "挖矿程序意外停止。详情请查看下方日志。",
     "soloUnsupported": "独立挖矿需要全节点，但此设备不支持运行全节点。请选择矿池挖矿。",
-    "minerEngineFailed": "挖矿程序无法在此设备上启动（{detail}）。在 Google Play 上更新“Android System WebView”可能会解决此问题。"
+    "minerEngineFailed": "挖矿程序无法在此设备上启动（{detail}）。在 Google Play 上更新“Android System WebView”可能会解决此问题。",
+    "swapUnsupported": "此设备不支持兑换。",
+    "swapCodeInvalid": "{detail}",
+    "swapWrongNetwork": "此兑换属于 {network}。请先在“设置”中切换网络。",
+    "swapUnknown": "此钱包中没有使用该代码的兑换。请打开你发起或加入该兑换时所用的钱包。",
+    "swapWrongCode": "这不是此兑换当前需要的代码。",
+    "swapOwnCode": "这是你自己的代码，请把它发送给对方。",
+    "swapAlreadyJoined": "你已经加入了此兑换。",
+    "swapAlreadyHaveLock": "此兑换已收到对方的锁定码。",
+    "swapContractMismatch": "对方的合约不会付款给此钱包。请确认你们双方使用的都是此兑换的代码。",
+    "swapAmountTooSmall": "兑换金额至少为 {lbc} LBC 和 {btc} BTC，否则大部分金额都会花在网络手续费上。",
+    "swapAmountTooLarge": "兑换功能刚推出，目前每次兑换最多 {btc} BTC。",
+    "swapBtcAddressInvalid": "比特币地址无效（{detail}）",
+    "swapNotReady": "此兑换当前无法执行该操作。",
+    "swapTooLate": "已来不及锁定：对方的币剩余锁定时间不足 {hours} 小时。请发起新的兑换。",
+    "swapNoExplorer": "请先在“设置”中设置用于兑换的比特币区块浏览器（Esplora）服务器。",
+    "swapCannotCancel": "你的币已锁定；如果兑换未能完成，它们会在锁定期结束后自动退回。",
+    "swapStillActive": "此兑换仍在进行中。"
   },
   "notice": {
     "received": {
@@ -518,7 +538,19 @@
       "title": "节点已停止",
       "message": "内置节点意外停止（{detail}）。在其恢复运行之前，钱包将使用公共服务器。"
     },
-    "error": "出了点问题"
+    "error": "出了点问题",
+    "swapReadyToLock": {
+      "title": "兑换：轮到你了",
+      "message": "对方的币已锁定并获得确认。请打开“兑换”页面，锁定你的 {coin}。"
+    },
+    "swapCompleted": {
+      "title": "兑换已完成",
+      "message": "你的 {coin} 已到账。"
+    },
+    "swapRefunded": {
+      "title": "兑换已结束",
+      "message": "你的 {coin} 已退回给你。"
+    }
   },
   "create": {
     "defaultName": "我的 LBC Wallet",
@@ -862,5 +894,139 @@
     "issued": "目前已产出",
     "total": "最终总供应量",
     "hint": "以上数据依据 LBRY 的奖励规则计算得出，每个节点都会校验这套规则：区块奖励会逐级下调，每级减少 1 LBC，每一级持续的时间越来越长，直到奖励降为零。之后，矿工只能赚取交易手续费。区块 0 产出了 400,000,000 LBC（LBRY 的预挖），其余的 LBC 全部支付给矿工。"
+  },
+  "swap": {
+    "title": "兑换",
+    "sub": "直接与他人互换 LBC 和比特币，无需交易所，也没有中间人。",
+    "newSwap": "发起兑换",
+    "joinSwap": "用邀请码加入",
+    "list": "你的兑换",
+    "none": "暂无兑换。",
+    "how": {
+      "title": "兑换流程",
+      "text": "你和对方先商定金额（例如通过聊天）。由其中一方发起兑换并发送邀请码，另一方加入。双方各自把币锁定在对应区块链上的合约中，之后由你们的钱包自动完成兑换：要么双方都收到约定的币，要么在锁定期结束后双方都取回自己的币。没有人能拿走你的币却不付出自己的币。"
+    },
+    "safety": {
+      "title": "兑换前须知",
+      "text": "兑换是新功能，尚未经过审计，请从小额开始。在兑换显示“已完成”之前，请保持 LBC Wallet 处于打开状态，并让此钱包保持解锁，因为钱包必须在锁定期结束前完成操作。比特币一侧的数据通过 blockstream.info 读取，并与 mempool.space 交叉核对（可在“设置 → 网络”中更改）。"
+    },
+    "start": {
+      "title": "发起兑换",
+      "agreeFirst": "请先与对方商定金额。你是后锁定的一方：要等对方的币获得确认后，才轮到你锁定。",
+      "direction": "你付出",
+      "giveLbc": "LBC，换取比特币",
+      "giveBtc": "比特币，换取 LBC",
+      "lbcAmount": "LBC 金额",
+      "btcAmount": "比特币金额",
+      "price": "价格：1 LBC = {price} BTC（1 BTC = {lbcPerBtc} LBC）",
+      "btcReceive": "你的比特币地址（用于接收比特币）",
+      "btcRefund": "你的比特币地址（用于接收退款）",
+      "btcAddressHint": "你自己的任意比特币地址（bc1…、1… 或 3…），例如你的比特币钱包中的地址。",
+      "fee": "领取或退款所需的比特币网络手续费：目前约 {sats} sats（{rate} sat/vB）。",
+      "create": "创建邀请"
+    },
+    "join": {
+      "title": "加入兑换",
+      "paste": "粘贴你收到的邀请码",
+      "isLock": "这是锁定码。请在“你的兑换”中打开它所属的兑换，然后粘贴到那里。",
+      "known": "你已经有此兑换了，请在“你的兑换”中打开它。",
+      "summary": "你付出 {give}，换得 {get}",
+      "firstNote": "你先锁定。如果对方没有继续，你的币会在 48 小时后退回给你。",
+      "join": "加入兑换"
+    },
+    "stage": {
+      "send-invite": "发送邀请",
+      "lock": "轮到你锁定",
+      "pay-btc": "支付比特币",
+      "send-lock": "发送锁定码",
+      "checking": "等待确认",
+      "claiming": "正在领取",
+      "refund-waiting": "等待退款",
+      "refunding": "退款已发送",
+      "completed": "已完成",
+      "refunded": "已退款",
+      "cancelled": "已取消",
+      "failed": "失败"
+    },
+    "stageText": {
+      "send-invite": "请将此邀请码发送给与你商定兑换的人。对方会先锁定 {other}，然后发给你一个锁定码，请把它粘贴到下方。",
+      "lockStarter": "对方的 {get} 已锁定并获得确认。请现在锁定你的 {give}，之后你的钱包会自动领取对方的币。",
+      "lockJoiner": "你需要先锁定你的 {give}。如果对方没有继续，这些币会在 48 小时后退回给你。",
+      "pay-btc": "请从你的比特币钱包向此地址一次性发送下方显示的准确金额。LBC Wallet 会自动检测到这笔付款。",
+      "sendLockStarter": "你的 {give} 已锁定。请将此锁定码发送给对方。对方领取你的 {coin} 后，此钱包会自动领取对方的 {other}。",
+      "sendLockJoiner": "你的 {give} 已锁定。请将此锁定码发送给对方，并在收到对方的锁定码后将其粘贴到下方。",
+      "checking": "对方的 {other} 已锁定：{n}/{required} 次确认。你只需等待即可（比特币约需 20 分钟，LBC 约需 30 分钟）。",
+      "claiming": "你的钱包正在领取 {get}，这需要 1～2 个区块的时间。",
+      "refund-waiting": "兑换未能完成。你的 {give} 将在 {time} 之后自动退回给你。请保持 LBC Wallet 处于打开状态，并让此钱包保持解锁。",
+      "refunding": "你的 {give} 正在退回给你。",
+      "completed": "你已收到 {get}。",
+      "refunded": "你的 {give} 已退回给你。",
+      "cancelled": "兑换在你的币被锁定之前就已取消。",
+      "failed": "在此钱包领取之前，对方已取回了自己的币。兑换期间请保持 LBC Wallet 处于打开状态。"
+    },
+    "problem": {
+      "their-contract-invalid": "对方的合约与约定不符（{reasons}）。兑换已停止，请勿为此兑换支付任何款项。",
+      "too-late-to-lock": "已来不及锁定：对方的币剩余的锁定时间不够长。你的币均未被锁定。",
+      "too-late-to-claim": "对方锁定得太晚，因此此钱包现在不会公开秘密值。你的币会在锁定期结束后退回。",
+      "underpaid": "这笔比特币付款（{paid}）少于约定的 {expected}。对方不会接受这笔付款，款项会在锁定期结束后退回。",
+      "explorer": "目前无法连接比特币区块浏览器（{detail}），正在重试。",
+      "claim-failed": "在此钱包的领取交易获得确认之前，对方已取回了自己的币。",
+      "cancelled": "已取消。"
+    },
+    "reason": {
+      "not-a-contract": "不是兑换合约",
+      "wrong-recipient": "不会付款给此钱包",
+      "amount-too-low": "金额过低",
+      "wrong-secret-hash": "使用了不同的秘密值",
+      "locktime-too-early": "解锁时间过早",
+      "locktime-too-late": "锁定时间过长",
+      "unconfirmed": "尚未确认"
+    },
+    "event": {
+      "created": "已创建邀请",
+      "joined": "已加入兑换",
+      "contract": "已创建合约",
+      "locked": "你的币已锁定",
+      "payment-seen": "已检测到比特币付款",
+      "their-lock": "已收到对方的锁定码",
+      "their-lock-confirmed": "对方的币已确认",
+      "their-lock-invalid": "已拒绝对方的合约",
+      "secret": "已在链上发现秘密值",
+      "claim-sent": "开始领取",
+      "completed": "已完成",
+      "claim-failed": "领取失败",
+      "refund-sent": "退款已发送",
+      "refunded": "已退款",
+      "cancelled": "已取消",
+      "failed": "失败"
+    },
+    "role": {
+      "starter": "你是发起方（你后锁定）",
+      "joiner": "你是加入方（你先锁定）"
+    },
+    "roleLabel": "角色",
+    "codeLabel": "要发送的代码",
+    "codeHint": "代码中只包含公开数据：金额、地址和合约。请在你与对方的聊天中发送。",
+    "copyCode": "复制代码",
+    "pasteLock": "粘贴对方的锁定码",
+    "continue": "继续",
+    "lockLbc": "锁定 {amount}",
+    "lockBtc": "显示付款地址",
+    "payAddress": "合约的比特币地址",
+    "payAmount": "准确金额",
+    "paying": "正在等待你的付款…",
+    "cancel": "取消兑换",
+    "cancelConfirm": "要取消吗？请仅在你尚未为此兑换支付任何款项时取消。",
+    "remove": "从列表中移除",
+    "details": "详情",
+    "receiveTo": "收款地址",
+    "refundTo": "退款地址",
+    "ours": "你的合约",
+    "theirs": "对方的合约",
+    "confirmations": "{n}/{required} 次确认",
+    "refundFrom": "{time} 之后可退回给所有者",
+    "claimTx": "领取交易",
+    "refundTx": "退款交易",
+    "history": "历史记录"
   }
 }

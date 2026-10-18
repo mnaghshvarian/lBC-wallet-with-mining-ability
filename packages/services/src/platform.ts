@@ -37,8 +37,10 @@ export interface Platform {
   httpPost?(options: { ca?: string }): HttpPost;
   /** Reads a small text file chosen by the user (e.g. an lbcd TLS certificate). */
   readTextFile?(path: string): string;
-  /** GET a JSON document over HTTPS (prices, pool statistics). */
+  /** GET a JSON document over HTTPS (prices, pool statistics, a Bitcoin explorer). */
   fetchJson(url: string): Promise<unknown>;
+  /** POST a text body over HTTPS and resolve with the response text (broadcasting through a Bitcoin explorer). */
+  postText?(url: string, body: string): Promise<string>;
   cpuCount: number;
 }
 

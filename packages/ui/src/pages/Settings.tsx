@@ -137,6 +137,7 @@ function Network() {
   const [node, setNode] = useState(s.lbcd);
   const [nodeTest, setNodeTest] = useState<HubTestResult | 'testing' | undefined>();
   const [socks, setSocks] = useState(s.socks5);
+  const [btcExplorer, setBtcExplorer] = useState(s.swap.btcExplorer);
   const defaults = s.network === 'mainnet' ? MAINNET.defaultHubs : [];
   const caps = info.capabilities;
 
@@ -314,6 +315,25 @@ function Network() {
           </div>
         </div>
       )}
+
+      <div className="card stack">
+        <div className="card-header">
+          <h3>{t('settings.swapExplorer')}</h3>
+        </div>
+        <div className="hint">{t('settings.swapExplorerHint')}</div>
+        <div className="row">
+          <input
+            className="input mono"
+            value={btcExplorer}
+            aria-label={t('settings.swapExplorer')}
+            placeholder="https://blockstream.info/api"
+            onChange={(e) => setBtcExplorer(e.target.value)}
+            dir="ltr"
+            spellCheck={false}
+          />
+          <Button onClick={() => void update({ swap: { btcExplorer: btcExplorer.trim() } })}>{t('common.save')}</Button>
+        </div>
+      </div>
     </div>
   );
 }

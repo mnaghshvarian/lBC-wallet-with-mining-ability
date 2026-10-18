@@ -19,14 +19,13 @@
  * is disabled by the fuses, so the test drives the window over the Chrome
  * DevTools protocol instead.
  */
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import { _electron as electron, chromium, type Page } from 'playwright-core';
-import electronPath from 'electron';
+import type { Page } from 'playwright-core';
+import { acceptDisclaimer, forceKill, launchApp, type RunningApp } from './app-driver';
 
 const appDir = resolve(__dirname, '..');
 const repoRoot = resolve(appDir, '../..');
@@ -71,78 +70,6 @@ async function startNetwork() {
   };
 }
 
-/** Ends a process and its children (on Windows, kill() only ends the process itself). */
-function forceKill(child: ChildProcess): void {
-  if (process.platform === 'win32' && child.pid) spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
-  else child.kill('SIGKILL');
-}
-
-interface RunningApp {
-  page: Page;
-  close(): Promise<void>;
-}
-
-/** Runs the app from the electron-vite build output with the development Electron binary. */
-async function launchDev(dataDir: string): Promise<RunningApp> {
-  const app = await electron.launch({
-    executablePath: electronPath as unknown as string,
-    args: ['--no-sandbox', appDir],
-    env: { ...process.env, LBC_WALLET_DATA_DIR: dataDir, ...(process.env.LBCD_BIN ? { LBC_WALLET_LBCD_BIN: process.env.LBCD_BIN } : {}) },
-  });
-  return { page: await app.firstWindow(), close: () => app.close() };
-}
-
-function freePort(): Promise<number> {
-  return new Promise((res, rej) => {
-    const srv = createServer();
-    srv.once('error', rej);
-    srv.listen(0, '127.0.0.1', () => {
-      const { port } = srv.address() as { port: number };
-      srv.close(() => res(port));
-    });
-  });
-}
-
-/** Runs a packaged build and attaches to its window over the DevTools protocol. */
-async function launchPackaged(executable: string, dataDir: string): Promise<RunningApp> {
-  const port = await freePort();
-  const args = [`--remote-debugging-port=${port}`];
-  // Chromium refuses to run as root with its sandbox; CI runs as a normal user with the sandbox on.
-  if (process.env.NO_SANDBOX === '1' || process.getuid?.() === 0) args.push('--no-sandbox');
-  const child = spawn(executable, args, { env: { ...process.env, LBC_WALLET_DATA_DIR: dataDir }, stdio: ['ignore', 'inherit', 'inherit'] });
-  const exited = new Promise<void>((res) => child.once('exit', () => res()));
-  const deadline = Date.now() + 60_000;
-  for (;;) {
-    if (child.exitCode !== null) throw new Error(`packaged app exited with code ${child.exitCode}`);
-    try {
-      const r = await fetch(`http://127.0.0.1:${port}/json/version`);
-      if (r.ok) break;
-    } catch {
-      // not listening yet
-    }
-    if (Date.now() > deadline) throw new Error('packaged app did not open a DevTools endpoint');
-    await new Promise((r) => setTimeout(r, 250));
-  }
-  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
-  const context = browser.contexts()[0] ?? (await browser.newContext());
-  const page = context.pages().find((p) => p.url().startsWith('file:')) ?? (await context.waitForEvent('page', { timeout: 30_000 }));
-  log(`attached to packaged app ${executable}`);
-  return {
-    page,
-    close: async () => {
-      // Quit the way the app's own menu does, so it shuts its services down cleanly (Windows has no SIGTERM).
-      await page.evaluate(() => void (window as unknown as { lbc: { app: { quit(): Promise<void> } } }).lbc.app.quit()).catch(() => undefined);
-      await Promise.race([exited, new Promise((r) => setTimeout(r, 15_000))]);
-      await browser.close().catch(() => undefined);
-      if (child.exitCode === null) {
-        child.kill('SIGTERM'); // Electron quits gracefully on SIGTERM (Linux, macOS)
-        await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))]);
-      }
-      if (child.exitCode === null) forceKill(child);
-    },
-  };
-}
-
 async function shot(page: Page, name: string) {
   await page.waitForTimeout(400);
   // Notifications are transient (click to dismiss); keep them out of the screenshots.
@@ -176,21 +103,15 @@ async function main() {
 
   let app: RunningApp | null = null;
   try {
-    app = process.env.APP_EXECUTABLE ? await launchPackaged(resolve(process.env.APP_EXECUTABLE), dataDir) : await launchDev(dataDir);
+    app = await launchApp(dataDir, log);
     const page = app.page;
     await page.setViewportSize({ width: 1280, height: 820 });
     page.on('pageerror', (err) => console.error('[renderer error]', err));
 
     // ---------------------------------------------------------------- disclaimer
-    await page.getByText('Read this before you start').waitFor();
-    const agree = page.getByRole('button', { name: /I agree/ });
-    if (!(await agree.isDisabled())) throw new Error('the disclaimer can be accepted without ticking the boxes');
-    await shot(page, '00-disclaimer');
-    for (const box of await page.locator('.check-row input').all()) await box.check();
-    await agree.click();
+    await acceptDisclaimer(page, () => shot(page, '00-disclaimer'));
 
     // ---------------------------------------------------------------- welcome
-    await page.getByText('A non-custodial wallet for LBRY Credits').waitFor();
     await shot(page, '01-welcome');
 
     // ---------------------------------------------------------------- restore funded wallet
@@ -306,6 +227,27 @@ async function main() {
       await page.getByRole('button', { name: 'Start mining' }).waitFor({ timeout: 15_000 });
       await page.getByRole('switch', { name: 'Only when idle' }).click();
     }
+
+    // ---------------------------------------------------------------- swap (the Bitcoin side is covered by the swap end-to-end test)
+    await page.locator('.nav-item', { hasText: 'Swap' }).click();
+    await page.getByText('How a swap works').waitFor();
+    await page.getByRole('button', { name: 'Start a swap' }).click();
+    await page.getByPlaceholder('0.00', { exact: true }).fill('25');
+    await page.getByPlaceholder('0.00000000').fill('0.0005');
+    await page.getByPlaceholder('bc1…').fill('bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080');
+    await page.getByRole('button', { name: 'Create the invite' }).click();
+    const invite = await page.locator('.address-box', { hasText: 'lbcswap:' }).innerText();
+    if (!invite.startsWith('lbcswap:')) throw new Error('no invite code');
+    await shot(page, '14a-swap-invite');
+    // Pasting your own invite into "Join" is recognised.
+    await page.getByRole('button', { name: 'Join with a code' }).click();
+    await page.getByPlaceholder('lbcswap:…').fill(invite);
+    await page.getByText('You already have this swap').waitFor();
+    await page.getByRole('button', { name: 'Join with a code' }).click();
+    await page.getByRole('button', { name: 'Cancel swap' }).click();
+    await page.getByRole('button', { name: 'Cancel swap' }).click();
+    await page.locator('.card-header .badge', { hasText: 'Cancelled' }).waitFor();
+    log('swap invite created and cancelled');
 
     // ---------------------------------------------------------------- built-in node
     await page.locator('.nav-item', { hasText: 'Node' }).click();

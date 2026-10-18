@@ -1,6 +1,7 @@
 /**
  * Spins up a throw-away lbcd in regtest mode for end-to-end tests.
- * Set LBCD_BIN to the lbcd binary (built from github.com/lbryio/lbcd).
+ * Set LBCD_BIN to the lbcd binary (built from github.com/lbryio/lbcd), and
+ * BTCD_BIN to btcd (scripts/build-btcd.sh) for the Bitcoin side of swaps.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
@@ -11,9 +12,15 @@ import { LbcdRpc } from '../src/net/lbcd.js';
 import { nodeHttpPost } from '../src/node/index.js';
 
 export const LBCD_BIN = process.env.LBCD_BIN ?? 'lbcd';
+export const BTCD_BIN = process.env.BTCD_BIN ?? 'btcd';
 
 export function lbcdAvailable(): boolean {
   if (process.env.LBCD_BIN) return existsSync(process.env.LBCD_BIN);
+  return false;
+}
+
+export function btcdAvailable(): boolean {
+  if (process.env.BTCD_BIN) return existsSync(process.env.BTCD_BIN);
   return false;
 }
 
@@ -39,6 +46,16 @@ export interface RegtestNode {
 }
 
 export async function startRegtest(miningAddress: string): Promise<RegtestNode> {
+  return startNode(LBCD_BIN, miningAddress);
+}
+
+/** A Bitcoin regtest node (btcd), for the Bitcoin side of swap tests. */
+export async function startBtcRegtest(miningAddress: string): Promise<RegtestNode> {
+  return startNode(BTCD_BIN, miningAddress);
+}
+
+/** lbcd and btcd take the same options. */
+async function startNode(bin: string, miningAddress: string): Promise<RegtestNode> {
   const dir = mkdtempSync(join(tmpdir(), 'lbcd-e2e-'));
   const port = await freePort();
   const p2pPort = await freePort();
@@ -57,7 +74,7 @@ export async function startRegtest(miningAddress: string): Promise<RegtestNode> 
     `--miningaddr=${miningAddress}`,
     '--debuglevel=warn',
   ];
-  const proc: ChildProcess = spawn(LBCD_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const proc: ChildProcess = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   proc.stdout?.on('data', (d) => (output += d.toString()));
   proc.stderr?.on('data', (d) => (output += d.toString()));
@@ -69,7 +86,7 @@ export async function startRegtest(miningAddress: string): Promise<RegtestNode> 
       await rpc.call('getblockcount');
       break;
     } catch {
-      if (Date.now() > deadline || proc.exitCode !== null) throw new Error(`lbcd did not start:\n${output}`);
+      if (Date.now() > deadline || proc.exitCode !== null) throw new Error(`${bin} did not start:\n${output}`);
       await new Promise((r) => setTimeout(r, 200));
     }
   }

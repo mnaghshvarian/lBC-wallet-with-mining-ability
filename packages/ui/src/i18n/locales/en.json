@@ -284,7 +284,8 @@
     "settings": "Settings",
     "more": "More",
     "lock": "Lock wallet",
-    "switchWallet": "Lock and switch wallet"
+    "switchWallet": "Lock and switch wallet",
+    "swap": "Swap"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -434,7 +435,9 @@
     "deleteButton": "Delete wallet",
     "deletePermanently": "Delete permanently",
     "deleteWarning": "Make sure you have your recovery phrase written down.",
-    "deleteWarningStrong": "Without it, the funds in “{name}” are lost forever."
+    "deleteWarningStrong": "Without it, the funds in “{name}” are lost forever.",
+    "swapExplorer": "Bitcoin explorer for swaps",
+    "swapExplorerHint": "Swaps read the Bitcoin chain from an Esplora server. Leave this empty to use blockstream.info, checked against mempool.space, or enter your own server. It sees the swap's Bitcoin addresses and your IP address."
   },
   "error": {
     "invalidWalletId": "Invalid wallet id",
@@ -488,7 +491,24 @@
     "operationFailed": "{detail}",
     "minerCrashed": "The miner stopped unexpectedly. See the log below for details.",
     "soloUnsupported": "Solo mining needs a full node, which this device does not run. Choose pool mining.",
-    "minerEngineFailed": "The miner could not start on this device ({detail}). Updating \"Android System WebView\" from the Play Store may help."
+    "minerEngineFailed": "The miner could not start on this device ({detail}). Updating \"Android System WebView\" from the Play Store may help.",
+    "swapUnsupported": "Swaps are not available on this device.",
+    "swapCodeInvalid": "{detail}",
+    "swapWrongNetwork": "This swap is on {network}. Switch the network in Settings first.",
+    "swapUnknown": "This wallet has no swap with that code. Open the wallet you started or joined the swap with.",
+    "swapWrongCode": "This is not the code this swap needs now.",
+    "swapOwnCode": "This is your own code: send it to the other person.",
+    "swapAlreadyJoined": "You have already joined this swap.",
+    "swapAlreadyHaveLock": "This swap already has a lock code from the other person.",
+    "swapContractMismatch": "The other side's contract does not pay this wallet. Check that you both used the codes of this swap.",
+    "swapAmountTooSmall": "Swaps start at {lbc} LBC and {btc} BTC: smaller amounts would mostly go to network fees.",
+    "swapAmountTooLarge": "While swaps are new, they are limited to {btc} BTC.",
+    "swapBtcAddressInvalid": "Invalid Bitcoin address ({detail})",
+    "swapNotReady": "This swap cannot do that now.",
+    "swapTooLate": "Too late to lock: the other side's coins are locked for less than {hours} more hours. Start a new swap.",
+    "swapNoExplorer": "Set a Bitcoin explorer (Esplora) server for swaps in Settings first.",
+    "swapCannotCancel": "Your coins are already locked; they come back automatically after the lock time if the swap does not finish.",
+    "swapStillActive": "This swap is still running."
   },
   "notice": {
     "received": {
@@ -531,7 +551,19 @@
       "title": "The node stopped",
       "message": "The built-in node stopped unexpectedly ({detail}). The wallet is using public servers until it runs again."
     },
-    "error": "Something went wrong"
+    "error": "Something went wrong",
+    "swapReadyToLock": {
+      "title": "Swap: your turn",
+      "message": "The other person's coins are locked and confirmed. Open Swap to lock your {coin}."
+    },
+    "swapCompleted": {
+      "title": "Swap completed",
+      "message": "Your {coin} has arrived."
+    },
+    "swapRefunded": {
+      "title": "Swap ended",
+      "message": "Your {coin} came back to you."
+    }
   },
   "create": {
     "defaultName": "My LBC Wallet",
@@ -889,5 +921,139 @@
     "issued": "Created so far",
     "total": "Total supply, ever",
     "hint": "From LBRY's reward rules, which every node checks: the reward goes down by 1 LBC in steps that get longer over time, until it reaches zero. After that, miners earn transaction fees only. Block 0 created 400,000,000 LBC (LBRY's pre-mine); all other LBC is paid to miners."
+  },
+  "swap": {
+    "title": "Swap",
+    "sub": "Trade LBC and Bitcoin directly with another person — no exchange, no middleman.",
+    "newSwap": "Start a swap",
+    "joinSwap": "Join with a code",
+    "list": "Your swaps",
+    "none": "No swaps yet.",
+    "how": {
+      "title": "How a swap works",
+      "text": "You and the other person agree on the amounts, for example in a chat. One of you starts a swap and sends the invite code; the other joins. Each of you locks coins in a contract on its own chain, and your wallets finish the swap by themselves: either both of you get paid, or both get your coins back after the lock time. Nobody can take your coins without giving you theirs."
+    },
+    "safety": {
+      "title": "Before you swap",
+      "text": "Swaps are new and have not been audited: start with small amounts. Keep LBC Wallet open with this wallet unlocked until the swap shows \"Completed\" — the wallet has to act before the lock times end. The Bitcoin side is read through blockstream.info and checked against mempool.space (Settings → Network)."
+    },
+    "start": {
+      "title": "Start a swap",
+      "agreeFirst": "Agree on the amounts with the other person first. You lock second, after their coins are confirmed.",
+      "direction": "You give",
+      "giveLbc": "LBC, for Bitcoin",
+      "giveBtc": "Bitcoin, for LBC",
+      "lbcAmount": "LBC amount",
+      "btcAmount": "Bitcoin amount",
+      "price": "Price: 1 LBC = {price} BTC ({lbcPerBtc} LBC per BTC)",
+      "btcReceive": "Your Bitcoin address, to receive the Bitcoin",
+      "btcRefund": "Your Bitcoin address, for a refund",
+      "btcAddressHint": "Any Bitcoin address of yours (bc1…, 1… or 3…), for example from your Bitcoin wallet.",
+      "fee": "Bitcoin network fee to collect or refund: about {sats} sats ({rate} sat/vB) right now.",
+      "create": "Create the invite"
+    },
+    "join": {
+      "title": "Join a swap",
+      "paste": "Paste the invite code you received",
+      "isLock": "This is a lock code. Open the swap it belongs to (in \"Your swaps\") and paste it there.",
+      "known": "You already have this swap; open it in \"Your swaps\".",
+      "summary": "You give {give} and get {get}",
+      "firstNote": "You lock first. If the other person does not continue, your coins come back to you after 48 hours.",
+      "join": "Join the swap"
+    },
+    "stage": {
+      "send-invite": "Send the invite",
+      "lock": "Your turn: lock",
+      "pay-btc": "Pay the Bitcoin",
+      "send-lock": "Send your lock code",
+      "checking": "Waiting for confirmations",
+      "claiming": "Collecting",
+      "refund-waiting": "Waiting for the refund",
+      "refunding": "Refund sent",
+      "completed": "Completed",
+      "refunded": "Refunded",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    },
+    "stageText": {
+      "send-invite": "Send this invite code to the person you agreed the swap with. They lock their {other} first and send you a lock code: paste it below.",
+      "lockStarter": "Their {get} is locked and confirmed. Lock your {give} now; your wallet then collects theirs by itself.",
+      "lockJoiner": "You lock your {give} first. If the other person does not continue, it comes back to you after 48 hours.",
+      "pay-btc": "From your Bitcoin wallet, send exactly the amount below to this address, in a single payment. LBC Wallet notices the payment by itself.",
+      "sendLockStarter": "Your {give} is locked. Send this lock code to the other person. When they collect your {coin}, this wallet collects their {other} by itself.",
+      "sendLockJoiner": "Your {give} is locked. Send this lock code to the other person and paste their lock code below when you get it.",
+      "checking": "The other person's {other} is locked: {n} of {required} confirmations. Nothing to do but wait (about 20 minutes for Bitcoin, 30 for LBC).",
+      "claiming": "Your wallet is collecting {get}. This takes a block or two.",
+      "refund-waiting": "The swap did not finish. Your {give} comes back to you by itself after {time}. Keep LBC Wallet open with this wallet unlocked.",
+      "refunding": "Your {give} is on its way back to you.",
+      "completed": "You received {get}.",
+      "refunded": "Your {give} came back to you.",
+      "cancelled": "The swap was cancelled before any of your coins were locked.",
+      "failed": "The other person took their coins back before this wallet could collect them. Keep LBC Wallet open during swaps."
+    },
+    "problem": {
+      "their-contract-invalid": "The other side's contract is not what was agreed ({reasons}). The swap was stopped; do not pay anything for it.",
+      "too-late-to-lock": "Too late to lock: the other side's coins would not stay locked long enough. Nothing of yours was locked.",
+      "too-late-to-claim": "The other side locked too late, so this wallet will not reveal the secret now. Your coins come back after the lock time.",
+      "underpaid": "The Bitcoin payment ({paid}) is less than the agreed {expected}. The other side will not accept it; it comes back after the lock time.",
+      "explorer": "Cannot reach the Bitcoin explorer right now ({detail}). Trying again.",
+      "claim-failed": "The other side took their coins back before this wallet's claim was confirmed.",
+      "cancelled": "Cancelled."
+    },
+    "reason": {
+      "not-a-contract": "not a swap contract",
+      "wrong-recipient": "it does not pay this wallet",
+      "amount-too-low": "the amount is too low",
+      "wrong-secret-hash": "it uses another secret",
+      "locktime-too-early": "it unlocks too soon",
+      "locktime-too-late": "it stays locked too long",
+      "unconfirmed": "not confirmed yet"
+    },
+    "event": {
+      "created": "Invite created",
+      "joined": "Joined the swap",
+      "contract": "Contract created",
+      "locked": "Your coins locked",
+      "payment-seen": "Bitcoin payment seen",
+      "their-lock": "Their lock code received",
+      "their-lock-confirmed": "Their coins confirmed",
+      "their-lock-invalid": "Their contract rejected",
+      "secret": "Secret seen on the chain",
+      "claim-sent": "Collecting",
+      "completed": "Completed",
+      "claim-failed": "Collecting failed",
+      "refund-sent": "Refund sent",
+      "refunded": "Refunded",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    },
+    "role": {
+      "starter": "You started it (you lock second)",
+      "joiner": "You joined (you lock first)"
+    },
+    "roleLabel": "Role",
+    "codeLabel": "Code to send",
+    "codeHint": "It contains only public data: amounts, addresses and the contract. Send it in your chat with the other person.",
+    "copyCode": "Copy code",
+    "pasteLock": "Paste their lock code",
+    "continue": "Continue",
+    "lockLbc": "Lock {amount}",
+    "lockBtc": "Show where to pay",
+    "payAddress": "Bitcoin address of the contract",
+    "payAmount": "Exact amount",
+    "paying": "Waiting for your payment…",
+    "cancel": "Cancel swap",
+    "cancelConfirm": "Cancel? Only if you have not paid anything for this swap.",
+    "remove": "Remove from the list",
+    "details": "Details",
+    "receiveTo": "You receive at",
+    "refundTo": "Refunds go to",
+    "ours": "Your contract",
+    "theirs": "Their contract",
+    "confirmations": "{n} of {required} confirmations",
+    "refundFrom": "Can return to its owner after {time}",
+    "claimTx": "Collect transaction",
+    "refundTx": "Refund transaction",
+    "history": "History"
   }
 }

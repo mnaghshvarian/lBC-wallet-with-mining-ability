@@ -103,6 +103,17 @@ export function createApi(transport: ApiTransport): LbcApi {
       estimate: () => call('miner:estimate'),
       poolBalance: () => call('miner:poolBalance'),
     },
+    swap: {
+      list: () => call('swap:list'),
+      start: (params) => call('swap:start', params),
+      inspect: (code) => call('swap:inspect', code),
+      join: (params) => call('swap:join', params),
+      accept: (params) => call('swap:accept', params),
+      lock: (params) => call('swap:lock', params),
+      cancel: (id) => call('swap:cancel', id),
+      remove: (id) => call('swap:remove', id),
+      btcFee: () => call('swap:btcFee'),
+    },
     price: {
       get: () => call('price:get'),
     },
