@@ -7,7 +7,7 @@ import { MinerService } from './miner-service';
 import { PriceService } from './price-service';
 import { registerIpc } from './ipc';
 import { initLog, log } from './log';
-import type { LbcEvents } from '../shared/api';
+import type { LbcEvents, Settings } from '../shared/api';
 
 // Sandbox every renderer process, unless the OS sandbox was explicitly disabled
 // with --no-sandbox (needed on some Linux setups); forcing it then would crash
@@ -37,6 +37,14 @@ if (!app.requestSingleInstanceLock()) {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(event, payload);
   };
 
+  // No spell checking anywhere (recovery phrases are typed into this app). With
+  // no languages configured Chromium also skips downloading dictionaries from
+  // Google at startup (setting a language list is a no-op on macOS).
+  app.on('session-created', (ses) => {
+    ses.setSpellCheckerEnabled(false);
+    ses.setSpellCheckerLanguages([]);
+  });
+
   app.on('second-instance', () => {
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -53,8 +61,10 @@ if (!app.requestSingleInstanceLock()) {
       nativeTheme.themeSource = settings.get().theme;
     };
     applyTheme();
+    await applyProxy(settings.get());
     settings.onChange((next, prev) => {
       if (next.theme !== prev.theme) applyTheme();
+      if (JSON.stringify(next.socks5) !== JSON.stringify(prev.socks5)) void applyProxy(next);
     });
 
     const price = new PriceService(settings, (p) => send('price:update', p));
@@ -113,6 +123,23 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
   });
+}
+
+/**
+ * Hubs and pools connect through the SOCKS5 proxy themselves; this routes the
+ * app's HTTPS requests (prices, pool balance) the same way. Chromium resolves
+ * host names through a socks5:// proxy, so DNS does not leak either.
+ */
+async function applyProxy(settings: Settings): Promise<void> {
+  const ses = session.defaultSession;
+  const { enabled, host, port } = settings.socks5;
+  try {
+    await ses.setProxy(enabled ? { proxyRules: `socks5://${host}:${port}` } : { mode: 'direct' });
+    await ses.closeAllConnections();
+    log('info', 'app', enabled ? `HTTPS requests use the SOCKS5 proxy ${host}:${port}` : 'HTTPS requests connect directly');
+  } catch (err) {
+    log('error', 'app', `could not apply proxy settings: ${(err as Error).message}`);
+  }
 }
 
 function hardenSessions(): void {
