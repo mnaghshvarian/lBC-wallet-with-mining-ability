@@ -25,6 +25,15 @@ Check your download against the `SHA256SUMS-*.txt` files below.
 
 ### What's new in this version (1.3.0)
 
+* **Reviewed and hardened.** Before this release the whole code was reviewed line by line by a
+  second, independent AI model (not a human security audit, which is still needed). What it found
+  and what was done is in `docs/REVIEW-2026-10.md`. Among the fixes: the other side's LBC payment
+  in a swap is now checked against a chain of block headers *and* a second hub before coins move;
+  a Bitcoin explorer that lists a false spend first can no longer hide the other side's claim;
+  claims and refunds no longer depend on one explorer, and a wrong fee estimate cannot burn the
+  amount; amounts typed with a decimal comma ("12,5") or Persian, Arabic or Hindi digits are read
+  correctly; the auto-lock waits while a swap runs; a hidden second unlock can no longer start;
+  the miner no longer follows a pool's redirect to another host.
 * **Market: buy and sell LBC for Bitcoin with other people, without an exchange.** A new
   *Market* page shows offers from other LBC Wallet users, priced against the exchange price
   (MEXC) in sats, US dollars and Monero. Take an offer, or post your own with your price and the

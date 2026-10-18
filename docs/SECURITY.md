@@ -15,7 +15,7 @@ move your funds.
 | --- | --- |
 | Someone copies your wallet file | The recovery phrase/key is encrypted with your password using scrypt (N=2¹⁷, r=8, p=1, 128 MB) and AES-256-GCM. Use a long, unique password. |
 | Malware on the device | Not fully preventable by any software wallet. Keys are decrypted only for signing (default), the wallet auto-locks, and sensitive clipboard contents are cleared after 30 s. Use a clean, updated system; on Android, install apps only from sources you trust. |
-| A malicious or broken hub server | Servers never receive keys. Transaction data is checked against the requested txid, confirmations are verified with merkle proofs against proof-of-work headers (re-checked with fresh data if a reorganisation replaces a block), and transactions are signed locally. A malicious hub can still hide transactions or lie about unconfirmed ones; use several hubs or your own node for maximum assurance. |
+| A malicious or broken hub server | Servers never receive keys, and transactions are signed locally. Transaction data is checked against the requested txid, and every block header a hub announces must carry valid LBRY proof of work. For ordinary payments the confirmation count comes from the hub: the wallet checks the merkle proof and the block's own proof of work (re-checked with fresh data if a reorganisation replaces a block), **not** that the block is part of the real chain — so a hub that lies can show a payment as confirmed that is not, though it can never touch your keys or coins. Before coins move in a swap, the stronger check described under *Swaps* applies. Use your own node for maximum assurance. |
 | A compromised UI page (desktop) | The renderer is sandboxed with a strict Content-Security-Policy, cannot navigate or open windows, and can only call a narrow, validated API. It never holds private keys (except the recovery phrase on the backup screen). |
 | Tampering with the installed desktop app | Electron fuses disable `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and `--inspect`, the app only loads from its archive, and on Windows and macOS the archive's integrity is validated at startup. Signed builds add OS-level verification. |
 | A fake download | Download only from the project's GitHub Releases page and compare the SHA-256 checksum. The bundled node (`lbcd`) is built in CI from LBRY's published source, whose hash is pinned in `scripts/build-lbcd.sh`. |
@@ -101,16 +101,34 @@ can take the other's coins:
   the other side's contract byte by byte and checks it. It must pay to this wallet's key, use the
   same secret hash and have a lock time in the agreed window. The payment into it must be large
   enough and confirmed.
-  * **LBC** needs 12 confirmations. When the wallet uses public hubs, the payment is also checked
-    with a merkle proof against proof-of-work headers.
+  * **LBC** needs 12 confirmations. When the wallet uses public hubs, the payment must come with
+    a merkle proof, and the hub must send every block header from the payment's block to the
+    current tip: each with valid proof of work, each linking to the one before, and each with
+    exactly the difficulty LBRY's rule requires (`core/src/wallet/headers.ts`, ported from lbcd).
+    A second hub on another host must then report the same blocks — the payment's and the twelve
+    that confirm it. If the hubs disagree, or the headers do not hold together, the swap stops
+    with a visible problem and nothing of yours moves. With a single hub configured (your own
+    choice, typically your own hub) that hub's word is taken and a warning is logged; with your
+    own node, the node checks everything itself.
   * **Bitcoin** needs 2 confirmations. Every explorer (blockstream.info and mempool.space, run
     by different companies) must report the payment the same way.
 * **Servers can lie, so the wallet checks.** A server could hide a transaction, or report one
   that doesn't exist. Only two transactions can ever spend a swap contract: the owner's refund
   after the lock time, or the claim that carries the secret. The wallet ignores any other
-  reported spend, so a lying server cannot block a refund or a claim. On Bitcoin every explorer
-  is asked, so one that hides the other person's claim is outvoted. On LBC the wallet reads one
-  server at a time. For large swaps, use the built-in node or your own node.
+  reported spend, so a lying server cannot block a refund or a claim. Every reported spend is
+  examined, so a false one listed first cannot hide the real claim behind it. On Bitcoin every
+  explorer is asked, so one that hides the other person's claim is outvoted, and one that is down
+  or rate-limited does not stop a claim or refund: the tip and the fee come from whichever
+  explorers answer (the median fee), and the fee rate is bounded (at most 1,000 sat/vB and a
+  quarter of the amount), so a wrong or hostile estimate cannot burn the amount. On LBC the
+  wallet reads one server at a time. For large swaps, use the built-in node or your own node.
+* **One payment per contract.** The wallet tracks the first payment into a contract. If a
+  payment was too small, do not "top it up" with a second one: the app refunds only the first;
+  wait for the refund and start again. The wallet writes a contract to disk before paying into
+  it, so a crash right after paying cannot lose its lock time.
+* **The inactivity auto-lock waits** while a swap is running, so the wallet can collect or
+  refund by itself; locking it yourself, closing the app, sleep and the screen lock still stop
+  it.
 * **Timing margins.** The person who joined reveals the secret only while the other contract
   still has at least 4 hours left. Refunds wait until each chain's own clock has passed the lock
   time. That clock lags real time by up to about 20 minutes on LBC and 90 minutes on Bitcoin.
@@ -157,7 +175,10 @@ everything in the section above applies to its trades. On top of that:
   whose maker never locks keeps the taker's coins until their refund after 48 hours. Offers
   cannot yet prove that their maker holds the coins (planned: proof of funds). The app shows its
   own warning about this before the Market can be used.
-* **Stale or replayed messages** are ignored: takes older than 10 minutes, answers to takes that
+* **Patience when offline.** A maker gives up on a taker who has not locked only once the relays
+  have delivered everything they hold, so after sleep or an outage a lock code that is still on
+  its way is not thrown away; a wallet that was locked meanwhile asks the relays again on unlock.
+* **Stale or replayed messages** are ignored: takes older than 7 minutes, answers to takes that
   gave up, and any message for a trade in another state.
 * **Your IP address** is visible to the relays you connect to (route the app through Tor with the
   SOCKS5 option on desktop to hide it).

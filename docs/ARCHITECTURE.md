@@ -195,10 +195,17 @@ of the core's swap module:
 * **Codes** (`codes.ts`): `lbcswap:` + base64url JSON + a checksum. An invite carries the
   amounts and the starter's key hash; a lock code carries a contract and its funding outpoint.
 * **Chains** (`chain.ts`): LBC through the wallet's own backend (hub or node). A funding payment
-  from a hub must come with a merkle proof against proof-of-work headers. Bitcoin goes through
-  every configured Esplora server (`net/esplora.ts`). Contract transactions are merged from all
-  of them, so one server can't hide the other person's claim. Funding counts only when every
-  server reports it the same way, and broadcasts go to all of them.
+  from a hub must come with a merkle proof, with the run of headers from the payment's block to
+  the tip (linked, valid proof of work, exactly the difficulty LBRY's rule requires —
+  `wallet/headers.ts`, ported from lbcd's `calcNextRequiredDifficulty`), and with the agreement
+  of a second hub on another host on those blocks (`ChainBackend.crossCheckHeaders`); the hub
+  client also refuses any announced tip without valid proof of work. With a single configured
+  hub its word is taken, with a warning. Bitcoin goes through every configured Esplora server
+  (`net/esplora.ts`). Contract transactions are merged from all of them, and every reported
+  spend is examined, so one server can't hide the other person's claim; the tip height and the
+  fee estimate (median) come from whichever servers answer, and the fee rate is bounded in the
+  engine. Funding counts only when every server reports it the same way, and broadcasts go to
+  all of them.
 * **Untrusted spends:** a reported spend of our contract counts only if it is our refund or
   carries the secret, and a spend of theirs only if it is our claim or comes after their lock
   time. Nothing else can exist, so a lying server can't stop a refund or a claim.
@@ -237,7 +244,11 @@ messages:
   offer) and takes the amount off the offer until the trade ends; the taker's wallet joins only
   an invite with exactly the amounts it took. Lock codes are sent as soon as each side's coins
   are locked. Time limits: 10 minutes for an answer, 20 minutes for the taker to lock (enforced
-  by the swap's `lockBy`), 40 minutes before the maker gives up.
+  by the swap's `lockBy`), 40 minutes before the maker gives up — but only once the relays have
+  delivered everything they hold for the trade (an end-of-stored-events after the deadline with a
+  relay connected), so a lock code delayed by sleep or an outage is not thrown away; takes older
+  than 7 minutes are ignored. On lock, the message subscription is dropped so the relays resend
+  on unlock.
 * **State** lives in the wallet's sealed state (`WalletState.market`): offers with their keys,
   and trades with their keys, the last message (sent again until a relay takes it) and the swap
   they became. Offers are published only while the wallet is open, and taken down when it locks.

@@ -804,6 +804,14 @@ fees would eat too much. The largest is **0.05 BTC**, while swaps are new.
 > * **Pay exactly the amount shown, in one payment,** and only to the address shown in your own
 >   LBC Wallet, never to an address someone sends you in a chat.
 > * Swaps are new and **not audited**. Start with the smallest amount.
+> * **Pay into a contract once.** If the app says your Bitcoin payment was too small, do not send
+>   a second payment to the same address: the app refunds only the first one. Wait for the refund
+>   and start a new swap.
+> * The inactivity auto-lock waits while a swap runs, so the wallet can collect or refund by
+>   itself. Locking the wallet yourself, closing the app, sleep and the screen lock still stop it.
+> * With public hubs, the wallet asks a **second hub** to confirm the other side's LBC payment
+>   before it acts on it. If the hubs disagree, the swap shows a problem and nothing of yours
+>   moves: switch hubs or use your own node (*Settings → Network*).
 > * The wallet reads the Bitcoin blockchain through blockstream.info and double-checks
 >   everything with mempool.space, so those two services see the contract addresses (not your
 >   wallet). You can use your own Bitcoin server instead (**Settings → Network**).

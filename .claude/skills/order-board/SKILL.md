@@ -33,7 +33,14 @@ description: Work on LBC Wallet's Market (the Nostr order board for LBC ↔ Bitc
   invite | decline, lock, lock. Each offer has its own key; each take another.
 * Roles: maker = swap starter (locks second, within 12 h); taker = joiner (locks first, for 48 h).
 * Timings (`MARKET_TIMING`): answer within 10 min; taker locks within 20 min (swap `lockBy`);
-  maker gives up after 40 min; takes older than 10 min are ignored.
+  maker gives up after 40 min, but only when `caughtUp()` (a relay connected and an EOSE on the
+  message subscription since the last gap — sleep is detected by a late tick); takes older than
+  7 min are ignored. The message subscription is dropped on lock so relays resend on unlock.
+* LBC funding in a swap (`core/src/swap/chain.ts` `verifyFunding`) passes only with a merkle
+  proof, a header run to the tip that obeys `wallet/headers.ts` (LBRY's retarget rule) and a
+  second hub's agreement (`HubBackend.crossCheckHeaders`); a single configured hub is taken at
+  its word (warning). Verdict reasons: unconfirmed, mismatch, bad-chain, disagreement,
+  single-server, cross-check-failed (`swap.problem.lbc-unverified` in the UI).
 * Changing the wire format is a protocol change: bump `v`, keep reading the old one for a while,
   and update the tests and docs/ARCHITECTURE.md ("Market").
 
