@@ -41,7 +41,9 @@ Rules that have not changed:
 • Keep the app open until a swap or trade says Done. Pay into a swap contract once, never twice.
 
 Where: GitHub, repository mnaghshvarian / lBC-wallet-with-mining-ability, Releases page.
-Windows, Mac, Linux and Android, in 15 languages.
+Windows, Mac, Linux and Android, in 15 languages. New with this version: a video manual, six
+short narrated videos (installing, your first wallet, restore and send, mining and the node, the
+Market, settings), next to the written manual on the Releases page.
 
 If you can read code, the best help now is to read it and report what you find (privately, through
 a security advisory on the repository, for anything that could cost someone money). If you run a
