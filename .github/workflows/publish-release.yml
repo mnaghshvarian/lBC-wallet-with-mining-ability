@@ -3,7 +3,13 @@ name: Publish release
 # Publishes a draft that the Release workflow built, after checking that every
 # file the README links to is attached. Run it from the Actions tab ("Run
 # workflow") with the version, e.g. 1.3.0. The tag is created on the commit the
-# newest successful Release run built from, unless a commit is given.
+# newest successful Release run built from (or the commit given), so the tag's
+# source code always matches the files. Changes made with the workflow's own
+# token do not start other workflows, so creating the tag here does not rebuild
+# the release.
+#
+# A release that is already published can only have its tag moved, with
+# "fix_tag", and only right after publishing, before anyone relies on the tag.
 
 on:
   workflow_dispatch:
@@ -15,6 +21,11 @@ on:
         description: 'Commit the files were built from (default: the newest successful Release run)'
         required: false
         default: ''
+      fix_tag:
+        description: 'Move an existing tag to that commit (only right after publishing)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
@@ -28,14 +39,21 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       TAG: v${{ inputs.version }}
+      FIX_TAG: ${{ inputs.fix_tag }}
     steps:
-      - name: Check the draft and its files
+      - name: Check the release and its files
+        id: release
         run: |
           set -euo pipefail
           gh release view "$TAG" --json isDraft,name,assets > release.json
-          jq -e '.isDraft' release.json > /dev/null || { echo "::error::$TAG is already published"; exit 1; }
+          draft=$(jq -r '.isDraft' release.json)
+          echo "draft=$draft" >> "$GITHUB_OUTPUT"
+          if [ "$draft" != true ] && [ "$FIX_TAG" != true ]; then
+            echo "::error::$TAG is already published (run again with fix_tag to move its tag)"
+            exit 1
+          fi
           names=$(jq -r '.assets[].name' release.json)
-          printf 'Files on the draft:\n%s\n' "$names"
+          printf 'Files on the release:\n%s\n' "$names"
           missing=0
           for f in LBC-Wallet-Setup-x64.exe LBC-Wallet-Portable-x64.exe \
                    LBC-Wallet-mac-arm64.dmg LBC-Wallet-mac-x64.dmg \
@@ -44,7 +62,7 @@ jobs:
                    LBC-Wallet-android.apk \
                    SHA256SUMS-Windows.txt SHA256SUMS-macOS.txt SHA256SUMS-Linux.txt SHA256SUMS-Android.txt \
                    LBC-Wallet-Manual.pdf DISCLAIMER.md; do
-            grep -qx "$f" <<< "$names" || { echo "::error::missing on the draft: $f"; missing=1; }
+            grep -qx "$f" <<< "$names" || { echo "::error::missing on the release: $f"; missing=1; }
           done
           [ "$missing" = 0 ]
       - name: Find the commit the files were built from
@@ -57,17 +75,34 @@ jobs:
             COMMIT=$(gh run list --workflow release.yml --status success --limit 1 --json headSha --jq '.[0].headSha')
           fi
           [ -n "$COMMIT" ] || { echo "::error::no successful Release run found; pass the commit"; exit 1; }
-          echo "The tag will point at $COMMIT"
+          echo "The files were built from $COMMIT"
           echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
-      - name: Publish
+      - name: Point the tag at that commit
         env:
           COMMIT: ${{ steps.built.outputs.commit }}
         run: |
           set -euo pipefail
-          gh release edit "$TAG" --target "$COMMIT" && echo "tag will point at $COMMIT"
+          if sha=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null); then
+            if [ "$sha" = "$COMMIT" ]; then
+              echo "$TAG is already at $COMMIT"
+            elif [ "$FIX_TAG" = true ]; then
+              gh api -X PATCH "repos/$GH_REPO/git/refs/tags/$TAG" -f sha="$COMMIT" -F force=true > /dev/null
+              echo "moved $TAG from $sha to $COMMIT"
+            else
+              echo "::error::$TAG is at $sha, not at $COMMIT; run again with fix_tag to move it"
+              exit 1
+            fi
+          else
+            gh api -X POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$TAG" -f sha="$COMMIT" > /dev/null
+            echo "created $TAG at $COMMIT"
+          fi
+      - name: Publish
+        if: steps.release.outputs.draft == 'true'
+        run: |
+          set -euo pipefail
           gh release edit "$TAG" --draft=false && echo "published"
           gh release edit "$TAG" --latest && echo "marked as the latest release"
-      - name: Check the download links
+      - name: Check the download links and the tag
         run: |
           set -euo pipefail
           sleep 15
@@ -76,4 +111,5 @@ jobs:
             echo "$f: HTTP $code"
             case "$code" in 200|302) ;; *) echo "::error::$f is not downloadable"; exit 1;; esac
           done
-          echo "Published: https://github.com/$GH_REPO/releases/tag/$TAG"
+          echo "$TAG is at $(gh api "repos/$GH_REPO/git/ref/tags/$TAG" --jq '.object.sha')"
+          echo "Release: https://github.com/$GH_REPO/releases/tag/$TAG"

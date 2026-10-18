@@ -4,7 +4,7 @@ name: Release
 # attaches them (with SHA-256 checksums) to a draft GitHub release. Either push a
 # tag like v1.1.0, or run it from the Actions tab ("Run workflow") with the
 # version number; run it without a version to only build (artifacts in the run).
-# The draft is published by hand after checking it.
+# The draft is published by hand after checking it: Actions → Publish release (publish-release.yml).
 #
 # Optional signing secrets (see docs/BUILDING.md):
 #   Android: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
