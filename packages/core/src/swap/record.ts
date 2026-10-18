@@ -54,6 +54,8 @@ export interface SwapRecord {
   refundTo: string;
   /** The other side's claim key hash on the chain we give (hex). */
   theirPkh?: string;
+  /** The joiner must lock before this time (Unix seconds), when the swap came from the order board. */
+  lockBy?: number;
   ours?: SwapContractRecord;
   theirs?: SwapContractRecord;
   claim?: SwapSpendRecord;

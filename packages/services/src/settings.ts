@@ -1,3 +1,4 @@
+import { parseWebSocketUrl } from '@lbcwallet/core';
 import type { HubEndpoint, MiningSettings, NodeSettings, Settings } from './api.js';
 import type { JsonFiles } from './platform.js';
 
@@ -43,6 +44,8 @@ export function defaultSettings(cpuCount: number, device: 'desktop' | 'phone' = 
     explorerTxUrl: 'https://explorer.lbry.com/tx/{txid}',
     explorerAddressUrl: 'https://explorer.lbry.com/address/{address}',
     swap: { btcExplorer: '' },
+    market: { relays: [] },
+    acceptedMarketTerms: '',
     lastWalletId: null,
     developerMode: false,
   };
@@ -132,9 +135,28 @@ export function sanitize(input: Partial<Settings> | null | undefined, base: Sett
     explorerTxUrl: str(i.explorerTxUrl, base.explorerTxUrl, 300),
     explorerAddressUrl: str(i.explorerAddressUrl, base.explorerAddressUrl, 300),
     swap: { btcExplorer: btcExplorer(i.swap?.btcExplorer, base.swap.btcExplorer) },
+    market: { relays: i.market?.relays !== undefined ? relays(i.market.relays) : base.market.relays },
+    acceptedMarketTerms: str(i.acceptedMarketTerms, base.acceptedMarketTerms, 40),
     lastWalletId: i.lastWalletId === null || typeof i.lastWalletId === 'string' ? i.lastWalletId : base.lastWalletId,
     developerMode: bool(i.developerMode, base.developerMode),
   };
+}
+
+/** Relay addresses: wss://, or ws:// to this computer (a local test relay); at most 10. */
+function relays(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  const out: string[] = [];
+  for (const item of v) {
+    if (typeof item !== 'string' || item.length > 300) continue;
+    const url = item.trim().replace(/\/+$/, '');
+    try {
+      parseWebSocketUrl(url);
+    } catch {
+      continue;
+    }
+    if (!out.includes(url)) out.push(url);
+  }
+  return out.slice(0, 10);
 }
 
 /** An Esplora base URL: https, or http to this computer (a local test server). */

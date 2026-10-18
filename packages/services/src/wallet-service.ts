@@ -45,6 +45,7 @@ import { createBackend, type LocalNode } from './backend.js';
 import { UserError } from './errors.js';
 import type { SettingsStore } from './settings.js';
 import { scopedLogger, type Logger, type Platform } from './platform.js';
+import type { MarketWallet } from './market-service.js';
 import type { SwapWallet } from './swap-service.js';
 
 
@@ -511,6 +512,24 @@ export class WalletService {
         const { txid } = await this.send({ draftId: draft.id, password, label });
         return { txid, vout };
       },
+    };
+  }
+
+  /** The open wallet as the order board sees it; null while locked. */
+  marketWallet(): MarketWallet | null {
+    const session = this.session;
+    const engine = this.engine;
+    if (!session || !engine) return null;
+    return {
+      network: session.network.name,
+      watchOnly: session.watchOnly,
+      state: () => (engine.state.market ??= { offers: [], trades: [] }),
+      save: (market) => {
+        if (this.engine !== engine) return; // locked meanwhile
+        engine.state.market = market;
+        engine.stateChanged();
+      },
+      spendable: () => engine.getBalance().available,
     };
   }
 

@@ -73,6 +73,18 @@ export const ERROR_MESSAGES = {
   swapNoExplorer: 'Set a Bitcoin explorer (Esplora) server for swaps in Settings first.',
   swapCannotCancel: 'Your coins are already locked; they come back automatically after the lock time if the swap does not finish.',
   swapStillActive: 'This swap is still running.',
+  marketUnsupported: 'The order board is not available on this device.',
+  marketTermsNotAccepted: 'Read and accept the order board warning first (Market page).',
+  marketOfferGone: 'This offer is no longer on the board.',
+  marketOwnOffer: 'This is your own offer.',
+  marketOutOfRange: 'Choose between {min} and {max} LBC for this offer.',
+  marketNotEnoughLbc: 'This needs {needed} LBC, but {available} LBC is spendable.',
+  marketMinTooSmall: 'The smallest part must be worth at least {btc} BTC (about {lbc} LBC at your price), or the network fees would eat it.',
+  marketLockExpired: 'The time to lock for this trade has passed; nothing was locked. Take the offer again if it is still there.',
+  marketNoRelay: 'No relay could be reached. Check your internet connection, or the relay list in Settings → Network.',
+  marketTooMany: 'You already have {count} open offers. Take one down first.',
+  marketUnknownTrade: 'This wallet has no such trade.',
+  marketTradeRunning: 'This trade is still running.',
   operationFailed: '{detail}',
 } as const;
 

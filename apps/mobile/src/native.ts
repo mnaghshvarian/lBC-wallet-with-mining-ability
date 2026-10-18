@@ -1,11 +1,12 @@
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import type { PowerState } from './miner-service';
 
-/** One line received on a socket, or the socket closing. */
+/** One line (or, on a raw socket, a chunk of bytes in base64) received, or the socket closing. */
 export interface SocketEvent {
   id: string;
-  type: 'line' | 'close';
+  type: 'line' | 'data' | 'close';
   line?: string;
+  data?: string;
   error?: string;
 }
 
@@ -29,9 +30,13 @@ export interface LbcNativePlugin {
   /** Atomically replaces a document. */
   writeFile(options: { name: string; content: string }): Promise<void>;
   deleteFile(options: { name: string }): Promise<void>;
-  /** Opens a TCP (or TLS, with certificate and host name checks) connection. */
-  socketConnect(options: { host: string; port: number; tls: boolean; timeoutMs: number }): Promise<{ id: string }>;
-  socketWrite(options: { id: string; data: string }): Promise<void>;
+  /**
+   * Opens a TCP (or TLS, with certificate and host name checks) connection.
+   * A raw connection reports bytes (base64) instead of lines.
+   */
+  socketConnect(options: { host: string; port: number; tls: boolean; timeoutMs: number; raw?: boolean }): Promise<{ id: string }>;
+  /** Writes text, or bytes given in base64. */
+  socketWrite(options: { id: string; data: string; base64?: boolean }): Promise<void>;
   socketClose(options: { id: string }): Promise<void>;
   /** Blocks screenshots and hides the app preview while sensitive data is shown. */
   setSecure(options: { on: boolean }): Promise<void>;

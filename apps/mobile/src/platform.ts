@@ -17,6 +17,7 @@ export function androidPlatform(info: DeviceInfo, files: DurableFiles, sockets: 
     },
     // SOCKS5 is a desktop feature (the Android settings page hides it).
     lineTransport: (endpoint, options) => sockets.transport(endpoint, options.connectTimeoutMs),
+    byteTransport: (endpoint, options) => sockets.byteTransport(endpoint, options.connectTimeoutMs),
     fetchJson: async (url: string) => {
       if (!url.startsWith('https://')) throw new Error('only https URLs are allowed');
       // Native HTTP: no CORS restrictions, and the system's certificate checks.

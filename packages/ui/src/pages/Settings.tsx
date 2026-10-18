@@ -6,7 +6,7 @@ import { Badge, Button, Callout, CopyButton, Field, IconButton, Modal, PasswordI
 import { LanguagePicker } from '../components/LanguagePicker';
 import { TermsText } from './Terms';
 import { number } from '../lib/format';
-import type { HubEndpoint, HubTestResult, Settings } from '@lbcwallet/services/api';
+import { DEFAULT_RELAYS, type HubEndpoint, type HubTestResult, type Settings } from '@lbcwallet/services/api';
 
 type Tab = 'general' | 'network' | 'security' | 'wallet' | 'about';
 const TABS: Tab[] = ['general', 'network', 'security', 'wallet', 'about'];
@@ -138,6 +138,7 @@ function Network() {
   const [nodeTest, setNodeTest] = useState<HubTestResult | 'testing' | undefined>();
   const [socks, setSocks] = useState(s.socks5);
   const [btcExplorer, setBtcExplorer] = useState(s.swap.btcExplorer);
+  const [relays, setRelays] = useState(s.market.relays.join('\n'));
   const defaults = s.network === 'mainnet' ? MAINNET.defaultHubs : [];
   const caps = info.capabilities;
 
@@ -332,6 +333,42 @@ function Network() {
             spellCheck={false}
           />
           <Button onClick={() => void update({ swap: { btcExplorer: btcExplorer.trim() } })}>{t('common.save')}</Button>
+        </div>
+      </div>
+
+      <div className="card stack">
+        <div className="card-header">
+          <h3>{t('settings.relays')}</h3>
+        </div>
+        <div className="hint">{t('settings.relaysHint')}</div>
+        <textarea
+          className="input mono"
+          rows={5}
+          value={relays}
+          aria-label={t('settings.relays')}
+          placeholder={DEFAULT_RELAYS.join('\n')}
+          onChange={(e) => setRelays(e.target.value)}
+          dir="ltr"
+          spellCheck={false}
+        />
+        <div className="row">
+          <Button
+            onClick={() =>
+              void update({ market: { relays: relays.split(/\s+/).filter(Boolean) } }).then(() => {
+                // Addresses that are not wss:// are dropped by the settings.
+                const saved = useApp.getState().settings?.market.relays ?? [];
+                setRelays(saved.join('\n'));
+                if (relays.split(/\s+/).filter(Boolean).length !== saved.length) toast({ kind: 'error', title: t('settings.relays'), message: t('settings.relaysInvalid') });
+              })
+            }
+          >
+            {t('common.save')}
+          </Button>
+          {s.market.relays.length > 0 && (
+            <Button variant="ghost" onClick={() => void update({ market: { relays: [] } }).then(() => setRelays(''))}>
+              {t('settings.relaysDefault')}
+            </Button>
+          )}
         </div>
       </div>
     </div>

@@ -117,6 +117,13 @@ export function createApi(transport: ApiTransport): LbcApi {
     price: {
       get: () => call('price:get'),
     },
+    market: {
+      view: () => call('market:view'),
+      post: (params) => call('market:post', params),
+      withdraw: (id) => call('market:withdraw', id),
+      take: (params) => call('market:take', params),
+      dismiss: (id) => call('market:dismiss', id),
+    },
     on: (event, handler) => {
       if (!EVENT_CHANNELS.includes(event)) throw new Error(`unknown event ${String(event)}`);
       return transport.subscribe(event, (payload) => handler(payload as never));

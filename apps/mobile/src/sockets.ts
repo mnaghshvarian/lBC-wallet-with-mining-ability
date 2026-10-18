@@ -1,15 +1,17 @@
-import type { LineTransport, SocketEndpoint } from '@lbcwallet/core';
+import { fromBase64, toBase64, type ByteTransport, type LineTransport, type SocketEndpoint } from '@lbcwallet/core';
 import type { LbcNativePlugin, SocketEvent } from './native';
 
 interface Route {
-  line(line: string): void;
+  line?(line: string): void;
+  data?(bytes: Uint8Array): void;
   close(error?: Error): void;
 }
 
 /**
- * Newline-delimited sockets through the native plugin. One listener receives
- * every socket's events and routes them by id; events that arrive before the
- * JavaScript side knows the id are held briefly.
+ * Sockets through the native plugin: newline-delimited (hubs, pools) or raw
+ * (WebSockets to relays). One listener receives every socket's events and
+ * routes them by id; events that arrive before the JavaScript side knows the
+ * id are held briefly.
  */
 export class NativeSockets {
   private routes = new Map<string, Route>();
@@ -31,7 +33,8 @@ export class NativeSockets {
       this.early.set(e.id, held);
       return;
     }
-    if (e.type === 'line' && e.line !== undefined) route.line(e.line);
+    if (e.type === 'line' && e.line !== undefined) route.line?.(e.line);
+    else if (e.type === 'data' && e.data !== undefined) route.data?.(fromBase64(e.data));
     else if (e.type === 'close') route.close(e.error ? new Error(e.error) : undefined);
   }
 
@@ -71,6 +74,50 @@ export class NativeSockets {
       },
       onLine: (h) => {
         onLine = h;
+      },
+      onClose: (h) => {
+        onClose = h;
+      },
+    };
+  }
+
+  /** A raw byte stream (for WebSocket connections). */
+  byteTransport(endpoint: SocketEndpoint, timeoutMs: number): ByteTransport {
+    let id: string | null = null;
+    let closed = false;
+    let onData: (data: Uint8Array) => void = () => {};
+    let onClose: (error?: Error) => void = () => {};
+    const finish = (error?: Error) => {
+      if (closed) return;
+      closed = true;
+      if (id) this.routes.delete(id);
+      onClose(error);
+    };
+    return {
+      connect: async () => {
+        await this.listen();
+        const r = await this.plugin.socketConnect({ host: endpoint.host, port: endpoint.port, tls: !!endpoint.tls, timeoutMs, raw: true });
+        id = r.id;
+        this.routes.set(id, { data: (d) => !closed && onData(d), close: finish });
+        const held = this.early.get(id);
+        this.early.delete(id);
+        for (const e of held ?? []) this.dispatch(e);
+      },
+      send: (data) => {
+        if (!id || closed) return;
+        this.plugin.socketWrite({ id, data: toBase64(data), base64: true }).catch((err: unknown) => {
+          finish(err instanceof Error ? err : new Error(String(err)));
+        });
+      },
+      close: () => {
+        if (!id || closed) return;
+        const sid = id;
+        closed = true;
+        this.routes.delete(sid);
+        void this.plugin.socketClose({ id: sid }).catch(() => undefined);
+      },
+      onData: (h) => {
+        onData = h;
       },
       onClose: (h) => {
         onClose = h;

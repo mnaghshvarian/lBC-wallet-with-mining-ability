@@ -13,6 +13,7 @@ import { Receive } from './pages/Receive';
 import { ActivityPage } from './pages/Activity';
 import { Mining } from './pages/Mining';
 import { Swap } from './pages/Swap';
+import { Market } from './pages/Market';
 import { Contacts } from './pages/Contacts';
 import { SettingsPage } from './pages/Settings';
 import { Terms } from './pages/Terms';
@@ -70,6 +71,9 @@ export function App() {
       break;
     case 'mining':
       page = <Mining />;
+      break;
+    case 'market':
+      page = <Market />;
       break;
     case 'swap':
       page = <Swap />;

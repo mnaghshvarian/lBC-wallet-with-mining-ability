@@ -285,7 +285,8 @@
     "more": "More",
     "lock": "Lock wallet",
     "switchWallet": "Lock and switch wallet",
-    "swap": "Swap"
+    "swap": "Swap",
+    "market": "Market"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -437,7 +438,11 @@
     "deleteWarning": "Make sure you have your recovery phrase written down.",
     "deleteWarningStrong": "Without it, the funds in “{name}” are lost forever.",
     "swapExplorer": "Bitcoin explorer for swaps",
-    "swapExplorerHint": "Swaps read the Bitcoin chain from an Esplora server. Leave this empty to use blockstream.info, checked against mempool.space, or enter your own server. It sees the swap's Bitcoin addresses and your IP address."
+    "swapExplorerHint": "Swaps read the Bitcoin chain from an Esplora server. Leave this empty to use blockstream.info, checked against mempool.space, or enter your own server. It sees the swap's Bitcoin addresses and your IP address.",
+    "relays": "Order board relays",
+    "relaysHint": "Nostr relays that carry the Market's offers and trade messages (wss:// addresses, one per line). Leave empty for the default list below. Both sides of a trade need at least one relay in common.",
+    "relaysInvalid": "Some addresses were not saved: relays need a wss:// address.",
+    "relaysDefault": "Use the default relays"
   },
   "error": {
     "invalidWalletId": "Invalid wallet id",
@@ -508,7 +513,19 @@
     "swapTooLate": "Too late to lock: the other side's coins are locked for less than {hours} more hours. Start a new swap.",
     "swapNoExplorer": "Set a Bitcoin explorer (Esplora) server for swaps in Settings first.",
     "swapCannotCancel": "Your coins are already locked; they come back automatically after the lock time if the swap does not finish.",
-    "swapStillActive": "This swap is still running."
+    "swapStillActive": "This swap is still running.",
+    "marketUnsupported": "The order board is not available on this device.",
+    "marketTermsNotAccepted": "Read and accept the order board warning first (Market page).",
+    "marketOfferGone": "This offer is no longer on the board.",
+    "marketOwnOffer": "This is your own offer.",
+    "marketOutOfRange": "Choose between {min} and {max} LBC for this offer.",
+    "marketNotEnoughLbc": "This needs {needed} LBC, but {available} LBC is spendable.",
+    "marketMinTooSmall": "The smallest part must be worth at least {btc} BTC (about {lbc} LBC at your price), or the network fees would eat it.",
+    "marketLockExpired": "The time to lock for this trade has passed; nothing was locked. Take the offer again if it is still there.",
+    "marketNoRelay": "No relay could be reached. Check your internet connection, or the relay list in Settings → Network.",
+    "marketTooMany": "You already have {count} open offers. Take one down first.",
+    "marketUnknownTrade": "This wallet has no such trade.",
+    "marketTradeRunning": "This trade is still running."
   },
   "notice": {
     "received": {
@@ -563,6 +580,17 @@
     "swapRefunded": {
       "title": "Swap ended",
       "message": "Your {coin} came back to you."
+    },
+    "marketTaken": {
+      "title": "Your offer was taken",
+      "message": "Someone took {amount}. Their wallet locks first; you will be asked to lock yours."
+    },
+    "marketAccepted": {
+      "title": "Your take was accepted",
+      "message": "Lock your {coin} now on the Market page (you have 20 minutes)."
+    },
+    "marketDeclined": {
+      "title": "Your take was turned down"
     }
   },
   "create": {
@@ -1055,5 +1083,170 @@
     "claimTx": "Collect transaction",
     "refundTx": "Refund transaction",
     "history": "History"
+  },
+  "market": {
+    "title": "Market",
+    "sub": "Buy and sell LBC for Bitcoin with other people. No exchange, no account: every trade is an atomic swap.",
+    "postOffer": "Post an offer",
+    "board": "Offers",
+    "buyLbc": "Buy LBC",
+    "sellLbc": "Sell LBC",
+    "relays": "Connected to {n} of {total} relays",
+    "loading": "Looking for offers…",
+    "noSellers": "Nobody is selling LBC right now. Post an offer to buy, or check back later.",
+    "noBuyers": "Nobody is buying LBC right now. Post an offer to sell, or check back later.",
+    "col": {
+      "price": "Price per LBC",
+      "available": "Available",
+      "total": "In Bitcoin"
+    },
+    "sats": "{n} sats",
+    "above": "{pct}% above market",
+    "below": "{pct}% below market",
+    "from": "from {min}",
+    "yours": "Yours",
+    "buy": "Buy",
+    "sell": "Sell",
+    "price": {
+      "title": "Market price",
+      "source": "{source} · {time}",
+      "loading": "Loading the market price…",
+      "unavailable": "The market price cannot be loaded right now. Check what LBC trades for on an exchange site before you trade.",
+      "oneLbc": "1 LBC",
+      "inBtc": "In Bitcoin",
+      "inXmr": "In Monero",
+      "convert": "Convert an amount of LBC",
+      "converted": "{lbc} LBC ≈ {btc} BTC ≈ {xmr} XMR ≈ {usd}",
+      "hint": "For comparison only: what LBC trades for on the exchanges. Offers here set their own prices."
+    },
+    "take": {
+      "buyTitle": "Buy LBC",
+      "sellTitle": "Sell LBC",
+      "offer": "Price {price} per LBC. You can take from {min} up to {max}.",
+      "amount": "Amount of LBC",
+      "range": "Choose between {min} and {max}.",
+      "summary": "You give {give} and get {get}",
+      "firstLbc": "Your wallet locks your {give} first, for up to 48 hours. If the other side does not lock its part, your LBC comes back to you by itself after that time.",
+      "firstBtc": "You pay {give} first, from your Bitcoin wallet, into a contract. If the other side does not lock its part, it comes back to the address below after 48 hours.",
+      "notEnough": "This wallet has only {available} to spend.",
+      "tooSmall": "This amount is too small for a swap: the network fees would eat most of it.",
+      "buy": "Buy {amount}",
+      "sell": "Sell {amount}"
+    },
+    "trade": {
+      "waiting": "Waiting for the other wallet to answer. This takes seconds when it is online, and gives up after 10 minutes.",
+      "unsent": "Not sent yet: no relay is reachable. It is sent as soon as one is.",
+      "invited": "Someone took {lbc} of your offer. Their wallet locks first; you will be asked to lock yours once theirs is confirmed.",
+      "swapping": "The swap is running.",
+      "done": "Done: both sides were paid.",
+      "expired": "No answer in time. Nothing of yours was locked.",
+      "cancelled": "The trade stopped before it finished. Its swap (on the Swap page) shows why; locked coins come back by themselves after the lock time.",
+      "declined": {
+        "taken": "The other wallet is busy with other takes. Try again in a few minutes.",
+        "closed": "The offer was closed.",
+        "amount": "The other wallet cannot fill that amount now.",
+        "price": "The terms did not match the offer (it may have changed). Nothing was locked.",
+        "expired": "The other wallet stopped waiting for your lock. Nothing of yours was locked."
+      },
+      "status": {
+        "waiting": "Sent",
+        "invited": "Taken",
+        "swapping": "Swapping",
+        "done": "Done",
+        "declined": "Declined",
+        "expired": "Expired",
+        "cancelled": "Stopped"
+      },
+      "dismiss": "Remove from the list"
+    },
+    "trades": {
+      "title": "Your trades"
+    },
+    "stageText": {
+      "waitTaker": "The other wallet has the invite and locks its {other} first. Nothing to do yet.",
+      "lockedMaker": "Your {give} is locked. Waiting for the other wallet to collect it; this wallet then collects their {other} by itself.",
+      "lockedTaker": "Your {give} is locked. Waiting for the other wallet to lock its {other}; it has up to 12 hours."
+    },
+    "lockBy": "Lock by {time}, or the other side stops waiting.",
+    "post": {
+      "title": "Post an offer",
+      "side": "You want to",
+      "sell": "Sell LBC (get Bitcoin)",
+      "buy": "Buy LBC (pay Bitcoin)",
+      "amount": "Amount of LBC",
+      "available": "Spendable: {amount}",
+      "price": "Price in satoshis per LBC",
+      "useMarket": "Use the market price ({price}, {source})",
+      "min": "Smallest part someone can take (LBC)",
+      "minHint": "Leave empty for {amount}, the smallest swap worth its fees at this price.",
+      "summarySell": "You sell {lbc} for {btc}",
+      "summaryBuy": "You buy {lbc} for {btc}",
+      "above": "{pct}% above the market price.",
+      "below": "{pct}% below the market price.",
+      "worth": "Worth about {usd} at the market price.",
+      "howSell": "When someone takes it, their Bitcoin is locked first. Then you are asked to lock your LBC, and the Bitcoin comes to the address above.",
+      "howBuy": "When someone takes it, their LBC is locked first. Then you pay the Bitcoin into a contract from your Bitcoin wallet, and the LBC comes to this wallet.",
+      "stayOnline": "Your offer is on the board only while this wallet is open, and is taken down when it locks. When someone takes it, you must lock your part within 12 hours.",
+      "post": "Post the offer"
+    },
+    "mine": {
+      "title": "Your offers",
+      "selling": "Selling {lbc}",
+      "buying": "Buying {lbc}",
+      "left": "{left} left",
+      "running": {
+        "one": "1 trade running",
+        "other": "{count} trades running"
+      },
+      "onRelays": {
+        "one": "On 1 relay · renewed {time}",
+        "other": "On {count} relays · renewed {time}"
+      },
+      "notYet": "Not on any relay yet",
+      "status": {
+        "open": "Open",
+        "closed": "Closed"
+      },
+      "withdraw": "Take down"
+    },
+    "otherCoins": {
+      "title": "Paying with USDT, Monero or something else?",
+      "text": "Trades here are LBC for Bitcoin only, because only those can be swapped without anyone holding the coins. Change your USDT, Monero (XMR) or other coins to Bitcoin first, for example in Cake Wallet or Trust Wallet, then trade the Bitcoin here. The trading guide in the manual shows the steps."
+    },
+    "safety": {
+      "title": "Before you trade",
+      "text": "Start with small amounts, and compare prices with the market price. Keep LBC Wallet open with this wallet unlocked while you have offers up and until your trades show \"Done\". The wallet locks itself after a while without use (Settings → Security)."
+    },
+    "warning": {
+      "title": "The order board: read this first",
+      "lead": "The order board lets people post and take offers to swap LBC and Bitcoin. Please read these points; they take a minute.",
+      "notExchange": {
+        "title": "It is not an exchange",
+        "text": "Nobody runs the board, holds coins, checks the people on it, settles disputes or reverses trades. LBC Wallet takes no fee and has no accounts. Offers travel through public Nostr relays, and your wallet deals directly with the other person's wallet."
+      },
+      "settlement": {
+        "title": "Coins move only through swap contracts",
+        "text": "A taken offer becomes an atomic swap: each side locks coins in a contract on its own chain. Either both sides get paid, or each gets its coins back after the lock time, which can be up to 48 hours. Your wallet does this by itself while it is open."
+      },
+      "online": {
+        "title": "Both wallets must be online",
+        "text": "Offers are answered only while the wallet that posted them is open. When someone takes your offer, you must lock your part within 12 hours. If your wallet stays closed past the lock times, the swap can fail."
+      },
+      "strangers": {
+        "title": "The people on the board are strangers",
+        "text": "Anyone can post an offer, at any price, and walk away. Someone can take your offer and never lock, blocking it for up to 40 minutes; someone can post an offer and never lock after you, keeping your coins locked until they come back after 48 hours. Nobody can take your coins without paying, but time and network fees can be lost."
+      },
+      "relays": {
+        "title": "Relays are run by others",
+        "text": "Offers and trade messages go through Nostr relays (servers run by volunteers and companies). Messages are encrypted, but relays see which keys talk and when, and can delay or drop messages. Each offer and each trade uses a new key, so trades are not linked to your wallet or to each other."
+      },
+      "law": {
+        "title": "Your country's rules apply",
+        "text": "Trading crypto can be regulated where you live: licences, taxes, reporting, or bans on some coins. You are responsible for following them. This feature is new and has not been audited, and nothing here is financial advice."
+      },
+      "checkStrangers": "I understand that nobody checks the people on the board, and that a trade can keep my coins locked for up to 48 hours.",
+      "checkRisk": "I use the order board at my own risk, and I follow the laws where I live.",
+      "accept": "I understand — open the board"
+    }
   }
 }

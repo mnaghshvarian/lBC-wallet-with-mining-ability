@@ -21,9 +21,14 @@ function stageTone(stage: SwapStage): 'green' | 'violet' | 'amber' | 'red' | 'bl
   return 'blue';
 }
 
-/** The text that explains what is happening now and what to do. */
-function stageText(t: Translate, s: SwapView): string {
+/**
+ * The text that explains what is happening now and what to do. `automatic`:
+ * a trade from the order board, whose codes travel between the wallets by themselves.
+ */
+function stageText(t: Translate, s: SwapView, automatic?: boolean): string {
   const params = { give: coin(amountOf(s, s.give), s.give), get: coin(amountOf(s, s.get), s.get), coin: s.give, other: s.get };
+  if (automatic && s.stage === 'send-invite') return t('market.stageText.waitTaker', params);
+  if (automatic && s.stage === 'send-lock') return t(s.role === 'starter' ? 'market.stageText.lockedMaker' : 'market.stageText.lockedTaker', params);
   switch (s.stage) {
     case 'lock':
       return t(s.role === 'starter' ? 'swap.stageText.lockStarter' : 'swap.stageText.lockJoiner', params);
@@ -67,7 +72,7 @@ function ContractRow({ label, c }: { label: string; c: SwapContractView }) {
   );
 }
 
-function SwapDetail({ swap, onRemoved }: { swap: SwapView; onRemoved: () => void }) {
+export function SwapDetail({ swap, onRemoved, automatic }: { swap: SwapView; onRemoved: () => void; automatic?: boolean }) {
   const t = useT();
   const settings = useApp((s) => s.settings)!;
   const toast = useApp((s) => s.toast);
@@ -102,12 +107,13 @@ function SwapDetail({ swap, onRemoved }: { swap: SwapView; onRemoved: () => void
         <div className="spacer" />
         <Badge tone={stageTone(swap.stage)}>{t(`swap.stage.${swap.stage}`)}</Badge>
       </div>
-      <div className="text-2">{stageText(t, swap)}</div>
+      <div className="text-2">{stageText(t, swap, automatic)}</div>
+      {swap.lockBy && (swap.stage === 'lock' || swap.stage === 'pay-btc') && <Callout tone="warn">{t('market.lockBy', { time: dateTime(swap.lockBy) })}</Callout>}
       {swap.problem && swap.problem.code !== 'cancelled' && (
         <Callout tone={swap.problem.code === 'explorer' ? 'info' : 'warn'}>{problemText(t, swap.problem)}</Callout>
       )}
 
-      {swap.code && (
+      {swap.code && !automatic && (
         <Field label={t('swap.codeLabel')} hint={t('swap.codeHint')}>
           <div className="address-box mono selectable" style={{ fontSize: 12, wordBreak: 'break-all' }}>
             {swap.code}
@@ -141,7 +147,7 @@ function SwapDetail({ swap, onRemoved }: { swap: SwapView; onRemoved: () => void
         </div>
       )}
 
-      {swap.expectsCode && (
+      {swap.expectsCode && !automatic && (
         <Field label={t('swap.pasteLock')} error={error}>
           <textarea className="input mono" rows={3} value={code} onChange={(e) => setCode(e.target.value)} placeholder="lbcswap:…" spellCheck={false} />
           <div className="row" style={{ marginTop: 6 }}>
@@ -174,7 +180,7 @@ function SwapDetail({ swap, onRemoved }: { swap: SwapView; onRemoved: () => void
               {swap.give === 'LBC' ? t('swap.lockLbc', { amount: give }) : t('swap.lockBtc')}
             </Button>
           </div>
-          {error && !swap.expectsCode && <div className="error-text">{error}</div>}
+          {error && (!swap.expectsCode || automatic) && <div className="error-text">{error}</div>}
         </div>
       )}
 

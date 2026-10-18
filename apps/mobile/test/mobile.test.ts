@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, SwapService, WalletService, type Platform } from '@lbcwallet/services';
+import { MarketService, createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, SwapService, WalletService, type Platform } from '@lbcwallet/services';
 import { durableFiles, type FileBackend } from '../src/files';
 import { NativeSockets } from '../src/sockets';
 import { EventBus, inAppTransport } from '../src/transport';
 import { androidAppInfo, createAndroidHandlers } from '../src/handlers';
 import type { DeviceInfo, LbcNativePlugin, SocketEvent } from '../src/native';
+
+/** The swap and market services, as the app creates them. */
+function trading(platform: Platform, settings: SettingsStore, wallets: WalletService) {
+  const swaps = new SwapService(platform, settings, { wallet: () => wallets.swapWallet(), changed: () => undefined, notice: () => undefined });
+  return { swaps, market: new MarketService(platform, settings, { wallet: () => wallets.marketWallet(), swaps, changed: () => undefined, notice: () => undefined }) };
+}
 
 const INFO: DeviceInfo = { sdkInt: 35, release: '15', webView: '140.0', versionName: '1.0.0', dataDir: '/data/user/0/app/files/lbcwallet', debug: false };
 
@@ -233,7 +239,7 @@ describe('services over the Android adapters', () => {
       notice: (n) => bus.emit('notice', n),
     });
     const miningInfo = new MiningInfo(platform, settings, { walletAddress: () => wallets.miningAddress(), chainTip: () => wallets.tipBits(), price: () => null });
-    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo, swaps: new SwapService(platform, settings, { wallet: () => wallets.swapWallet(), changed: () => undefined, notice: () => undefined }) }), ...createAndroidHandlers({ info: INFO, native: {} as LbcNativePlugin, settings, wallets, miningInfo, miner: null }) };
+    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo, ...trading(platform, settings, wallets) }), ...createAndroidHandlers({ info: INFO, native: {} as LbcNativePlugin, settings, wallets, miningInfo, miner: null }) };
     const api = createApi(inAppTransport(handlers, bus, { flush: files.flush, activity: () => wallets.touch(), log: () => undefined }));
 
     const mnemonic = await api.wallets.generateMnemonic(12);

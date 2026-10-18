@@ -8,25 +8,18 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  BITCOIN_NETWORKS,
   REGTEST,
-  SEQUENCE_FINAL,
-  Transaction,
   addressFromPublicKey,
   addressToScript,
   decodeSwapCode,
-  encodeSegwitAddress,
   encodeSwapCode,
   generateMnemonic,
   hash160,
   htlcAddress,
   htlcScript,
-  p2pkhScript,
   publicKeyOf,
   randomBytes,
   secretHashOf,
-  signP2pkhInput,
-  type AddressParams,
   type SwapTiming,
 } from '@lbcwallet/core';
 import { nodeLineTransport } from '@lbcwallet/core/node';
@@ -34,56 +27,7 @@ import { SettingsStore, SwapService, WalletService, memoryFiles, type Platform, 
 import { btcdAvailable, lbcdAvailable, startBtcRegtest, startRegtest, waitFor, type RegtestNode } from '../../core/e2e/harness';
 import { startRegtestHub, type RegtestHub } from '../../core/e2e/regtest-hub';
 import { startEsploraEmulator, type EsploraEmulator } from '../../core/e2e/esplora-emulator';
-
-const PASSWORD = 'correct horse battery staple';
-const LBC_MINER_KEY = new Uint8Array(32).fill(7);
-const BTC_MINER_KEY = new Uint8Array(32).fill(9);
-const BTC = BITCOIN_NETWORKS.regtest;
-
-interface VerboseTx {
-  txid: string;
-  vin: { coinbase?: string }[];
-  vout: { value: number; n: number; scriptPubKey: { hex: string } }[];
-  confirmations?: number;
-}
-
-/** Pays from the miner's mature coinbase outputs (a stand-in for someone's other wallet). */
-async function payFromMiner(node: RegtestNode, key: Uint8Array, network: AddressParams, to: Uint8Array, amount: bigint, feePerByte: number, used: Set<string>): Promise<string> {
-  const pub = publicKeyOf(key);
-  const from = addressFromPublicKey(pub, network);
-  const txs = await node.rpc.call<VerboseTx[]>('searchrawtransactions', [from, 1, 0, 2000]);
-  const tx = new Transaction();
-  let total = 0n;
-  for (const t of txs) {
-    if (t.vin[0]?.coinbase === undefined || (t.confirmations ?? 0) <= 100 || used.has(t.txid)) continue;
-    used.add(t.txid);
-    tx.inputs.push({ txid: t.txid, vout: 0, scriptSig: new Uint8Array(0), sequence: SEQUENCE_FINAL, witness: [] });
-    total += BigInt(Math.round(t.vout[0]!.value * 1e8));
-    if (total >= amount + BigInt((tx.inputs.length * 148 + 100) * feePerByte) + 100_000n) break;
-  }
-  const fee = BigInt((tx.inputs.length * 148 + 100) * feePerByte);
-  if (total < amount + fee) throw new Error('the test miner has too few mature coins');
-  tx.outputs.push({ value: amount, script: to });
-  if (total - amount - fee > 100_000n) tx.outputs.push({ value: total - amount - fee, script: p2pkhScript(hash160(pub)) });
-  for (let i = 0; i < tx.inputs.length; i++) signP2pkhInput(tx, i, p2pkhScript(hash160(pub)), key);
-  return node.rpc.call<string>('sendrawtransaction', [tx.toHex()]);
-}
-
-/** Satoshis paid to an address on the Bitcoin node. */
-async function receivedBtc(node: RegtestNode, address: string): Promise<bigint> {
-  const script = Buffer.from(addressToScript(address, BTC)).toString('hex');
-  let txs: VerboseTx[] = [];
-  try {
-    txs = await node.rpc.call<VerboseTx[]>('searchrawtransactions', [address, 1, 0, 100]);
-  } catch {
-    return 0n;
-  }
-  let total = 0n;
-  for (const t of txs) for (const o of t.vout) if (o.scriptPubKey.hex === script && (t.confirmations ?? 0) > 0) total += BigInt(Math.round(o.value * 1e8));
-  return total;
-}
-
-const btcAddress = (seed: number) => encodeSegwitAddress(0, hash160(publicKeyOf(new Uint8Array(32).fill(seed))), BTC);
+import { BTC, BTC_MINER_KEY, LBC_MINER_KEY, PASSWORD, btcAddress, payFromMiner, receivedBtc } from './chain-helpers';
 
 describe.skipIf(!lbcdAvailable() || !btcdAvailable())('LBC ↔ BTC atomic swaps on regtest', () => {
   let lbc: RegtestNode;

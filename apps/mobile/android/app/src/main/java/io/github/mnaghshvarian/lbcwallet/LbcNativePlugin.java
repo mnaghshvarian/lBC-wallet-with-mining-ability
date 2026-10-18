@@ -15,6 +15,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
+import android.util.Base64;
 import android.view.WindowManager;
 
 import androidx.core.content.FileProvider;
@@ -339,6 +340,8 @@ public class LbcNativePlugin extends Plugin {
         final String host = call.getString("host", "");
         final Integer port = call.getInt("port");
         final boolean tls = Boolean.TRUE.equals(call.getBoolean("tls", false));
+        // Raw connections (WebSockets to the order board's relays) report bytes, not lines.
+        final boolean rawBytes = Boolean.TRUE.equals(call.getBoolean("raw", false));
         final int timeout = Math.max(1000, Math.min(60_000, call.getInt("timeoutMs", 15_000)));
         if (host == null || !HOST.matcher(host).matches() || port == null || port < 1 || port > 65535) {
             call.reject("invalid server address");
@@ -365,7 +368,7 @@ public class LbcNativePlugin extends Plugin {
                 }
                 socket.setSoTimeout(0);
                 String id = UUID.randomUUID().toString();
-                Connection c = new Connection(id, socket);
+                Connection c = new Connection(id, socket, rawBytes);
                 sockets.put(id, c);
                 JSObject r = new JSObject();
                 r.put("id", id);
@@ -391,7 +394,19 @@ public class LbcNativePlugin extends Plugin {
             call.reject("socket closed");
             return;
         }
-        c.write(call.getString("data", ""), call);
+        String data = call.getString("data", "");
+        byte[] bytes;
+        if (Boolean.TRUE.equals(call.getBoolean("base64", false))) {
+            try {
+                bytes = Base64.decode(data, Base64.NO_WRAP);
+            } catch (IllegalArgumentException e) {
+                call.reject("invalid base64");
+                return;
+            }
+        } else {
+            bytes = data.getBytes(StandardCharsets.UTF_8);
+        }
+        c.write(bytes, call);
     }
 
     @PluginMethod
@@ -418,16 +433,18 @@ public class LbcNativePlugin extends Plugin {
         return msg != null ? type + ": " + msg : type;
     }
 
-    /** One connection: a reader thread that reports lines, and an ordered writer. */
+    /** One connection: a reader thread that reports lines (or raw chunks), and an ordered writer. */
     private final class Connection {
         final String id;
         final Socket socket;
+        final boolean raw;
         final ExecutorService writer = Executors.newSingleThreadExecutor();
         volatile boolean closed = false;
 
-        Connection(String id, Socket socket) {
+        Connection(String id, Socket socket, boolean raw) {
             this.id = id;
             this.socket = socket;
+            this.raw = raw;
         }
 
         void start() {
@@ -436,11 +453,11 @@ public class LbcNativePlugin extends Plugin {
             t.start();
         }
 
-        void write(String data, PluginCall call) {
+        void write(byte[] data, PluginCall call) {
             writer.execute(() -> {
                 try {
                     OutputStream out = socket.getOutputStream();
-                    out.write(data.getBytes(StandardCharsets.UTF_8));
+                    out.write(data);
                     out.flush();
                     call.resolve();
                 } catch (Exception e) {
@@ -458,6 +475,10 @@ public class LbcNativePlugin extends Plugin {
                 byte[] buf = new byte[65536];
                 int n;
                 while (!closed && (n = in.read(buf)) > 0) {
+                    if (raw) {
+                        emitData(Base64.encodeToString(buf, 0, n, Base64.NO_WRAP));
+                        continue;
+                    }
                     int start = 0;
                     for (int i = 0; i < n; i++) {
                         if (buf[i] != '\n') continue;
@@ -473,6 +494,14 @@ public class LbcNativePlugin extends Plugin {
                 if (!closed) error = describe(e);
             }
             close(error, true);
+        }
+
+        private void emitData(String base64) {
+            JSObject e = new JSObject();
+            e.put("id", id);
+            e.put("type", "data");
+            e.put("data", base64);
+            notifyListeners("socket", e);
         }
 
         private void emit(String text) {

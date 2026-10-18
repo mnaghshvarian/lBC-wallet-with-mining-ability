@@ -1,7 +1,7 @@
 /// <reference path="../../../packages/ui/src/env.d.ts" />
 import { App as CapApp } from '@capacitor/app';
 import { SystemBars, SystemBarsStyle } from '@capacitor/core';
-import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, SwapService, WalletService } from '@lbcwallet/services';
+import { createApi, createCoreHandlers, MarketService, MiningInfo, PriceService, SettingsStore, SwapService, WalletService } from '@lbcwallet/services';
 import { goBack, mountApp } from '@lbcwallet/ui';
 import { durableFiles } from './files';
 import { createAndroidHandlers } from './handlers';
@@ -46,14 +46,25 @@ async function main(): Promise<void> {
         onLog: (e) => bus.emit('miner:log', e),
       })
     : null;
+  let market: MarketService | null = null;
   const swaps = new SwapService(platform, settings, {
     wallet: () => wallets.swapWallet(),
-    changed: (v) => bus.emit('swap:changed', v),
+    changed: (v) => {
+      bus.emit('swap:changed', v);
+      market?.swapChanged(v);
+    },
+    notice: (n) => bus.emit('notice', n),
+  });
+  market = new MarketService(platform, settings, {
+    wallet: () => wallets.marketWallet(),
+    swaps,
+    changed: (v) => bus.emit('market:changed', v),
     notice: (n) => bus.emit('notice', n),
   });
   swaps.watch();
+  market.watch();
   const handlers = {
-    ...createCoreHandlers({ platform, settings, wallets, price, miningInfo, swaps }),
+    ...createCoreHandlers({ platform, settings, wallets, price, miningInfo, swaps, market }),
     ...createAndroidHandlers({ info, native: LbcNative, settings, wallets, miningInfo, miner }),
   };
   window.lbc = createApi(inAppTransport(handlers, bus, { flush: files.flush, activity: () => wallets.touch(), log: (m) => platform.log('error', 'api', m) }));
@@ -71,8 +82,9 @@ async function main(): Promise<void> {
     const minutes = settings.get().autoLockMinutes;
     if (wallets.isOpen && minutes > 0 && Date.now() - pausedAt >= minutes * 60_000) void wallets.lock('timeout');
     void miner?.setForeground(true);
-    // Catch up with swaps at once (timers do not run in the background).
+    // Catch up with swaps and trades at once (timers do not run in the background).
     void swaps.poll();
+    void market?.tick();
   });
   void CapApp.addListener('backButton', () => {
     if (!goBack()) void CapApp.minimizeApp();

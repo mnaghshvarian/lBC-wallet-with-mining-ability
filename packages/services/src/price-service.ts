@@ -4,7 +4,11 @@ import { scopedLogger, type Logger, type Platform } from './platform.js';
 
 const REFRESH_MS = 5 * 60_000;
 
-/** LBC market price. CoinPaprika first, CoinGecko as a fallback. Disabled when "show fiat" is off. */
+/**
+ * LBC market price. CoinPaprika first (it converts to many currencies), MEXC's
+ * LBC/USDT market as a fallback for US dollars. (CoinGecko is not used: its LBC
+ * price has been far from where LBC trades.) Disabled when "show fiat" is off.
+ */
 export class PriceService {
   private current: PriceView | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -52,10 +56,11 @@ export class PriceService {
       this.current = await this.fromPaprika(currency);
     } catch (err) {
       this.log('warn', `coinpaprika: ${(err as Error).message}`);
+      if (currency !== 'USD') return;
       try {
-        this.current = await this.fromGecko(currency);
+        this.current = await this.fromMexc();
       } catch (err2) {
-        this.log('warn', `coingecko: ${(err2 as Error).message}`);
+        this.log('warn', `mexc: ${(err2 as Error).message}`);
         return;
       }
     }
@@ -75,14 +80,12 @@ export class PriceService {
     return { currency, price: q.price, change24h: q.percent_change_24h ?? null, updatedAt: Date.now(), source: 'CoinPaprika' };
   }
 
-  private async fromGecko(currency: string): Promise<PriceView> {
-    const c = currency.toLowerCase();
-    const data = await this.getJson<Record<string, Record<string, number>>>(
-      `https://api.coingecko.com/api/v3/simple/price?ids=lbry-credits&vs_currencies=${encodeURIComponent(c)}&include_24hr_change=true`,
-    );
-    const row = data['lbry-credits'];
-    const price = row?.[c];
-    if (typeof price !== 'number') throw new Error('no quote');
-    return { currency, price, change24h: row?.[`${c}_24h_change`] ?? null, updatedAt: Date.now(), source: 'CoinGecko' };
+  private async fromMexc(): Promise<PriceView> {
+    const t = await this.getJson<{ lastPrice?: string; priceChangePercent?: string } | null>('https://api.mexc.com/api/v3/ticker/24hr?symbol=LBCUSDT');
+    const price = Number(t?.lastPrice);
+    if (!Number.isFinite(price) || price <= 0) throw new Error('no quote');
+    const change = Number(t?.priceChangePercent);
+    // MEXC gives the change as a fraction (0.05 = 5 %).
+    return { currency: 'USD', price, change24h: Number.isFinite(change) ? change * 100 : null, updatedAt: Date.now(), source: 'MEXC' };
   }
 }

@@ -1,4 +1,4 @@
-import type { HttpPost, LineTransport, SocketEndpoint } from '@lbcwallet/core';
+import type { ByteTransport, HttpPost, LineTransport, SocketEndpoint } from '@lbcwallet/core';
 
 export type LogLevel = 'info' | 'warn' | 'error';
 export type Logger = (level: LogLevel, message: string) => void;
@@ -33,6 +33,8 @@ export interface Platform {
   log(level: LogLevel, scope: string, message: string): void;
   /** Newline-delimited JSON socket (LBRY hubs, Stratum). */
   lineTransport(endpoint: SocketEndpoint, options: SocketOptions): LineTransport;
+  /** Raw byte socket (WebSocket connections to the order board's relays); undefined where unsupported. */
+  byteTransport?(endpoint: SocketEndpoint, options: SocketOptions): ByteTransport;
   /** HTTP POST for an lbcd node's JSON-RPC; undefined where unsupported. */
   httpPost?(options: { ca?: string }): HttpPost;
   /** Reads a small text file chosen by the user (e.g. an lbcd TLS certificate). */

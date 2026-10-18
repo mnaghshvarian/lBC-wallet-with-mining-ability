@@ -33,6 +33,17 @@ describe('settings sanitizing', () => {
     expect(s.backendMode).toBe('local');
   });
 
+  it('keeps only relay addresses that are wss://, or ws:// on this computer', () => {
+    const s = sanitize(
+      { market: { relays: ['wss://relay.example.org/', 'ws://relay.example.org', 'ws://127.0.0.1:7447', 'https://relay.example.org', 'wss://relay.example.org', 'wss://user:pw@relay.example.org', 42 as unknown as string] } },
+      base,
+      CPUS,
+    );
+    expect(s.market.relays).toEqual(['wss://relay.example.org', 'ws://127.0.0.1:7447']);
+    expect(base.market.relays).toEqual([]);
+    expect(sanitize({ market: { relays: Array.from({ length: 20 }, (_, i) => `wss://r${i}.example.org`) } }, base, CPUS).market.relays).toHaveLength(10);
+  });
+
   it('accepts every shipped language', () => {
     for (const lang of ['fa', 'ar', 'zh-CN', 'ur', 'th', 'nl']) expect(sanitize({ language: lang }, base, CPUS).language).toBe(lang);
   });

@@ -6,6 +6,7 @@ import type { MiningInfo } from './mining-info.js';
 import type { Platform } from './platform.js';
 import type { PriceService } from './price-service.js';
 import type { SettingsStore } from './settings.js';
+import type { MarketService } from './market-service.js';
 import type { SwapService } from './swap-service.js';
 import type { WalletService } from './wallet-service.js';
 
@@ -31,6 +32,7 @@ export interface CoreServices {
   price: PriceService;
   miningInfo: MiningInfo;
   swaps: SwapService;
+  market: MarketService;
 }
 
 /** An amount in the smallest unit, as a decimal string. */
@@ -44,6 +46,17 @@ function swapId(v: unknown): string {
   const id = text(v, 'id', 16);
   if (!/^[0-9a-f]{16}$/.test(id)) throw new UserError('swapUnknown');
   return id;
+}
+
+function marketId(v: unknown, code: 'marketOfferGone' | 'marketUnknownTrade'): string {
+  const id = text(v, 'id', 16);
+  if (!/^[0-9a-f]{16}$/.test(id)) throw new UserError(code);
+  return id;
+}
+
+function coin(v: unknown): 'LBC' | 'BTC' {
+  if (v !== 'LBC' && v !== 'BTC') throw new UserError('invalidAmount');
+  return v;
 }
 
 /** Handlers for everything that works the same on every platform. */
@@ -188,6 +201,21 @@ export function createCoreHandlers(s: CoreServices): Handlers {
     'swap:cancel': (id: unknown) => s.swaps.cancel(swapId(id)),
     'swap:remove': (id: unknown) => s.swaps.remove(swapId(id)),
     'swap:btcFee': () => s.swaps.btcFee(),
+
+    // ---------------------------------------------------------------- order board
+    'market:view': () => s.market.view(),
+    'market:post': (params: unknown) => {
+      const p = (params ?? {}) as Record<string, unknown>;
+      return s.market.post({ give: coin(p.give), lbc: units(p.lbc, 'lbc'), btc: units(p.btc, 'btc'), min: units(p.min, 'min'), btcAddress: text(p.btcAddress, 'btcAddress', 100) });
+    },
+    'market:withdraw': (id: unknown) => s.market.withdraw(marketId(id, 'marketOfferGone')),
+    'market:take': (params: unknown) => {
+      const p = (params ?? {}) as Record<string, unknown>;
+      const key = text(p.key, 'key', 81);
+      if (!/^[0-9a-f]{64}:[0-9a-f]{16}$/.test(key)) throw new UserError('marketOfferGone');
+      return s.market.take({ key, lbc: units(p.lbc, 'lbc'), btcAddress: text(p.btcAddress, 'btcAddress', 100) });
+    },
+    'market:dismiss': (id: unknown) => s.market.dismiss(marketId(id, 'marketUnknownTrade')),
   };
 }
 

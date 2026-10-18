@@ -72,6 +72,10 @@ export interface Settings {
   explorerAddressUrl: string;
   /** Atomic swaps: an Esplora server for the Bitcoin side; empty = blockstream.info, checked against mempool.space. */
   swap: { btcExplorer: string };
+  /** The order board: Nostr relays (wss://…) for offers and trade messages; empty = the default list. */
+  market: { relays: string[] };
+  /** Version of the order board's own warning the user accepted; empty until accepted. */
+  acceptedMarketTerms: string;
   lastWalletId: string | null;
   developerMode: boolean;
 }
@@ -331,6 +335,12 @@ export type NoticeCode =
   | 'swapCompleted'
   /** params: coin (returned) */
   | 'swapRefunded'
+  /** Someone took your offer; their wallet locks first. params: lbc (dewies) */
+  | 'marketTaken'
+  /** Your take was accepted: lock your coins now. params: coin */
+  | 'marketAccepted'
+  /** params: reason */
+  | 'marketDeclined'
   /** params: message */
   | 'error';
 
@@ -436,8 +446,105 @@ export interface SwapView {
   refundAt?: number;
   /** Nothing of yours is locked yet. */
   cancellable: boolean;
+  /** Lock before this time (Unix seconds), for swaps from the order board. */
+  lockBy?: number;
   problem?: { code: string; params?: Record<string, string | number> };
   events: { at: number; code: string; params?: Record<string, string | number> }[];
+}
+
+/** Version of the order board's own warning; a new version asks everyone to read it again. */
+export const MARKET_TERMS_VERSION = '2026-10-18';
+
+/** Free, public relays that keep application events (NIP-78) and honour expiry (NIP-40). */
+export const DEFAULT_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net', 'wss://nostr.mom', 'wss://relay.mostro.network'];
+
+/** One LBC in other money, for comparing offers with the exchanges. */
+export interface MarketPriceView {
+  /** US dollars, satoshis and Monero per LBC. */
+  usd: number;
+  sats: number;
+  xmr: number | null;
+  /** US dollars per Bitcoin and per Monero. */
+  btcUsd: number;
+  xmrUsd: number | null;
+  source: string;
+  updatedAt: number;
+}
+
+export interface MarketOfferView {
+  /** Identifies the offer on the board (its key and id). */
+  key: string;
+  /** What the person who posted it gives; you give the other coin. */
+  give: SwapCoinName;
+  /** The price as amounts of the whole offer (dewies, satoshis), the smallest part, and what is left. */
+  lbc: Dewies;
+  btc: string;
+  min: Dewies;
+  left: Dewies;
+  /** Satoshis per LBC. */
+  price: number;
+  /** Percent above (+) or below (−) the reference price; null without one. */
+  premium: number | null;
+  createdAt: number;
+  /** Posted by this wallet. */
+  mine: boolean;
+}
+
+export interface MyOfferView extends MarketOfferView {
+  id: string;
+  status: 'open' | 'closed';
+  /** Where your Bitcoin goes (or comes back to, when you give Bitcoin). */
+  btcAddress: string;
+  /** Trades of this offer still running. */
+  running: number;
+  /** Relays that took the latest version (0 = not on the board yet). */
+  relays: number;
+  publishedAt: number;
+}
+
+export type MarketTradeStatus = 'waiting' | 'invited' | 'swapping' | 'done' | 'declined' | 'expired' | 'cancelled';
+
+export interface MarketTradeView {
+  id: string;
+  /** maker: you posted the offer; taker: you took it. */
+  role: 'maker' | 'taker';
+  give: SwapCoinName;
+  get: SwapCoinName;
+  lbc: Dewies;
+  btc: string;
+  /**
+   * waiting — your take is sent; the other wallet answers within minutes;
+   * invited — someone took your offer; their wallet locks first;
+   * swapping — the swap runs (see its card); then done, declined, expired or cancelled.
+   */
+  status: MarketTradeStatus;
+  reason?: string;
+  /** The swap this trade became. */
+  swapId?: string;
+  /** The message is not on any relay yet (it is sent again until one takes it). */
+  unsent: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MarketRelayView {
+  url: string;
+  state: 'connecting' | 'open' | 'closed';
+  error?: string;
+}
+
+export interface MarketView {
+  network: NetworkName;
+  /** Offers on the board, best price first: people selling LBC, then people buying it. */
+  offers: MarketOfferView[];
+  mine: MyOfferView[];
+  trades: MarketTradeView[];
+  relays: MarketRelayView[];
+  price: MarketPriceView | null;
+  /** The reference price could not be fetched (no price service reachable). */
+  priceUnavailable: boolean;
+  /** At least one relay has sent what it has. */
+  loaded: boolean;
 }
 
 /** What a pasted swap code is, before anything is done with it. */
@@ -537,6 +644,18 @@ export interface LbcApi {
     /** Current Bitcoin fee for claiming or refunding a contract, or null when unknown. */
     btcFee(): Promise<{ satPerVbyte: number; claimSats: string } | null>;
   };
+  market: {
+    /** The board, your offers and trades; keeps the board up to date for a few minutes. */
+    view(): Promise<MarketView>;
+    /** Posts an offer (amounts in dewies and satoshis; `min` is the smallest part someone can take). */
+    post(params: { give: SwapCoinName; lbc: Dewies; btc: string; min: Dewies; btcAddress: string }): Promise<MarketView>;
+    /** Takes the offer down; trades already running go on. */
+    withdraw(id: string): Promise<MarketView>;
+    /** Takes `lbc` dewies of an offer; the other wallet answers within minutes. */
+    take(params: { key: string; lbc: Dewies; btcAddress: string }): Promise<MarketTradeView>;
+    /** Removes a finished trade from the list (its swap stays in Swaps). */
+    dismiss(id: string): Promise<MarketView>;
+  };
   on<E extends keyof LbcEvents>(event: E, handler: (payload: LbcEvents[E]) => void): () => void;
 }
 
@@ -549,10 +668,11 @@ export interface LbcEvents {
   'node:status': NodeStatusView;
   'price:update': PriceView;
   'swap:changed': SwapView;
+  'market:changed': MarketView;
   notice: NoticeView;
 }
 
-export const EVENT_CHANNELS: (keyof LbcEvents)[] = ['wallet:changed', 'wallet:locked', 'network:status', 'miner:stats', 'miner:log', 'node:status', 'price:update', 'swap:changed', 'notice'];
+export const EVENT_CHANNELS: (keyof LbcEvents)[] = ['wallet:changed', 'wallet:locked', 'network:status', 'miner:stats', 'miner:log', 'node:status', 'price:update', 'swap:changed', 'market:changed', 'notice'];
 
 /** How every API call answers: a value, or a user-facing error with a translatable code. */
 export type ApiResult<T> = { ok: true; value: T } | { ok: false; error: string; code?: string; params?: Record<string, string | number> };

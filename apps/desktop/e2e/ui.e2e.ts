@@ -10,7 +10,8 @@
  *
  * Flow: accept the first-run disclaimer, restore a funded wallet
  * (auto-detecting the derivation), create a second wallet with backup
- * verification, send between them, confirm, mine through the pool, start and
+ * verification, send between them, confirm, mine through the pool, use the
+ * order board (read an offer, take it, post and take down an offer), start and
  * stop the built-in node (when LBCD_BIN is set), visit every settings tab, and
  * check the Persian (right-to-left) and phone layouts.
  *
@@ -25,6 +26,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { Page } from 'playwright-core';
+import { createWebSocket, newNostrSecret, offerEvent, randomBytes, toHex } from '@lbcwallet/core';
+import { nodeByteTransport } from '@lbcwallet/core/node';
 import { acceptDisclaimer, forceKill, launchApp, type RunningApp } from './app-driver';
 
 const appDir = resolve(__dirname, '..');
@@ -38,11 +41,11 @@ function log(msg: string) {
 
 async function startNetwork() {
   const child = spawn(process.execPath, [join(repoRoot, 'node_modules/tsx/dist/cli.mjs'), join(repoRoot, 'packages/core/e2e/dev-regtest.ts')], {
-    env: { ...process.env, HUB_PORT: '50171', POOL_PORT: '33371', POOL_DIFF: '0.004' },
+    env: { ...process.env, HUB_PORT: '50171', POOL_PORT: '33371', RELAY_PORT: '7471', POOL_DIFF: '0.004' },
     stdio: ['pipe', 'pipe', 'inherit'],
   });
   const rl = createInterface({ input: child.stdout! });
-  const info = await new Promise<{ hubPort: number; poolPort: number; p2pPort: number; fundedPhrase: string; rpcUrl: string }>((resolveInfo, reject) => {
+  const info = await new Promise<{ hubPort: number; poolPort: number; p2pPort: number; relayUrl: string; fundedPhrase: string; rpcUrl: string }>((resolveInfo, reject) => {
     const t = setTimeout(() => reject(new Error('regtest network did not start')), 90_000);
     rl.on('line', (line) => {
       try {
@@ -68,6 +71,22 @@ async function startNetwork() {
       if (child.exitCode === null) forceKill(child);
     },
   };
+}
+
+/** Posts an offer to the test relay as another person would (a key of its own, no wallet behind it). */
+async function postForeignOffer(relayUrl: string, terms: { give: 'LBC' | 'BTC'; lbc: bigint; btc: bigint; min: bigint }) {
+  const ws = createWebSocket(relayUrl, (endpoint) => nodeByteTransport(endpoint, { connectTimeoutMs: 5000 }));
+  await ws.connect();
+  const event = await offerEvent(toHex(randomBytes(8)), { network: 'regtest', ...terms, left: terms.lbc, status: 'open' }, newNostrSecret(), Math.floor(Date.now() / 1000));
+  const accepted = new Promise<void>((resolveOk, reject) => {
+    ws.onMessage((text) => {
+      const msg = JSON.parse(text) as unknown[];
+      if (msg[0] === 'OK' && msg[1] === event.id) (msg[2] ? resolveOk() : reject(new Error(String(msg[3]))));
+    });
+  });
+  ws.send(JSON.stringify(['EVENT', event]));
+  await accepted;
+  ws.close();
 }
 
 async function shot(page: Page, name: string) {
@@ -98,6 +117,7 @@ async function main() {
       mining: { mode: 'pool', poolUrl: `stratum+tcp://127.0.0.1:${net.info.poolPort}`, poolApi: '', threads: 2, workerName: 'e2e', poolPassword: 'x', lowPriority: true, pauseOnBattery: false, payoutAddress: '' },
       // The built-in node syncs from the test network's node.
       node: { enabled: false, dataDir: '', listen: false, peers: [`127.0.0.1:${net.info.p2pPort}`] },
+      market: { relays: [net.info.relayUrl] },
     }),
   );
 
@@ -249,6 +269,49 @@ async function main() {
     await page.locator('.card-header .badge', { hasText: 'Cancelled' }).waitFor();
     log('swap invite created and cancelled');
 
+    // ---------------------------------------------------------------- market (whole trades are covered by the order board end-to-end test)
+    // Someone else's offer on the test relay: 200,000 LBC at 2.05 sats each.
+    await postForeignOffer(net.info.relayUrl, { give: 'LBC', lbc: 200_000n * 100_000_000n, btc: 410_000n, min: 10_000n * 100_000_000n });
+    await page.locator('.nav-item', { hasText: 'Market' }).click();
+    await page.getByText('The order board: read this first').waitFor();
+    await shot(page, '14b-market-warning');
+    for (const box of await page.getByRole('checkbox').all()) await box.check();
+    await page.getByRole('button', { name: 'I understand — open the board' }).click();
+    await page.getByText('Connected to 1 of 1 relays').waitFor({ timeout: 30_000 });
+    const row = page.locator('tr', { hasText: '200,000.00 LBC' });
+    await row.waitFor({ timeout: 30_000 });
+    await shot(page, '14c-market-board');
+    await row.getByRole('button', { name: 'Buy' }).click();
+    const take = page.locator('.modal');
+    await take.locator('input').first().fill('10000');
+    await take.getByPlaceholder('bc1…').fill('bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080');
+    await take.getByText(/You give 0\.000205 BTC and get 10,000\.00 LBC/).waitFor();
+    await shot(page, '14d-market-take');
+    await take.getByRole('button', { name: /^Buy 10,000/ }).click();
+    // Nobody answers this offer (no wallet behind it): the take waits, then gives up after 10 minutes.
+    await take.getByText(/Waiting for the other wallet to answer/).waitFor({ timeout: 30_000 });
+    await shot(page, '14e-market-waiting');
+    await page.keyboard.press('Escape');
+    await page.locator('.badge', { hasText: 'Sent' }).waitFor();
+    // Our own offer: buy 50,000 LBC at 2 sats each.
+    await page.getByRole('button', { name: 'Post an offer' }).click();
+    const post = page.locator('.modal');
+    await post.getByRole('tab', { name: 'Buy LBC (pay Bitcoin)' }).click();
+    await post.locator('input').nth(0).fill('50000');
+    await post.locator('input').nth(1).fill('2');
+    await post.getByPlaceholder('bc1…').fill('bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080');
+    await post.getByText('You buy 50,000.00 LBC for 0.001 BTC').waitFor();
+    await shot(page, '14f-market-post');
+    await post.getByRole('button', { name: 'Post the offer' }).click();
+    await page.getByText('Your offers').waitFor();
+    await page.getByText(/^On 1 relay/).waitFor({ timeout: 30_000 });
+    await page.getByRole('tab', { name: 'Sell LBC' }).click();
+    await page.locator('tr', { hasText: '50,000.00 LBC' }).getByText('Yours').waitFor({ timeout: 30_000 });
+    await shot(page, '14g-market-mine');
+    await page.getByRole('button', { name: 'Take down' }).click();
+    await page.locator('.badge', { hasText: 'Closed' }).waitFor();
+    log('market: board read, offer taken, own offer posted and taken down');
+
     // ---------------------------------------------------------------- built-in node
     await page.locator('.nav-item', { hasText: 'Node' }).click();
     await page.getByText('Run a full LBRY node on this computer').waitFor();
@@ -310,7 +373,10 @@ async function main() {
     await page.locator('.bottom-nav button').last().click();
     await page.locator('.sheet').waitFor();
     await shot(page, '28-phone-more');
-    await page.keyboard.press('Escape');
+    await page.locator('.sheet .nav-item', { hasText: 'Market' }).click();
+    await page.getByText('Connected to 1 of 1 relays').waitFor({ timeout: 30_000 });
+    await page.locator('.page').evaluate((el) => el.scrollTo(0, 0));
+    await shot(page, '29-phone-market');
     await page.setViewportSize({ width: 1280, height: 820 });
 
     // ---------------------------------------------------------------- Persian (right to left)
@@ -320,7 +386,7 @@ async function main() {
     await page.locator('.nav-item').first().click();
     await page.waitForTimeout(800);
     await shot(page, '21-overview-fa');
-    await page.locator('.nav-item').nth(4).click(); // mining
+    await page.locator('.nav-item').nth(5).click(); // mining
     await shot(page, '22-mining-fa');
 
     // ---------------------------------------------------------------- phone layout

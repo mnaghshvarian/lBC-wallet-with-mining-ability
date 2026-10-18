@@ -28,12 +28,13 @@ export type Route =
   | { name: 'receive' }
   | { name: 'activity'; txid?: string }
   | { name: 'mining' }
+  | { name: 'market' }
   | { name: 'swap' }
   | { name: 'node' }
   | { name: 'contacts' }
   | { name: 'settings'; tab?: string };
 
-export const WALLET_ROUTES = new Set(['overview', 'send', 'receive', 'activity', 'mining', 'swap', 'node', 'contacts', 'settings']);
+export const WALLET_ROUTES = new Set(['overview', 'send', 'receive', 'activity', 'mining', 'market', 'swap', 'node', 'contacts', 'settings']);
 
 export interface Toast {
   id: number;
@@ -112,6 +113,12 @@ export function noticeText(n: NoticeView, t: Translate): { title: string; messag
       return { title: t('notice.swapCompleted.title'), message: t('notice.swapCompleted.message', p) };
     case 'swapRefunded':
       return { title: t('notice.swapRefunded.title'), message: t('notice.swapRefunded.message', p) };
+    case 'marketTaken':
+      return { title: t('notice.marketTaken.title'), message: t('notice.marketTaken.message', { amount: `${lbc(String(p.lbc ?? '0'))} LBC` }) };
+    case 'marketAccepted':
+      return { title: t('notice.marketAccepted.title'), message: t('notice.marketAccepted.message', p) };
+    case 'marketDeclined':
+      return { title: t('notice.marketDeclined.title'), message: t(`market.trade.declined.${String(p.reason ?? 'closed')}`, { lbc: '', btc: '' }) };
     default:
       return { title: t('notice.error'), message: String(p.message ?? '') };
   }

@@ -5,6 +5,8 @@
  * Electron renderers, browsers and React Native alike.
  */
 
+import { base64 } from '@scure/base';
+
 const HEX_CHARS = '0123456789abcdef';
 const HEX_LOOKUP: Record<string, number> = {};
 for (let i = 0; i < 16; i++) {
@@ -81,6 +83,15 @@ export function utf8Encode(text: string): Uint8Array {
 
 export function utf8Decode(bytes: Uint8Array): string {
   return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+}
+
+/** Standard base64 (with padding), e.g. for bytes crossing the Android bridge. */
+export function toBase64(bytes: Uint8Array): string {
+  return base64.encode(bytes);
+}
+
+export function fromBase64(text: string): Uint8Array {
+  return base64.decode(text);
 }
 
 /** Best-effort zeroing of sensitive buffers. */

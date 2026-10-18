@@ -11,3 +11,5 @@ export * from './client.js';
 export * from './memory-files.js';
 export * from './pool-url.js';
 export * from './swap-service.js';
+export * from './market-service.js';
+export * from './market-price.js';

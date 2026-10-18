@@ -98,20 +98,7 @@ function amount(v: unknown, max: bigint): bigint | null {
 
 // ---------------------------------------------------------------- prices
 
-/**
- * The Bitcoin for `lbc` dewies of an offer, at the offer's price, rounded in
- * the maker's favour (the maker set the price).
- */
-export function btcForLbc(offer: Pick<OfferTerms, 'lbc' | 'btc' | 'give'>, lbc: bigint): bigint {
-  const product = lbc * offer.btc;
-  if (offer.give === 'BTC') return product / offer.lbc;
-  return (product + offer.lbc - 1n) / offer.lbc;
-}
-
-/** Satoshis per LBC (for display and sorting; not used for amounts). */
-export function satsPerLbc(offer: Pick<OfferTerms, 'lbc' | 'btc'>): number {
-  return (Number(offer.btc) / Number(offer.lbc)) * 1e8;
-}
+export { btcForLbc, satsPerLbc } from './price.js';
 
 /** Whether a take of `lbc` dewies fits the offer. */
 export function takeFits(offer: OfferTerms, lbc: bigint): boolean {
@@ -333,6 +320,10 @@ export interface MarketTradeRecord {
   updatedAt: number;
   /** created_at of the last message sent (Unix seconds). */
   sentAt: number;
+  /** The last message, until a relay has taken it (sent again meanwhile). */
+  outbox?: NostrEvent;
+  /** The maker gave the amount back to the offer (the trade ended without a swap). */
+  returned?: boolean;
 }
 
 export interface MarketState {

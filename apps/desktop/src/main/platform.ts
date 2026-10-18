@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { cpus } from 'node:os';
 import { app, net } from 'electron';
-import { nodeHttpPost, nodeLineTransport } from '@lbcwallet/core/node';
+import { nodeByteTransport, nodeHttpPost, nodeLineTransport } from '@lbcwallet/core/node';
 import type { JsonFiles, Platform } from '@lbcwallet/services';
 import { listJsonFiles, readJson, removeFile, writeJsonAtomic } from './store';
 import { log } from './log';
@@ -28,6 +28,7 @@ export function desktopPlatform(dataDir: string): Platform {
     files: fileStore(dataDir),
     log,
     lineTransport: (endpoint, options) => nodeLineTransport(endpoint, options),
+    byteTransport: (endpoint, options) => nodeByteTransport(endpoint, options),
     httpPost: (options) => nodeHttpPost(options),
     readTextFile: (p) => readFileSync(p, 'utf8'),
     // Electron's net module uses the session's proxy settings (SOCKS5 when enabled).

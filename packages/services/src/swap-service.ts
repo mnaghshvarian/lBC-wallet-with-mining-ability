@@ -278,6 +278,7 @@ export class SwapService {
       refundTo: r.refundTo,
       refundAt: r.ours ? r.ours.locktime + this.timing.clockLag[r.give] : undefined,
       cancellable: r.status === 'active' && !r.ours?.funding && !r.claim,
+      lockBy: r.lockBy,
       problem: r.problem,
       events: r.events,
     };
@@ -296,18 +297,11 @@ export class SwapService {
   // ---------------------------------------------------------------- user actions
 
   private checkAmounts(network: NetworkName, lbc: bigint, btc: bigint): void {
-    if (lbc < MIN_SWAP_LBC || btc < MIN_SWAP_BTC) throw new UserError('swapAmountTooSmall', { lbc: Number(MIN_SWAP_LBC / 100_000_000n), btc: Number(MIN_SWAP_BTC) / 1e8 });
-    if (network === 'mainnet' && btc > MAX_SWAP_BTC) throw new UserError('swapAmountTooLarge', { btc: Number(MAX_SWAP_BTC) / 1e8 });
+    checkSwapAmounts(network, lbc, btc);
   }
 
   private btcAddress(network: NetworkName, address: string): string {
-    const a = address.trim();
-    try {
-      decodeAddress(a, BITCOIN_NETWORKS[network]);
-    } catch (err) {
-      throw new UserError('swapBtcAddressInvalid', { detail: (err as Error).message });
-    }
-    return a;
+    return checkBtcAddress(network, address);
   }
 
   private writable(w: SwapWallet): void {
@@ -366,8 +360,12 @@ export class SwapService {
     return { type: 'lock', id: code.id, network: code.network, coin: code.coin, known };
   }
 
-  /** Joins a swap from its invite. Nothing is locked yet: that is the next step. */
-  join(params: { code: string; btcAddress: string }): SwapView {
+  /**
+   * Joins a swap from its invite. Nothing is locked yet: that is the next
+   * step, which `lockBy` (Unix seconds) can limit in time (trades from the
+   * order board, whose other side gives up after a while).
+   */
+  join(params: { code: string; btcAddress: string; lockBy?: number }): SwapView {
     const w = this.wallet();
     this.writable(w);
     let invite;
@@ -400,6 +398,7 @@ export class SwapService {
       receiveTo: give === 'LBC' ? btcAddress : lbcAddress,
       refundTo: give === 'LBC' ? lbcAddress : btcAddress,
       theirPkh: toHex(invite.starterPkh),
+      ...(params.lockBy ? { lockBy: params.lockBy } : {}),
       status: 'active',
       events: [],
     };
@@ -466,6 +465,7 @@ export class SwapService {
     const r = this.record(params.id);
     if (this.stage(r) !== 'lock') throw new UserError('swapNotReady');
     const now = this.now();
+    if (!r.ours && r.lockBy && now > r.lockBy) throw new UserError('marketLockExpired');
     if (!r.ours) {
       let locktime: number;
       let secretHash: Uint8Array;
@@ -816,4 +816,21 @@ export class SwapService {
 /** LBC address formats of a network (the wallet's own). */
 function lbcAddressParams(network: NetworkName) {
   return getNetwork(network);
+}
+
+/** Swap amounts must cover the network fees, and stay under the cap while swaps are new. */
+export function checkSwapAmounts(network: NetworkName, lbc: bigint, btc: bigint): void {
+  if (lbc < MIN_SWAP_LBC || btc < MIN_SWAP_BTC) throw new UserError('swapAmountTooSmall', { lbc: Number(MIN_SWAP_LBC / 100_000_000n), btc: Number(MIN_SWAP_BTC) / 1e8 });
+  if (network === 'mainnet' && btc > MAX_SWAP_BTC) throw new UserError('swapAmountTooLarge', { btc: Number(MAX_SWAP_BTC) / 1e8 });
+}
+
+/** A Bitcoin address of the network's Bitcoin counterpart, trimmed; throws a user-readable error. */
+export function checkBtcAddress(network: NetworkName, address: string): string {
+  const a = address.trim();
+  try {
+    decodeAddress(a, BITCOIN_NETWORKS[network]);
+  } catch (err) {
+    throw new UserError('swapBtcAddressInvalid', { detail: (err as Error).message });
+  }
+  return a;
 }
