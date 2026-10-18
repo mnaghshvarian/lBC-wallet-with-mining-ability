@@ -89,7 +89,10 @@ export async function startTestPool(rpc: LbcdRpc, payoutScript: Uint8Array, diff
     const en1 = toHex(new Uint8Array([0xde, 0xad, 0xbe, sockets.size & 0xff]));
     let buf = '';
     const send = (obj: unknown) => socket.write(JSON.stringify(obj) + '\n');
-    socket.on('data', async (chunk: string) => {
+    // A share can be a block, which is submitted to the node; if the test stops the node
+    // meanwhile, the failure is recorded instead of escaping as an unhandled rejection.
+    socket.on('data', (chunk: string) => void onData(chunk).catch((err: Error) => state.rejectReasons.push(`pool error: ${err.message}`)));
+    const onData = async (chunk: string) => {
       buf += chunk;
       let i: number;
       while ((i = buf.indexOf('\n')) >= 0) {
@@ -140,7 +143,7 @@ export async function startTestPool(rpc: LbcdRpc, payoutScript: Uint8Array, diff
           }
         }
       }
-    });
+    };
     socket.on('close', () => sockets.delete(socket));
     socket.on('error', () => undefined);
   });
