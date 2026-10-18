@@ -457,6 +457,7 @@
     "amountNotPositive": "Enter an amount greater than zero",
     "invalidAmount": "Invalid amount",
     "insufficientFunds": "Insufficient funds: you need {needed} LBC including the fee, but only {available} LBC is spendable.",
+    "tooManyCoins": "This payment would need more than {max} coins in one transaction, which the network refuses. Send a smaller amount, in several payments.",
     "draftExpired": "This transaction is no longer valid; please review it again.",
     "networkRejected": "The network rejected the transaction: {detail}",
     "sendFailed": "Sending failed: {detail}",
@@ -1025,6 +1026,7 @@
       "too-late-to-claim": "The other side locked too late, so this wallet will not reveal the secret now. Your coins come back after the lock time.",
       "underpaid": "The Bitcoin payment ({paid}) is less than the agreed {expected}. The other side will not accept it; it comes back after the lock time.",
       "explorer": "Cannot reach the Bitcoin explorer right now ({detail}). Trying again.",
+      "lbc-unverified": "The other side's LBC payment cannot be checked independently ({detail}). Nothing of yours moves until it can: wait, or switch to another hub or to your own node (Settings → Network).",
       "claim-failed": "The other side took their coins back before this wallet's claim was confirmed.",
       "cancelled": "Cancelled."
     },

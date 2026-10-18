@@ -466,6 +466,7 @@
     "amountNotPositive": "Escribe una cantidad mayor que cero",
     "invalidAmount": "Cantidad no válida",
     "insufficientFunds": "Fondos insuficientes: necesitas {needed} LBC con la comisión incluida, pero el saldo disponible es de solo {available} LBC.",
+    "tooManyCoins": "Este pago tendría que reunir más de {max} monedas sueltas (las partes que forman tu saldo) en una sola transacción, algo que la red rechaza. Envía una cantidad menor, en varios pagos.",
     "draftExpired": "Esta transacción ya no es válida; revísala de nuevo.",
     "networkRejected": "La red rechazó la transacción: {detail}",
     "sendFailed": "Error al enviar: {detail}",
@@ -1052,6 +1053,7 @@
       "too-late-to-claim": "La otra parte bloqueó demasiado tarde, así que esta billetera no revelará el secreto ahora. Recuperarás tus fondos cuando termine el plazo de bloqueo.",
       "underpaid": "El pago de Bitcoin ({paid}) es menor que la cantidad acordada ({expected}). La otra parte no lo aceptará; lo recuperarás cuando termine el plazo de bloqueo.",
       "explorer": "No se puede conectar con el explorador de Bitcoin en este momento ({detail}). Volviendo a intentarlo.",
+      "lbc-unverified": "El pago de LBC de la otra parte no se puede verificar de forma independiente ({detail}). Ninguno de tus fondos se moverá hasta que se pueda: espera, o cambia a otro servidor o a tu propio nodo (Configuración → Red).",
       "claim-failed": "La otra parte recuperó sus fondos antes de que se confirmara el cobro de esta billetera.",
       "cancelled": "Cancelado."
     },

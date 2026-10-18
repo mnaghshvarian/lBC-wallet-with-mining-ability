@@ -448,6 +448,7 @@
     "amountNotPositive": "请输入大于 0 的金额",
     "invalidAmount": "金额无效",
     "insufficientFunds": "余额不足：含手续费共需 {needed} LBC，但可用余额只有 {available} LBC。",
+    "tooManyCoins": "这笔付款需要把超过 {max} 个零散的币合并到一笔交易里，网络会拒绝这样的交易。请减少金额，分几次付款。",
     "draftExpired": "此交易已失效，请重新核对。",
     "networkRejected": "网络拒绝了该交易：{detail}",
     "sendFailed": "发送失败：{detail}",
@@ -998,6 +999,7 @@
       "too-late-to-claim": "对方锁定得太晚，因此此钱包现在不会公开秘密值。你的币会在锁定期结束后退回。",
       "underpaid": "这笔比特币付款（{paid}）少于约定的 {expected}。对方不会接受这笔付款，款项会在锁定期结束后退回。",
       "explorer": "目前无法连接比特币区块浏览器（{detail}），正在重试。",
+      "lbc-unverified": "无法独立核实对方的 LBC 付款（{detail}）。在核实通过之前，你的币不会有任何变动：请等待，或在“设置 → 网络”中切换到其他服务器或你自己的节点。",
       "claim-failed": "在此钱包的领取交易获得确认之前，对方已取回了自己的币。",
       "cancelled": "已取消。"
     },

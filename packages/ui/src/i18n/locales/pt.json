@@ -466,6 +466,7 @@
     "amountNotPositive": "Digite um valor maior que zero",
     "invalidAmount": "Valor inválido",
     "insufficientFunds": "Saldo insuficiente: você precisa de {needed} LBC incluindo a taxa, mas o saldo disponível é de apenas {available} LBC.",
+    "tooManyCoins": "Este pagamento precisaria juntar mais de {max} partes do seu saldo em uma única transação, e a rede não aceita isso. Envie um valor menor, em vários pagamentos.",
     "draftExpired": "Esta transação já não é válida; revise-a novamente.",
     "networkRejected": "A rede rejeitou a transação: {detail}",
     "sendFailed": "Falha no envio: {detail}",
@@ -1052,6 +1053,7 @@
       "too-late-to-claim": "A outra parte bloqueou tarde demais, então esta carteira não vai revelar o segredo agora. Seus fundos voltam para você após o prazo de bloqueio.",
       "underpaid": "O pagamento em Bitcoin ({paid}) é menor que o valor combinado ({expected}). A outra parte não vai aceitá-lo; ele volta para você após o prazo de bloqueio.",
       "explorer": "Não foi possível acessar o explorador Bitcoin agora ({detail}). Tentando novamente.",
+      "lbc-unverified": "Não é possível verificar de forma independente o pagamento em LBC da outra parte ({detail}). Seus fundos não saem do lugar enquanto isso não for possível: aguarde, ou mude para outro servidor LBRY ou para o seu próprio nó (Configurações → Rede).",
       "claim-failed": "A outra parte recuperou os próprios fundos antes que o resgate desta carteira fosse confirmado.",
       "cancelled": "Cancelada."
     },

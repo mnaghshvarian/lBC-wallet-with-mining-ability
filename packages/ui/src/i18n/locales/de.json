@@ -457,6 +457,7 @@
     "amountNotPositive": "Geben Sie einen Betrag größer als null ein",
     "invalidAmount": "Ungültiger Betrag",
     "insufficientFunds": "Nicht genügend Guthaben: Sie benötigen {needed} LBC einschließlich Gebühr, Ihr verfügbares Guthaben beträgt aber nur {available} LBC.",
+    "tooManyCoins": "Diese Zahlung müsste mehr als {max} einzelne Coins (die Teilbeträge, aus denen Ihr Guthaben besteht) in einer Transaktion zusammenfassen, was das Netzwerk ablehnt. Senden Sie einen kleineren Betrag in mehreren Zahlungen.",
     "draftExpired": "Diese Transaktion ist nicht mehr gültig; bitte prüfen Sie sie erneut.",
     "networkRejected": "Das Netzwerk hat die Transaktion abgelehnt: {detail}",
     "sendFailed": "Senden fehlgeschlagen: {detail}",
@@ -1025,6 +1026,7 @@
       "too-late-to-claim": "Die Gegenseite hat zu spät gesperrt, daher gibt diese Wallet das Geheimnis jetzt nicht preis. Ihre Coins kommen nach Ablauf der Sperrfrist zu Ihnen zurück.",
       "underpaid": "Die Bitcoin-Zahlung ({paid}) ist geringer als die vereinbarten {expected}. Die Gegenseite wird sie nicht annehmen; Sie erhalten den Betrag nach Ablauf der Sperrfrist zurück.",
       "explorer": "Der Bitcoin-Explorer ist gerade nicht erreichbar ({detail}). Es wird erneut versucht.",
+      "lbc-unverified": "Die LBC-Zahlung der Gegenseite kann nicht unabhängig geprüft werden ({detail}). Von Ihren Coins bewegt sich nichts, bis das möglich ist: Warten Sie, oder wechseln Sie zu einem anderen Server oder zu Ihrem eigenen Node (Einstellungen → Netzwerk).",
       "claim-failed": "Die Gegenseite hat ihre Coins zurückgeholt, bevor die Abholung durch diese Wallet bestätigt war.",
       "cancelled": "Abgebrochen."
     },

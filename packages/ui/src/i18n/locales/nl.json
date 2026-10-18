@@ -457,6 +457,7 @@
     "amountNotPositive": "Voer een bedrag groter dan nul in",
     "invalidAmount": "Ongeldig bedrag",
     "insufficientFunds": "Onvoldoende saldo: je hebt inclusief kosten {needed} LBC nodig, maar je besteedbare saldo is slechts {available} LBC.",
+    "tooManyCoins": "Deze betaling heeft meer dan {max} losse munten (stukjes van je saldo) in één transactie nodig, en dat weigert het netwerk. Stuur een kleiner bedrag, in meerdere betalingen.",
     "draftExpired": "Deze transactie is niet meer geldig; controleer deze opnieuw.",
     "networkRejected": "Het netwerk heeft de transactie geweigerd: {detail}",
     "sendFailed": "Verzenden mislukt: {detail}",
@@ -1025,6 +1026,7 @@
       "too-late-to-claim": "De andere partij heeft te laat vergrendeld, dus deze wallet maakt het geheim nu niet bekend. Je munten komen na de vergrendeltijd terug.",
       "underpaid": "De Bitcoin-betaling ({paid}) is minder dan de afgesproken {expected}. De andere partij accepteert die niet; het bedrag komt na de vergrendeltijd terug.",
       "explorer": "De Bitcoin-explorer is nu niet bereikbaar ({detail}). Er wordt opnieuw geprobeerd.",
+      "lbc-unverified": "De LBC-betaling van de andere partij kan niet onafhankelijk worden gecontroleerd ({detail}). Zolang dat niet kan, blijven je munten waar ze zijn: wacht, of schakel over naar een andere server of naar je eigen node (Instellingen → Netwerk).",
       "claim-failed": "De andere partij heeft de munten teruggenomen voordat het ophalen door deze wallet was bevestigd.",
       "cancelled": "Geannuleerd."
     },

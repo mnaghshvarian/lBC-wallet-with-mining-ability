@@ -466,6 +466,7 @@
     "amountNotPositive": "Saisissez un montant supérieur à zéro",
     "invalidAmount": "Montant invalide",
     "insufficientFunds": "Fonds insuffisants : il vous faut {needed} LBC, frais compris, mais le solde disponible n’est que de {available} LBC.",
+    "tooManyCoins": "Ce paiement devrait regrouper plus de {max} pièces distinctes (les parts qui composent votre solde) dans une seule transaction, ce que le réseau refuse. Envoyez un montant plus petit, en plusieurs paiements.",
     "draftExpired": "Cette transaction n’est plus valide ; veuillez la vérifier à nouveau.",
     "networkRejected": "Le réseau a rejeté la transaction : {detail}",
     "sendFailed": "Échec de l’envoi : {detail}",
@@ -1052,6 +1053,7 @@
       "too-late-to-claim": "L’autre partie a bloqué ses fonds trop tard : ce portefeuille ne révélera donc pas le secret maintenant. Vos fonds vous reviendront après le délai de blocage.",
       "underpaid": "Le paiement Bitcoin ({paid}) est inférieur au montant convenu ({expected}). L’autre partie ne l’acceptera pas ; il vous reviendra après le délai de blocage.",
       "explorer": "Impossible de joindre l’explorateur Bitcoin pour le moment ({detail}). Nouvelle tentative en cours.",
+      "lbc-unverified": "Le paiement LBC de l’autre partie ne peut pas être vérifié de façon indépendante ({detail}). Aucun de vos fonds ne bougera tant que cette vérification ne sera pas possible : attendez, ou passez à un autre serveur ou à votre propre nœud (Paramètres → Réseau).",
       "claim-failed": "L’autre partie a repris ses fonds avant que l’encaissement par ce portefeuille soit confirmé.",
       "cancelled": "Annulé."
     },
