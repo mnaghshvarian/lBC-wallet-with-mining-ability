@@ -11,8 +11,18 @@ directories:
 files:
   - out/**
   - resources/**
+  - '!resources/bin/**'
   - package.json
   - '!**/*.map'
+# The built-in full node (lbcd, built by scripts/build-lbcd.sh) and the legal texts
+# live next to the app, outside the asar archive.
+extraResources:
+  - from: resources/bin/${os}-${arch}
+    to: bin
+  - from: ../../DISCLAIMER.md
+    to: DISCLAIMER.md
+  - from: ../../LICENSE
+    to: LICENSE.txt
 # Mining runs in a utility process with worker threads, which load their
 # scripts from disk; keep the bundled main-process code outside the asar.
 asarUnpack:
@@ -30,23 +40,28 @@ electronFuses:
   enableEmbeddedAsarIntegrityValidation: true
   onlyLoadAppFromAsar: true
 
-artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+# Download names carry no version, so ".../releases/latest/download/<name>" links in the
+# manual always point at the newest release.
+artifactName: LBC-Wallet-${os}-${arch}.${ext}
 
 linux:
   target:
     - target: AppImage
-      arch: [x64]
+      arch: [x64, arm64]
     - target: deb
-      arch: [x64]
+      arch: [x64, arm64]
+    - target: rpm
+      arch: [x64, arm64]
     - target: tar.gz
-      arch: [x64]
+      arch: [x64, arm64]
   category: Finance
   icon: build/icons
   synopsis: Non-custodial LBRY Credits wallet with a built-in miner
   description: >-
     LBC Wallet is a non-custodial desktop wallet for LBRY Credits (LBC). It restores
     LBRY Desktop / Odysee and BIP39 recovery phrases, unlocks tips and supports,
-    and mines LBC through a pool or your own node.
+    mines LBC through a pool or solo, and can run a built-in LBRY full node.
+    Experimental and unaudited: use at your own risk.
   maintainer: LBC Wallet contributors <m.naghshvarian@gmail.com>
   vendor: LBC Wallet contributors
   executableName: lbc-wallet
@@ -56,7 +71,11 @@ linux:
 
 deb:
   packageName: lbc-wallet
-  artifactName: lbc-wallet_${version}_${arch}.${ext}
+  artifactName: lbc-wallet_${arch}.${ext}
+
+rpm:
+  packageName: lbc-wallet
+  artifactName: lbc-wallet.${arch}.${ext}
 
 win:
   target:
@@ -72,10 +91,12 @@ nsis:
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
   createDesktopShortcut: true
-  artifactName: ${productName}-Setup-${version}.${ext}
+  # Shows the disclaimer and MIT license; installing requires accepting it.
+  license: build/license_en.txt
+  artifactName: LBC-Wallet-Setup-${arch}.${ext}
 
 portable:
-  artifactName: ${productName}-Portable-${version}.${ext}
+  artifactName: LBC-Wallet-Portable-${arch}.${ext}
 
 mac:
   target:
@@ -91,7 +112,9 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
 
 dmg:
-  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  artifactName: LBC-Wallet-mac-${arch}.${ext}
+  # Shown when the disk image is opened; it opens only after "Agree".
+  license: build/license_en.txt
 
 publish:
   provider: github

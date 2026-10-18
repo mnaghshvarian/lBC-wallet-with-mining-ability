@@ -1,0 +1,40 @@
+name: Mainnet check
+
+# Read-only checks against the real LBC network. Nothing is mined (GitHub's
+# terms forbid mining on Actions) and nothing is spent: the pool check only
+# logs in and receives work, and the node check only downloads the chain.
+on:
+  push:
+    branches: [main, master, 'feature/**']
+  schedule:
+    - cron: '17 6 * * 1' # every Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mainnet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mainnet:
+    name: Hubs, proof of work, SPV proofs, pool login, built-in node sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.24'
+      - name: Build the bundled full node (lbcd)
+        run: bash scripts/build-lbcd.sh linux-x64
+      - run: npm ci
+      - name: Public hubs, headers with proof of work, a real transaction's merkle proof, LBRYPool login
+        run: npm run test:mainnet -w @lbcwallet/core
+      - name: The built-in node finds peers by itself and syncs mainnet blocks
+        run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" npx tsx apps/desktop/mainnet/node-sync.ts 8

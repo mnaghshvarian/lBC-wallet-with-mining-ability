@@ -12,9 +12,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  LBCD_VERSION: v0.22.119
-
 jobs:
   checks:
     name: Typecheck, unit tests, build (${{ matrix.os }})
@@ -46,15 +43,15 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.24'
-      - name: Build lbcd ${{ env.LBCD_VERSION }}
-        run: go install github.com/lbryio/lbcd@${{ env.LBCD_VERSION }}
+      - name: Build lbcd (the bundled full node) from its verified release source
+        run: bash scripts/build-lbcd.sh linux-x64
       - run: npm ci
       - name: Wallet, hub protocol and mining end-to-end tests
-        run: LBCD_BIN="$(go env GOPATH)/bin/lbcd" npm run test:e2e
+        run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" npm run test:e2e
       - name: Desktop UI end-to-end test
         run: |
           npm run build
-          LBCD_BIN="$(go env GOPATH)/bin/lbcd" SCREENSHOT_DIR="$RUNNER_TEMP/screenshots" \
+          LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" SCREENSHOT_DIR="$RUNNER_TEMP/screenshots" \
             xvfb-run -a -s "-screen 0 1440x900x24" npm run test:ui -w lbc-wallet-desktop
       - name: Package the Linux app (fused production build)
         working-directory: apps/desktop
@@ -64,7 +61,7 @@ jobs:
           # Ubuntu 24.04 restricts unprivileged user namespaces, which Chromium's sandbox uses.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           APP_EXECUTABLE="$(echo "$PWD"/apps/desktop/release/*/linux-unpacked/lbc-wallet)" \
-          LBCD_BIN="$(go env GOPATH)/bin/lbcd" SCREENSHOT_DIR="$RUNNER_TEMP/screenshots-packaged" \
+          LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" SCREENSHOT_DIR="$RUNNER_TEMP/screenshots-packaged" \
             xvfb-run -a -s "-screen 0 1440x900x24" npm run test:ui -w lbc-wallet-desktop
       - name: Network privacy audit of the packaged app
         run: |
@@ -78,6 +75,57 @@ jobs:
           path: |
             ${{ runner.temp }}/screenshots
             ${{ runner.temp }}/screenshots-packaged
+          if-no-files-found: ignore
+
+  android:
+    name: Android app (regtest stack test, APK, emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.24'
+      - name: Build lbcd for the local test network
+        run: bash scripts/build-lbcd.sh linux-x64
+      - run: npm ci
+      - name: Android wallet stack against lbcd regtest
+        run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" npm run test:e2e -w lbc-wallet-mobile
+      - name: Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+      - name: Build the debug APK
+        run: npm run build:android:debug -w lbc-wallet-mobile
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run the app in an Android emulator against the test network
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" SCREENSHOT_DIR="$RUNNER_TEMP/android-screenshots" npm run test:device -w lbc-wallet-mobile
+      - name: Upload Android screenshots and the debug APK
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: |
+            ${{ runner.temp }}/android-screenshots
+            apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: ignore
 
   wasm:

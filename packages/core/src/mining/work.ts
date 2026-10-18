@@ -25,6 +25,12 @@ export interface WorkUnit {
   /** Extranonce2 used to build this header (Stratum), hex. */
   extranonce2?: string;
   ntime: number;
+  /**
+   * Stop scanning this unit after the first hit. Set for solo work, where a hit is a
+   * whole block: on easy networks (regtest, testnet) nearly every nonce would
+   * otherwise be reported, flooding the coordinator with competing blocks.
+   */
+  stopOnHit?: boolean;
 }
 
 export function setNonce(header: Uint8Array, nonce: number): void {

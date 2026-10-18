@@ -32,6 +32,8 @@ export interface RegtestNode {
   rpc: LbcdRpc;
   rpcUrl: string;
   port: number;
+  /** Peer-to-peer port, so other nodes can sync from this one. */
+  p2pPort: number;
   generate(n: number): Promise<string[]>;
   stop(): Promise<void>;
 }
@@ -39,6 +41,7 @@ export interface RegtestNode {
 export async function startRegtest(miningAddress: string): Promise<RegtestNode> {
   const dir = mkdtempSync(join(tmpdir(), 'lbcd-e2e-'));
   const port = await freePort();
+  const p2pPort = await freePort();
   const args = [
     '--regtest',
     `--datadir=${join(dir, 'data')}`,
@@ -48,7 +51,7 @@ export async function startRegtest(miningAddress: string): Promise<RegtestNode> 
     '--rpcuser=e2e',
     '--rpcpass=e2e',
     `--rpclisten=127.0.0.1:${port}`,
-    '--nolisten',
+    `--listen=127.0.0.1:${p2pPort}`,
     '--txindex',
     '--addrindex',
     `--miningaddr=${miningAddress}`,
@@ -74,6 +77,7 @@ export async function startRegtest(miningAddress: string): Promise<RegtestNode> 
     rpc,
     rpcUrl,
     port,
+    p2pPort,
     generate: (n) => rpc.call<string[]>('generate', [n], 120_000),
     stop: async () => {
       proc.kill('SIGTERM');

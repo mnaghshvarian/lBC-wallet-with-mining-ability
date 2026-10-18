@@ -14,7 +14,8 @@
     "test": "vitest run --dir test",
     "test:watch": "vitest --dir test",
     "test:e2e": "vitest run --dir e2e --no-file-parallelism",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:mainnet": "vitest run --dir mainnet"
   },
   "dependencies": {
     "@noble/ciphers": "2.4.0",

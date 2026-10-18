@@ -53,7 +53,7 @@ export class WorkerThreads implements HashThreads {
   }
 
   assign(thread: number, key: string, work: WorkUnit): void {
-    this.workers[thread]?.postMessage({ type: 'assign', key, header: work.header, target: work.target.toString(16) });
+    this.workers[thread]?.postMessage({ type: 'assign', key, header: work.header, target: work.target.toString(16), stopOnHit: !!work.stopOnHit });
   }
 
   idle(): void {

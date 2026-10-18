@@ -89,7 +89,7 @@ export class SoloTemplateWork {
       time,
       bits: parseInt(this.template.bits, 16),
     });
-    return { jobId: this.jobId, header, target: this.blockTarget, blockTarget: this.blockTarget, extranonce2: toHex(extranonce), ntime: time, coinbaseHex: cb.toHex() };
+    return { jobId: this.jobId, header, target: this.blockTarget, blockTarget: this.blockTarget, extranonce2: toHex(extranonce), ntime: time, coinbaseHex: cb.toHex(), stopOnHit: true };
   }
 
   /** Full serialized block for `submitblock`. */

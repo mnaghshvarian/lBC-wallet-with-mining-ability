@@ -1,0 +1,99 @@
+# Disclaimer — please read before using LBC Wallet
+
+> **LBC Wallet is experimental, unaudited, free software made by volunteers.
+> You use it entirely at your own risk. Nobody can give you back lost or stolen coins.**
+
+By downloading, installing, running or otherwise using LBC Wallet ("the software") you confirm
+that you have read, understood and accepted this disclaimer. If you do not agree, do not use the
+software. The app shows a summary of this text on first start, in 14 languages, and you must
+accept it before you can use the wallet. If a translation differs from this English text, the
+English text applies.
+
+## 1. No warranty
+
+The software is provided **"as is" and "as available", without warranty of any kind**, express or
+implied, including but not limited to warranties of merchantability, fitness for a particular
+purpose, title, non-infringement, accuracy, security, reliability or availability. It is licensed
+under the [MIT License](LICENSE), whose terms apply in full.
+
+## 2. No liability
+
+To the maximum extent permitted by applicable law, **the authors, contributors, maintainers and
+anyone who distributes the software are not liable** for any claim, loss or damage of any kind —
+direct, indirect, incidental, special, consequential, exemplary or punitive — including loss of
+funds or cryptocurrency, loss of data, loss of profits or income, damaged hardware or higher
+electricity bills, arising from or in connection with the software, its use or inability to use
+it, bugs or security flaws, mistakes in documentation, third-party services, or user error, even if
+advised of the possibility of such damage.
+
+## 3. Not audited
+
+**No independent security audit has been performed.** The code may contain bugs, including bugs
+that cause permanent loss of funds or that leak private information. Reviews and audits are very
+welcome; please report security problems privately as described in
+[docs/SECURITY.md](docs/SECURITY.md). Until the software has been audited, use it only with
+amounts you can afford to lose, and test with a small amount first.
+
+## 4. You alone control your money
+
+LBC Wallet is **non-custodial**: your keys are created and stored only on your own device, encrypted
+with your password. This means:
+
+* **Nobody** — not the developers, not LBRY, not anyone else — can recover a lost recovery phrase or
+  password, reverse or cancel a payment, or freeze or return funds.
+* If you lose your recovery phrase and your device or password, **your funds are lost forever**.
+  Write the recovery phrase on paper, keep it private and safe, and never type it into websites.
+* Anyone who gets your recovery phrase, or malware on your device, can take your funds. Keeping your
+  device secure is your responsibility.
+* Payments are final. Always check the address before sending.
+
+## 5. Mining
+
+* Mining LBC with a normal computer (CPU) usually earns **very little** and often costs more in
+  electricity than it earns. Estimates shown in the app are rough and not a promise of income.
+* Mining runs your processor at high load for long periods. It produces heat and noise, uses more
+  power, and can shorten the life of your hardware or affect its warranty.
+* Do not mine on computers or networks you do not own or have no permission to use (for example
+  your employer's, school's or a cloud provider's). It may break their rules or the law.
+* Mining or holding cryptocurrency may be restricted or illegal where you live. Check first.
+* Mining pools are run by third parties who may change fees, go offline or fail to pay.
+
+## 6. Built-in full node
+
+The optional built-in node runs **lbcd**, LBRY's official full-node software, unmodified. It
+downloads and stores the whole LBRY blockchain (well over 100 GB), uses a lot of bandwidth, disk
+and processor time, and — when you allow incoming connections — asks your router to open a port
+(UPnP) so other nodes can connect to it. Check your disk space, data plan and network rules before
+turning it on.
+
+## 7. Third-party services and privacy
+
+To work, the app connects to services run by other people: public LBRY wallet servers ("hubs"),
+mining pools, and — only if you turn on fiat prices — price services (CoinPaprika, CoinGecko). Links
+you open go to GitHub or a block explorer. **Their operators can see your IP address and which
+addresses or transactions you ask about**, and may log it. The app itself sends no analytics or
+telemetry. For more privacy, use your own node or route connections through Tor (SOCKS5).
+
+## 8. Not advice
+
+Nothing in the software or its documentation is financial, investment, legal or tax advice. The
+value of LBC can fall to zero, and buying or selling it may be difficult.
+
+## 9. Your responsibility
+
+You are responsible for complying with the laws, regulations, sanctions and tax rules that apply to
+you, and for how you use the software.
+
+## 10. No affiliation
+
+LBC Wallet is an independent community project. It is **not affiliated with, endorsed by or
+supported by LBRY Inc., Odysee, the LBRY Foundation, or any exchange or mining pool.** Names and
+trademarks belong to their owners.
+
+## 11. Downloads
+
+Only download the software from the project's official GitHub releases page:
+<https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/releases>. Check the SHA-256
+checksums published with each release. Builds may not be code-signed, so your operating system may
+warn you; the manual explains how to check and open them. Copies from other places may be modified
+to steal your coins.

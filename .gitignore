@@ -9,3 +9,6 @@ coverage/
 .e2e/
 *.tsbuildinfo
 apps/desktop/e2e/screenshots/
+
+# lbcd binaries built by scripts/build-lbcd.sh
+apps/desktop/resources/bin/

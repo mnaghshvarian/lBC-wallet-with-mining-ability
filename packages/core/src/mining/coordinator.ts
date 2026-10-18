@@ -67,6 +67,8 @@ export class MinerCoordinator extends Emitter<MinerEvents> {
   private soloRpc: LbcdRpc | null = null;
   private soloPayout: Uint8Array | null = null;
   private soloWork: SoloTemplateWork | null = null;
+  /** A found block is being submitted; hits meanwhile would only compete with it. */
+  private soloSubmitting = false;
   private assigned = new Map<string, Assigned>();
   private threadKeys: (string | null)[];
   private extranonceCounter = 1n;
@@ -198,6 +200,8 @@ export class MinerCoordinator extends Emitter<MinerEvents> {
       const msg = (err as Error).message;
       this.threads.idle();
       this.threadKeys.fill(null);
+      // Forget the template so the next successful refresh hands out work again.
+      this.soloWork = null;
       this.publish({ state: 'error', error: `node: ${msg}` });
       if (force) this.log('error', `getblocktemplate failed: ${msg}`);
       return;
@@ -253,6 +257,10 @@ export class MinerCoordinator extends Emitter<MinerEvents> {
       return;
     }
     if (entry.solo && entry.coinbaseHex) {
+      // One submission at a time; afterwards every thread gets fresh work for the new tip.
+      if (this.soloSubmitting) return;
+      this.soloSubmitting = true;
+      this.assigned.delete(key);
       const header = entry.work.header.slice();
       setNonce(header, nonce);
       const blockHex = entry.solo.serializeBlock(header, entry.coinbaseHex);
@@ -269,6 +277,8 @@ export class MinerCoordinator extends Emitter<MinerEvents> {
         this.emit('block', { hash, height: entry.height ?? 0, accepted, reason: reason ?? undefined });
       } catch (err) {
         this.log('error', `submitblock failed: ${(err as Error).message}`);
+      } finally {
+        this.soloSubmitting = false;
       }
       await this.refreshTemplate(true);
     }
@@ -287,6 +297,7 @@ export class MinerCoordinator extends Emitter<MinerEvents> {
     this.stratumJob = null;
     this.soloWork = null;
     this.soloRpc = null;
+    this.soloSubmitting = false;
     await s?.stop();
     this.publish({ state: 'stopped', hashrate: 0 });
   }
@@ -298,7 +309,7 @@ export class MinerCoordinator extends Emitter<MinerEvents> {
  */
 export class InProcessThreads implements HashThreads {
   private scanners: LbryScanner[] = [];
-  private jobs: ({ key: string; next: number } | null)[];
+  private jobs: ({ key: string; next: number; stopOnHit: boolean } | null)[];
   private timer: ReturnType<typeof setTimeout> | null = null;
   private hit: (thread: number, key: string, nonce: number) => void = () => {};
   private exhausted: (thread: number, key: string) => void = () => {};
@@ -319,7 +330,7 @@ export class InProcessThreads implements HashThreads {
 
   assign(thread: number, key: string, work: WorkUnit): void {
     this.scanners[thread]!.setWork(work.header, work.target);
-    this.jobs[thread] = { key, next: 0 };
+    this.jobs[thread] = { key, next: 0, stopOnHit: !!work.stopOnHit };
     this.schedule();
   }
 
@@ -344,7 +355,10 @@ export class InProcessThreads implements HashThreads {
         const r = this.scanners[i]!.scan(job.next, count);
         this.hashes(i, r.hashes);
         job.next += r.hashes;
-        if (r.found) this.hit(i, job.key, r.nonce!);
+        if (r.found) {
+          if (job.stopOnHit && this.jobs[i] === job) this.jobs[i] = null;
+          this.hit(i, job.key, r.nonce!);
+        }
         if (job.next >= 0x1_0000_0000 && this.jobs[i] === job) {
           this.jobs[i] = null;
           this.exhausted(i, job.key);

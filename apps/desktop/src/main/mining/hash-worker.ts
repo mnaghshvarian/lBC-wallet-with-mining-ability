@@ -7,7 +7,7 @@
 import { parentPort } from 'node:worker_threads';
 import { LbryScanner } from '@lbcwallet/core';
 
-type InMsg = { type: 'assign'; key: string; header: Uint8Array; target: string } | { type: 'idle' };
+type InMsg = { type: 'assign'; key: string; header: Uint8Array; target: string; stopOnHit?: boolean } | { type: 'idle' };
 
 const SLICE = 16_384;
 const NONCE_SPACE = 0x1_0000_0000;
@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   if (!parentPort) throw new Error('hash worker must run in a worker thread');
   const port = parentPort;
   const scanner = await LbryScanner.create();
-  let job: { key: string; next: number } | null = null;
+  let job: { key: string; next: number; stopOnHit: boolean } | null = null;
   let running = false;
   let pending = 0;
   let lastReport = Date.now();
@@ -37,7 +37,11 @@ async function main(): Promise<void> {
     const r = scanner.scan(current.next, Math.min(SLICE, NONCE_SPACE - current.next));
     current.next += r.hashes;
     pending += r.hashes;
-    if (r.found) port.postMessage({ type: 'hit', key: current.key, nonce: r.nonce });
+    if (r.found) {
+      port.postMessage({ type: 'hit', key: current.key, nonce: r.nonce });
+      // Solo work: the hit is a whole block; wait for new work instead of reporting more.
+      if (current.stopOnHit && job === current) job = null;
+    }
     if (current.next >= NONCE_SPACE && job === current) {
       job = null;
       port.postMessage({ type: 'exhausted', key: current.key });
@@ -49,7 +53,7 @@ async function main(): Promise<void> {
   port.on('message', (msg: InMsg) => {
     if (msg.type === 'assign') {
       scanner.setWork(msg.header, BigInt(`0x${msg.target}`));
-      job = { key: msg.key, next: 0 };
+      job = { key: msg.key, next: 0, stopOnHit: !!msg.stopOnHit };
       if (!running) {
         running = true;
         setImmediate(loop);

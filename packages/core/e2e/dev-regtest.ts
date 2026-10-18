@@ -23,7 +23,7 @@ async function main() {
   await node.generate(Number(process.env.BLOCKS ?? 120));
   const hub = await startRegtestHub(node.rpc, { port: Number(process.env.HUB_PORT ?? 50101), pollMs: 300 });
   const pool = await startTestPool(node.rpc, addressToScript(miner, REGTEST), Number(process.env.POOL_DIFF ?? 0.005), Number(process.env.POOL_PORT ?? 33340));
-  const info = { ready: true, rpcUrl: node.rpcUrl, rpcUser: 'e2e', rpcPassword: 'e2e', hubPort: hub.port, poolPort: pool.port, fundedPhrase: PHRASE, minerAddress: miner };
+  const info = { ready: true, rpcUrl: node.rpcUrl, p2pPort: node.p2pPort, rpcUser: 'e2e', rpcPassword: 'e2e', hubPort: hub.port, poolPort: pool.port, fundedPhrase: PHRASE, minerAddress: miner };
   console.log(JSON.stringify(info));
   let timer: ReturnType<typeof setInterval> | undefined;
   if (process.env.AUTOMINE) timer = setInterval(() => void node.generate(1).catch(() => undefined), Number(process.env.AUTOMINE) * 1000);

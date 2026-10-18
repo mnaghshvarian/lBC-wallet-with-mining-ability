@@ -1,0 +1,35 @@
+{
+  "name": "lbc-wallet-mobile",
+  "version": "1.0.0",
+  "description": "LBC Wallet for Android: the shared wallet services and UI in a Capacitor app",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && cap sync android",
+    "build:web": "vite build",
+    "test": "vitest run --dir test",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:e2e": "vitest run --dir e2e",
+    "build:android:debug": "vite build && cap sync android && cd android && ./gradlew assembleDebug",
+    "build:android:release": "vite build && cap sync android && cd android && ./gradlew assembleRelease",
+    "test:device": "tsx e2e/device.e2e.ts"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@lbcwallet/core": "*",
+    "@lbcwallet/services": "*",
+    "@lbcwallet/ui": "*"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3",
+    "@vitejs/plugin-react": "5.1.2",
+    "typescript": "6.0.3",
+    "vite": "7.3.7",
+    "vitest": "5.0.5",
+    "playwright-core": "1.64.1",
+    "tsx": "4.23.15"
+  }
+}

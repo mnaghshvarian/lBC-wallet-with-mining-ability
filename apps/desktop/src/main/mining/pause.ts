@@ -1,4 +1,4 @@
-import type { MiningSettings } from '../../shared/api';
+import type { MiningSettings } from '@lbcwallet/services';
 
 export type PauseReason = 'battery' | 'in-use';
 

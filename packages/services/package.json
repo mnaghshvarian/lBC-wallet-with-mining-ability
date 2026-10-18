@@ -1,0 +1,24 @@
+{
+  "name": "@lbcwallet/services",
+  "version": "1.0.0",
+  "description": "Platform-independent wallet services and the app API contract, shared by the desktop and Android apps",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "test": "vitest run --dir test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@lbcwallet/core": "*"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

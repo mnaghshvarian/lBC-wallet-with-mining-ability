@@ -1,12 +1,10 @@
 import { join, sep } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { net, powerMonitor, utilityProcess, type UtilityProcess } from 'electron';
-import { addressToScript, blockSubsidy, decodeAddress, estimateEarnings, getNetwork, networkHashrateFromBits, toHex } from '@lbcwallet/core';
-import type { MinerEstimateView, MinerLogEntry, MinerStatsView, PoolBalanceView, Settings } from '../shared/api';
-import type { SettingsStore } from './settings';
+import { powerMonitor, utilityProcess, type UtilityProcess } from 'electron';
+import { addressToScript, getNetwork, toHex } from '@lbcwallet/core';
+import { UserError, describeError, type MinerEstimateView, type MinerLogEntry, type MinerStatsView, type MiningInfo, type Settings, type SettingsStore } from '@lbcwallet/services';
 import type { MinerStartMessage } from './mining/miner-process';
 import { logger } from './log';
-import { CLIENT_NAME } from './backend';
 import { pauseReason, type PauseReason } from './mining/pause';
 import { parsePoolUrl } from './mining/pool-url';
 
@@ -34,13 +32,22 @@ function stoppedStats(threads: number): MinerStatsView {
   };
 }
 
+/** RPC access to a full node for solo mining. */
+export interface SoloNode {
+  url: string;
+  username: string;
+  password: string;
+  ca?: string;
+  /** 0..1; solo mining needs a fully synced node. */
+  progress: number;
+}
+
 export interface MinerServiceDeps {
   settings: SettingsStore;
-  /** Address of the open wallet, used when no payout address is configured. */
-  walletAddress: () => string | null;
-  /** Height and difficulty bits of the wallet's chain tip, for estimates when idle. */
-  chainTip: () => { height: number; bits: number } | null;
-  price: () => number | null;
+  miningInfo: MiningInfo;
+  clientName: string;
+  /** The built-in node while it runs (preferred for solo mining). */
+  builtInNode: () => SoloNode | null;
   onStats: (s: MinerStatsView) => void;
   onLog: (e: MinerLogEntry) => void;
   onBlock: (b: { hash: string; height: number; accepted: boolean }) => void;
@@ -61,7 +68,6 @@ export class MinerService {
   private pauseBusy = false;
   private wantRunning = false;
   private perThreadRate = 0;
-  private poolBalanceCache: { at: number; address: string; value: PoolBalanceView | null } | null = null;
 
   constructor(private readonly deps: MinerServiceDeps) {
     this.stats = stoppedStats(deps.settings.get().mining.threads);
@@ -103,8 +109,9 @@ export class MinerService {
       const settings = this.deps.settings.get();
       await this.launch(settings, this.resolvePayout(settings));
     } catch (err) {
-      this.addLog('error', (err as Error).message);
-      this.publish({ ...stoppedStats(this.stats.threads), state: 'error', error: (err as Error).message });
+      const e = describeError(err);
+      this.addLog('error', e.message);
+      this.publish({ ...stoppedStats(this.stats.threads), state: 'error', error: e.message, errorCode: e.code, errorParams: e.params });
     }
   }
 
@@ -135,15 +142,31 @@ export class MinerService {
   }
 
   private resolvePayout(settings: Settings): string {
-    const network = getNetwork(settings.network);
-    const address = settings.mining.payoutAddress || this.deps.walletAddress();
-    if (!address) throw new Error('Open a wallet (or set a payout address in mining settings) before you start mining.');
-    try {
-      decodeAddress(address, network);
-    } catch (err) {
-      throw new Error(`Payout address is invalid: ${(err as Error).message}`);
+    return this.deps.miningInfo.payoutAddress(settings);
+  }
+
+  /** The address the running miner pays to (for the pool balance). */
+  payoutInUse(): string | null {
+    return this.wantRunning ? this.payout : null;
+  }
+
+  /** The node solo mining talks to: the built-in node if it runs, else the one in Settings → Network. */
+  private soloNode(settings: Settings): SoloNode {
+    const builtIn = this.deps.builtInNode();
+    if (builtIn) {
+      if (builtIn.progress < 0.999) throw new UserError('soloNodeSyncing', { progress: Math.floor(builtIn.progress * 100) });
+      return builtIn;
     }
-    return address;
+    if (!settings.lbcd.url || !settings.lbcd.username) throw new UserError('soloNeedsNode');
+    let ca: string | undefined;
+    if (settings.lbcd.certPath) {
+      try {
+        ca = readFileSync(settings.lbcd.certPath, 'utf8');
+      } catch (err) {
+        throw new UserError('nodeCertUnreadable', { detail: (err as Error).message });
+      }
+    }
+    return { url: settings.lbcd.url, username: settings.lbcd.username, password: settings.lbcd.password, ca, progress: 1 };
   }
 
   private workerPath(name: string): string {
@@ -188,18 +211,16 @@ export class MinerService {
         ...ep,
         username: m.workerName ? `${payout}.${m.workerName}` : payout,
         password: m.poolPassword || 'x',
-        agent: CLIENT_NAME,
+        agent: this.deps.clientName,
         socks5: settings.socks5.enabled ? { host: settings.socks5.host, port: settings.socks5.port } : undefined,
       };
     } else {
-      if (!settings.lbcd.url || !settings.lbcd.username) throw new Error('Solo mining needs your own lbcd node. Configure it in Settings → Network → Full node.');
-      let ca: string | undefined;
-      if (settings.lbcd.certPath) ca = readFileSync(settings.lbcd.certPath, 'utf8');
+      const node = this.soloNode(settings);
       message.solo = {
-        url: settings.lbcd.url,
-        username: settings.lbcd.username,
-        password: settings.lbcd.password,
-        ca,
+        url: node.url,
+        username: node.username,
+        password: node.password,
+        ca: node.ca,
         payoutScriptHex: toHex(addressToScript(payout, getNetwork(settings.network))),
       };
     }
@@ -232,10 +253,12 @@ export class MinerService {
         case 'block':
           this.deps.onBlock(msg.block!);
           break;
-        case 'failed':
-          this.publish({ ...stoppedStats(m.threads), state: 'error', error: msg.error });
+        case 'failed': {
+          const e = describeError(new Error(msg.error ?? ''));
+          this.publish({ ...stoppedStats(m.threads), state: 'error', error: e.message, errorCode: e.code, errorParams: e.params });
           void this.stopProcess();
           break;
+        }
       }
     });
     child.on('exit', (code) => {
@@ -243,7 +266,8 @@ export class MinerService {
       this.child = null;
       if (this.isActive) {
         this.addLog(code === 0 ? 'info' : 'error', `miner process exited (code ${code})`);
-        this.publish({ ...stoppedStats(m.threads), state: code === 0 ? 'stopped' : 'error', error: code === 0 ? undefined : 'Miner stopped unexpectedly' });
+        const crashed = new UserError('minerCrashed');
+        this.publish({ ...stoppedStats(m.threads), state: code === 0 ? 'stopped' : 'error', ...(code === 0 ? {} : { error: crashed.message, errorCode: crashed.code }) });
       }
     });
     this.addLog('info', `starting ${m.mode} mining with ${m.threads} thread${m.threads === 1 ? '' : 's'} → ${payout}`);
@@ -292,56 +316,14 @@ export class MinerService {
   }
 
   estimate(): MinerEstimateView {
-    const tip = this.deps.chainTip();
-    const bits = this.stats.networkBits ?? tip?.bits ?? null;
-    const height = this.stats.height ?? tip?.height ?? null;
     const threads = this.deps.settings.get().mining.threads;
     const hashrate = this.isActive && this.stats.hashrateAvg > 0 ? this.stats.hashrateAvg : this.perThreadRate * threads;
-    if (!bits || height === null) return { networkHashrate: 0, blockReward: 0, lbcPerDay: 0, daysPerBlock: Infinity, fiatPerDay: null, basis: 'none' };
-    const networkHashrate = networkHashrateFromBits(bits);
-    const e = estimateEarnings({ hashrate, networkHashrate, height, poolFeePercent: this.stats.mode === 'solo' ? 0 : 0.5 });
-    const price = this.deps.price();
-    return {
-      networkHashrate,
-      blockReward: Number(blockSubsidy(height)) / 1e8,
-      lbcPerDay: e.lbcPerDay,
-      daysPerBlock: e.daysPerBlock,
-      fiatPerDay: price !== null ? e.lbcPerDay * price : null,
-      basis: 'difficulty',
-    };
-  }
-
-  /** Unpaid/paid balance at a yiimp-compatible pool (e.g. lbrypool.net). */
-  async poolBalance(): Promise<PoolBalanceView | null> {
-    const settings = this.deps.settings.get();
-    const api = settings.mining.poolApi.replace(/\/+$/, '');
-    let address: string;
-    try {
-      address = this.payout ?? this.resolvePayout(settings);
-    } catch {
-      return null;
-    }
-    if (!api || settings.mining.mode !== 'pool' || settings.network !== 'mainnet') return null;
-    if (this.poolBalanceCache && this.poolBalanceCache.address === address && Date.now() - this.poolBalanceCache.at < 120_000) return this.poolBalanceCache.value;
-    let value: PoolBalanceView | null = null;
-    try {
-      if (!/^https:\/\//.test(api)) throw new Error('pool API must use https');
-      const res = await net.fetch(`${api}/api/walletEx?address=${encodeURIComponent(address)}`, { headers: { Accept: 'application/json' } });
-      if (res.ok) {
-        const text = await res.text();
-        if (text.trim()) {
-          const d = JSON.parse(text) as { balance?: number; unpaid?: number; paid24h?: number; total?: number; miners?: { accepted?: number }[] };
-          const hashrate = (d.miners ?? []).reduce((sum, m) => sum + (m.accepted ?? 0), 0);
-          value = { balance: d.balance ?? 0, unpaid: d.unpaid ?? 0, paid24h: d.paid24h ?? 0, total: d.total ?? 0, hashrate, updatedAt: Date.now() };
-        } else {
-          value = { balance: 0, unpaid: 0, paid24h: 0, total: 0, updatedAt: Date.now() };
-        }
-      }
-    } catch (err) {
-      log('warn', `pool balance: ${(err as Error).message}`);
-    }
-    this.poolBalanceCache = { at: Date.now(), address, value };
-    return value;
+    return this.deps.miningInfo.estimate({
+      hashrate,
+      mode: (this.stats.mode ?? this.deps.settings.get().mining.mode) === 'solo' ? 'solo' : 'pool',
+      networkBits: this.stats.networkBits,
+      height: this.stats.height,
+    });
   }
 
   async shutdown(): Promise<void> {

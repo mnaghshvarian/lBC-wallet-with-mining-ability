@@ -1,13 +1,14 @@
 import { app, BrowserWindow, Menu, nativeTheme, powerMonitor, session, shell, type MenuItemConstructorOptions } from 'electron';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { SettingsStore } from './settings';
-import { WalletService } from './wallet-service';
+import { MiningInfo, PriceService, SettingsStore, WalletService, type LbcEvents, type Settings } from '@lbcwallet/services';
 import { MinerService } from './miner-service';
-import { PriceService } from './price-service';
+import { NodeService } from './node-service';
 import { registerIpc } from './ipc';
 import { initLog, log } from './log';
-import type { LbcEvents, Settings } from '../shared/api';
+import { desktopPlatform } from './platform';
+import { tr } from './i18n';
 
 // Sandbox every renderer process, unless the OS sandbox was explicitly disabled
 // with --no-sandbox (needed on some Linux setups); forcing it then would crash
@@ -56,7 +57,8 @@ if (!app.requestSingleInstanceLock()) {
     initLog(join(dataDir, 'logs'));
     log('info', 'app', `starting LBC Wallet ${app.getVersion()} (electron ${process.versions.electron}, ${process.platform}/${process.arch})`);
 
-    const settings = new SettingsStore(dataDir);
+    const platform = desktopPlatform(dataDir);
+    const settings = new SettingsStore(platform.files, platform.cpuCount);
     const applyTheme = () => {
       nativeTheme.themeSource = settings.get().theme;
     };
@@ -67,27 +69,46 @@ if (!app.requestSingleInstanceLock()) {
       if (JSON.stringify(next.socks5) !== JSON.stringify(prev.socks5)) void applyProxy(next);
     });
 
-    const price = new PriceService(settings, (p) => send('price:update', p));
-    const wallets = new WalletService(dataDir, settings, {
+    const price = new PriceService(platform, settings, (p) => send('price:update', p));
+    const wallets = new WalletService(platform, settings, {
       changed: (o) => send('wallet:changed', o),
       locked: (reason) => send('wallet:locked', { reason }),
       network: (st) => send('network:status', st),
       notice: (n) => send('notice', n),
     });
-    const miner = new MinerService({
-      settings,
+    const miningInfo = new MiningInfo(platform, settings, {
       walletAddress: () => wallets.miningAddress(),
       chainTip: () => wallets.tipBits(),
       price: () => price.get()?.price ?? null,
+    });
+    const node = new NodeService({
+      settings,
+      appDataDir: dataDir,
+      binary: lbcdBinary(),
+      onStatus: (st) => send('node:status', st),
+      onNotice: (n) => send('notice', n),
+      onAvailabilityChange: () => void wallets.localNodeChanged().catch((e) => log('warn', 'node', `wallet backend switch failed: ${(e as Error).message}`)),
+      hubHeight: () => wallets.overview()?.backend.height ?? null,
+    });
+    wallets.setLocalNode(() => node.localNode());
+    const miner = new MinerService({
+      settings,
+      miningInfo,
+      clientName: platform.clientName,
+      builtInNode: () => node.soloNode(),
       onStats: (st) => send('miner:stats', st),
       onLog: (e) => send('miner:log', e),
       onBlock: (b) => {
-        if (b.accepted) send('notice', { kind: 'block-found', title: 'Block found!', message: `You mined block ${b.height}. The reward matures after 100 confirmations.` });
+        if (b.accepted) send('notice', { kind: 'block-found', code: 'blockFound', params: { height: b.height } });
       },
     });
 
-    registerIpc({ wallets, settings, miner, price, isTrustedUrl }, () => mainWindow);
+    registerIpc({ platform, wallets, settings, miner, price, miningInfo, node, isTrustedUrl }, () => mainWindow);
     price.start();
+    // Restart the built-in node if it was running when the app last closed.
+    if (settings.get().node.enabled && node.available) {
+      void node.start().catch((e) => log('warn', 'node', `could not start the built-in node: ${(e as Error).message}`));
+    }
 
     // Lock the wallet when the computer sleeps or the screen locks.
     const systemLock = () => {
@@ -97,7 +118,10 @@ if (!app.requestSingleInstanceLock()) {
     powerMonitor.on('lock-screen', systemLock);
 
     hardenSessions();
-    buildMenu();
+    buildMenu(settings.get().language);
+    settings.onChange((next, prev) => {
+      if (next.language !== prev.language) buildMenu(next.language);
+    });
     mainWindow = createWindow();
     mainWindow.on('closed', () => {
       mainWindow = null;
@@ -113,7 +137,7 @@ if (!app.requestSingleInstanceLock()) {
       event.preventDefault();
       shuttingDown = true;
       price.stop();
-      Promise.allSettled([miner.shutdown(), wallets.shutdown()]).finally(() => {
+      Promise.allSettled([miner.shutdown(), wallets.shutdown(), node.shutdown()]).finally(() => {
         log('info', 'app', 'shut down cleanly');
         app.exit(0);
       });
@@ -204,22 +228,54 @@ function createWindow(): BrowserWindow {
   return win;
 }
 
-function buildMenu(): void {
+/** The bundled lbcd: in the app's resources when packaged; LBC_WALLET_LBCD_BIN or resources/bin during development. */
+function lbcdBinary(): string | null {
+  const exe = process.platform === 'win32' ? 'lbcd.exe' : 'lbcd';
+  const candidates = app.isPackaged
+    ? [join(process.resourcesPath, 'bin', exe)]
+    : [process.env.LBC_WALLET_LBCD_BIN, join(__dirname, '../../resources/bin', `${{ darwin: 'mac', win32: 'win' }[process.platform as string] ?? process.platform}-${process.arch}`, exe)];
+  return candidates.find((c): c is string => !!c && existsSync(c)) ?? null;
+}
+
+function buildMenu(language: string): void {
   const isMac = process.platform === 'darwin';
+  const l = (key: string) => tr(language, `menu.${key}`);
+  const repo = 'https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability';
   const template: MenuItemConstructorOptions[] = [
     ...(isMac ? [{ role: 'appMenu' as const }] : []),
-    { role: 'fileMenu' },
-    { role: 'editMenu' },
+    { label: l('file'), submenu: [isMac ? { role: 'close', label: l('close') } : { role: 'quit', label: l('quit') }] },
     {
-      label: 'View',
-      submenu: [{ role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(!app.isPackaged ? [{ role: 'toggleDevTools' as const }] : [])],
+      label: l('edit'),
+      submenu: [
+        { role: 'undo', label: l('undo') },
+        { role: 'redo', label: l('redo') },
+        { type: 'separator' },
+        { role: 'cut', label: l('cut') },
+        { role: 'copy', label: l('copy') },
+        { role: 'paste', label: l('paste') },
+        { role: 'selectAll', label: l('selectAll') },
+      ],
     },
-    { role: 'windowMenu' },
+    {
+      label: l('view'),
+      submenu: [
+        { role: 'resetZoom', label: l('resetZoom') },
+        { role: 'zoomIn', label: l('zoomIn') },
+        { role: 'zoomOut', label: l('zoomOut') },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: l('fullscreen') },
+        ...(!app.isPackaged ? [{ role: 'toggleDevTools' as const }] : []),
+      ],
+    },
+    { label: l('window'), submenu: [{ role: 'minimize', label: l('minimize') }, ...(isMac ? [{ role: 'zoom' as const }] : [{ role: 'close' as const, label: l('close') }])] },
     {
       role: 'help',
+      label: l('help'),
       submenu: [
-        { label: 'Project on GitHub', click: () => void shell.openExternal('https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability') },
-        { label: 'LBRY block explorer', click: () => void shell.openExternal('https://explorer.lbry.com') },
+        { label: l('manual'), click: () => void shell.openExternal(`${repo}/blob/HEAD/docs/manual/README.md`) },
+        { label: l('project'), click: () => void shell.openExternal(repo) },
+        { label: l('report'), click: () => void shell.openExternal(`${repo}/issues`) },
+        { label: l('explorer'), click: () => void shell.openExternal('https://explorer.lbry.com') },
       ],
     },
   ];
