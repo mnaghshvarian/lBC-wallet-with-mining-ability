@@ -6,7 +6,7 @@ name: Release
 #
 # Optional signing secrets (see docs/BUILDING.md):
 #   Android: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
-#            (without them the APK is signed with a throwaway key and named "...-test-key.apk")
+#            (without them the APK is signed with a throwaway key and the release notes say so)
 #   macOS:   CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
 #   Windows: WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
 
@@ -150,6 +150,7 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
       - name: Build and sign the APK
+        id: apk
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -157,21 +158,22 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           export LBC_ANDROID_KEYSTORE="$RUNNER_TEMP/release.jks"
+          # One name in every case, so the download links in the docs always work.
+          NAME=LBC-Wallet-android.apk
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$LBC_ANDROID_KEYSTORE"
             export LBC_ANDROID_KEYSTORE_PASSWORD="$ANDROID_KEYSTORE_PASSWORD"
             export LBC_ANDROID_KEY_ALIAS="$ANDROID_KEY_ALIAS"
             export LBC_ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
-            NAME=LBC-Wallet-android.apk
           else
             # No release key configured: sign with a throwaway key so the APK installs, and say so
-            # in the file name. An APK signed with a different key can't update this one in place.
+            # in the release notes. An APK signed with a different key can't update this one in place.
             pass="$(openssl rand -hex 24)"
             echo "::add-mask::$pass"
             keytool -genkeypair -keystore "$LBC_ANDROID_KEYSTORE" -storetype PKCS12 -alias test -keyalg RSA -keysize 4096 \
               -validity 10000 -storepass "$pass" -keypass "$pass" -dname "CN=LBC Wallet test build" > /dev/null
             export LBC_ANDROID_KEYSTORE_PASSWORD="$pass" LBC_ANDROID_KEY_ALIAS=test LBC_ANDROID_KEY_PASSWORD="$pass"
-            NAME=LBC-Wallet-android-test-key.apk
+            echo "test_key=true" >> "$GITHUB_OUTPUT"
             echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: the APK is signed with a throwaway key (see docs/BUILDING.md)."
           fi
           npm run build:android:release -w lbc-wallet-mobile
@@ -184,7 +186,16 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" apps/mobile/release/*.apk apps/mobile/release/SHA256SUMS-Android.txt --clobber
+          TEST_KEY: ${{ steps.apk.outputs.test_key }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" apps/mobile/release/*.apk apps/mobile/release/SHA256SUMS-Android.txt --clobber
+          if [ "$TEST_KEY" = "true" ]; then
+            gh release view "$GITHUB_REF_NAME" --json body -q .body > "$RUNNER_TEMP/notes.md"
+            if ! grep -q "temporary signing key" "$RUNNER_TEMP/notes.md"; then
+              printf '\n> ⚠️ **The Android APK of this release is signed with a temporary signing key.** It installs and works, but a later version signed with the project'"'"'s permanent key will not install over it: you would have to uninstall this one first (write down your recovery phrase before you do).\n' >> "$RUNNER_TEMP/notes.md"
+              gh release edit "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
+            fi
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: lbc-wallet-Android

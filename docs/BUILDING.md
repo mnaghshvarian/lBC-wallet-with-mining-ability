@@ -118,7 +118,9 @@ In GitHub: **Settings → Secrets and variables → Actions → New repository s
 Back up `lbc-wallet-release.jks` and its password offline. If it is lost, users must uninstall
 the app (losing wallets on the phone that aren't backed up by their recovery phrase) before they
 can install a version signed with a new key. Without these secrets the workflow signs the APK
-with a throwaway key and names it `LBC-Wallet-android-test-key.apk`.
+with a throwaway key (the file keeps its usual name, `LBC-Wallet-android.apk`) and adds a warning
+to that release's notes. Set the secrets **before publishing the first release**, so every
+version can update the previous one.
 
 ## Releases
 

@@ -52,9 +52,9 @@ Check your download against the `SHA256SUMS-*.txt` files below.
 * **Mining income is tiny on a normal computer** (LBC is mined mostly by specialized hardware).
   Mine to support the network, not for profit.
 * **Ubuntu 24.04+:** prefer the `.deb` over the AppImage.
-* **Android:** if the APK name ends in `-test-key`, it was signed with a temporary key; a later
-  version signed with the permanent key will need the old app uninstalled first (have your
-  recovery phrase ready).
+* **Android:** Android only installs an update signed with the same key as the installed app.
+  If a note below says this APK uses a temporary signing key, a later version may need the old
+  app uninstalled first (have your recovery phrase ready).
 
 Report problems at https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/issues — never
 include your recovery phrase, password or keys.
