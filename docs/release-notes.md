@@ -23,8 +23,12 @@ shows, with pictures, how to install, create a wallet, receive, send and mine.
 
 Check your download against the `SHA256SUMS-*.txt` files below.
 
-### What's new in this version (1.3.0)
+### What's new in this version (1.3.1)
 
+* **1.3.1 replaces 1.3.0.** 1.3.0 was public for about an hour with its git tag on an older
+  commit than the one its files were built from. 1.3.1 is the same code, released again with a
+  tag that matches the files. If you installed 1.3.0, install 1.3.1 over it (on Android, see the
+  note about the temporary signing key below).
 * **Reviewed and hardened.** Before this release the whole code was reviewed line by line by a
   second, independent AI model (not a human security audit, which is still needed). What it found
   and what was done is in `docs/REVIEW-2026-10.md`. Among the fixes: the other side's LBC payment

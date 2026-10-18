@@ -1,6 +1,6 @@
 {
   "name": "@lbcwallet/miner-wasm",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "LBRY proof-of-work scanner (C → WebAssembly) used by the wallet's built-in miner",
   "license": "MIT",
   "private": true,

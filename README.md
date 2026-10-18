@@ -111,7 +111,7 @@ Nederlands, Русский, 简体中文, 日本語, 한국어, ไทย (right
 
 ## Documentation
 
-**Reviewed, not audited.** Before version 1.3.0 the whole codebase was reviewed line by line by a
+**Reviewed, not audited.** Before version 1.3.1 the whole codebase was reviewed line by line by a
 second, independent AI model; the findings, what was fixed and what remains are in
 [docs/REVIEW-2026-10.md](docs/REVIEW-2026-10.md). That review is not an independent security
 audit by human experts, which the project still needs before anyone should trust it with

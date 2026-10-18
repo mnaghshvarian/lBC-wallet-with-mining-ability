@@ -1,14 +1,14 @@
-# Telegram post: the code review (version 1.3.0)
+# Telegram post: the code review (version 1.3.1)
 
 For the LBRY / LBC Telegram group. No links or web addresses (the group prefers names): say
 "GitHub, repository mnaghshvarian / lBC-wallet-with-mining-ability" and "the Releases page".
-Plain text, under Telegram's 4,096-character limit. Post it once the 1.3.0 release is published.
+Plain text, under Telegram's 4,096-character limit. Post it once the 1.3.1 release is published.
 
 ---
 
-🔍 LBC Wallet 1.3.0: reviewed, fixed, and honest about what it is
+🔍 LBC Wallet 1.3.1: reviewed, fixed, and honest about what it is
 
-Before publishing 1.3.0 I had the whole code of LBC Wallet reviewed a second time. The wallet was
+Before publishing 1.3.1 I had the whole code of LBC Wallet reviewed a second time. The wallet was
 written with one AI model; a second, different AI model then read every part of it line by line
 (swaps, the Market, keys and transactions, the desktop and Android apps, mining) and I re-checked
 its findings against the code before anything changed.

@@ -182,7 +182,7 @@ downloaded (about 1 MB a week; a phone can afford it).
 * **An external security audit** of the core (key derivation, encryption, signing, SPV checks),
   the Android plugin and the release pipeline. Until then the app warns everyone, on first
   start and in Settings → About, that it is unaudited. A line-by-line review by a second AI
-  model was done before 1.3.0 (`docs/REVIEW-2026-10.md`); it found and fixed real bugs and is
+  model was done before 1.3.1 (`docs/REVIEW-2026-10.md`); it found and fixed real bugs and is
   the natural starting point for the audit, but it is not one.
 * Defence in depth on the desktop, from the same review: serve the interface from an app scheme
   instead of `file://`, keep the main-process code inside the integrity-checked archive, take
