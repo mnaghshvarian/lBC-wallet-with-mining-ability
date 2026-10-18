@@ -34,3 +34,8 @@ export * from './swap/protocol.js';
 export * from './swap/codes.js';
 export * from './swap/chain.js';
 export * from './swap/record.js';
+export * from './net/websocket.js';
+export * from './nostr/event.js';
+export * from './nostr/nip44.js';
+export * from './nostr/relays.js';
+export * from './market/protocol.js';

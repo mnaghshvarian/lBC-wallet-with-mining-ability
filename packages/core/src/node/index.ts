@@ -7,7 +7,7 @@ import net from 'node:net';
 import tls from 'node:tls';
 import http from 'node:http';
 import https from 'node:https';
-import { LineSplitter, type HttpPost, type LineTransport, type SocketEndpoint } from '../net/transport.js';
+import { LineSplitter, type ByteTransport, type HttpPost, type LineTransport, type SocketEndpoint } from '../net/transport.js';
 
 export interface NodeSocketOptions {
   connectTimeoutMs?: number;
@@ -59,13 +59,56 @@ function socks5Connect(proxy: { host: string; port: number }, target: SocketEndp
   });
 }
 
+/** Connects over TCP, TLS (host name checked) or a SOCKS5 proxy, within the timeout. */
+function openSocket(endpoint: SocketEndpoint, options: NodeSocketOptions): Promise<net.Socket> {
+  const timeout = options.connectTimeoutMs ?? 10_000;
+  return new Promise<net.Socket>((resolve, reject) => {
+    const startTls = (raw?: net.Socket) => {
+      const s = tls.connect({ host: endpoint.host, port: endpoint.port, servername: net.isIP(endpoint.host) ? undefined : endpoint.host, socket: raw });
+      const timer = setTimeout(() => {
+        s.destroy();
+        reject(new Error('TLS handshake timeout'));
+      }, timeout);
+      s.once('secureConnect', () => {
+        clearTimeout(timer);
+        s.removeAllListeners('error');
+        resolve(s);
+      });
+      s.once('error', (e) => {
+        clearTimeout(timer);
+        reject(e);
+      });
+    };
+    if (options.socks5) {
+      socks5Connect(options.socks5, endpoint, timeout)
+        .then((raw) => (endpoint.tls ? startTls(raw) : resolve(raw)))
+        .catch(reject);
+      return;
+    }
+    if (endpoint.tls) return startTls();
+    const s = net.connect({ host: endpoint.host, port: endpoint.port });
+    const timer = setTimeout(() => {
+      s.destroy();
+      reject(new Error('connection timeout'));
+    }, timeout);
+    s.once('connect', () => {
+      clearTimeout(timer);
+      s.removeAllListeners('error');
+      resolve(s);
+    });
+    s.once('error', (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
+  });
+}
+
 /** Newline-delimited TCP or TLS stream. */
 export function nodeLineTransport(endpoint: SocketEndpoint, options: NodeSocketOptions = {}): LineTransport {
   let socket: net.Socket | null = null;
   let lineHandler: (line: string) => void = () => {};
   let closeHandler: (err?: Error) => void = () => {};
   let closed = false;
-  const timeout = options.connectTimeoutMs ?? 10_000;
 
   const wire = (s: net.Socket) => {
     socket = s;
@@ -90,57 +133,13 @@ export function nodeLineTransport(endpoint: SocketEndpoint, options: NodeSocketO
 
   return {
     connect: () =>
-      new Promise<void>((resolve, reject) => {
-        const onFail = (err: Error) => {
+      openSocket(endpoint, options).then(
+        (s) => wire(s),
+        (err: Error) => {
           closed = true;
-          reject(err);
-        };
-        const startTls = (raw?: net.Socket) => {
-          const s = tls.connect({ host: endpoint.host, port: endpoint.port, servername: net.isIP(endpoint.host) ? undefined : endpoint.host, socket: raw });
-          const timer = setTimeout(() => {
-            s.destroy();
-            onFail(new Error('TLS handshake timeout'));
-          }, timeout);
-          s.once('secureConnect', () => {
-            clearTimeout(timer);
-            s.removeAllListeners('error');
-            wire(s);
-            resolve();
-          });
-          s.once('error', (e) => {
-            clearTimeout(timer);
-            onFail(e);
-          });
-        };
-        if (options.socks5) {
-          socks5Connect(options.socks5, endpoint, timeout)
-            .then((raw) => {
-              if (endpoint.tls) startTls(raw);
-              else {
-                wire(raw);
-                resolve();
-              }
-            })
-            .catch(onFail);
-          return;
-        }
-        if (endpoint.tls) return startTls();
-        const s = net.connect({ host: endpoint.host, port: endpoint.port });
-        const timer = setTimeout(() => {
-          s.destroy();
-          onFail(new Error('connection timeout'));
-        }, timeout);
-        s.once('connect', () => {
-          clearTimeout(timer);
-          s.removeAllListeners('error');
-          wire(s);
-          resolve();
-        });
-        s.once('error', (e) => {
-          clearTimeout(timer);
-          onFail(e);
-        });
-      }),
+          throw err;
+        },
+      ),
     send: (line: string) => {
       if (!socket || closed) throw new Error('not connected');
       socket.write(line + '\n');
@@ -153,6 +152,52 @@ export function nodeLineTransport(endpoint: SocketEndpoint, options: NodeSocketO
     },
     onLine: (h) => {
       lineHandler = h;
+    },
+    onClose: (h) => {
+      closeHandler = h;
+    },
+  };
+}
+
+/** Raw TCP or TLS byte stream (WebSockets to Nostr relays), through SOCKS5 when set. */
+export function nodeByteTransport(endpoint: SocketEndpoint, options: NodeSocketOptions = {}): ByteTransport {
+  let socket: net.Socket | null = null;
+  let dataHandler: (data: Uint8Array) => void = () => {};
+  let closeHandler: (err?: Error) => void = () => {};
+  let closed = false;
+
+  return {
+    connect: () =>
+      openSocket(endpoint, options).then(
+        (s) => {
+          socket = s;
+          s.setNoDelay(true);
+          s.setKeepAlive(true, 30_000);
+          s.on('data', (chunk: Buffer) => dataHandler(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)));
+          s.on('error', () => undefined);
+          s.on('close', (hadError) => {
+            if (closed) return;
+            closed = true;
+            closeHandler(hadError ? new Error('socket error') : undefined);
+          });
+        },
+        (err: Error) => {
+          closed = true;
+          throw err;
+        },
+      ),
+    send: (data: Uint8Array) => {
+      if (!socket || closed) throw new Error('not connected');
+      socket.write(data);
+    },
+    close: () => {
+      if (closed) return;
+      closed = true;
+      socket?.destroy();
+      closeHandler();
+    },
+    onData: (h) => {
+      dataHandler = h;
     },
     onClose: (h) => {
       closeHandler = h;

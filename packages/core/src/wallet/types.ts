@@ -1,5 +1,6 @@
 import type { HistoryItem, MerkleProof } from '../net/backend.js';
 import type { SwapRecord } from '../swap/record.js';
+import type { MarketState } from '../market/protocol.js';
 
 export interface AddressRecord {
   address: string;
@@ -50,6 +51,8 @@ export interface WalletState {
   lastSyncAt?: number;
   /** Atomic swaps, with their keys and secrets. */
   swaps?: SwapRecord[];
+  /** Order board offers and trades, with their keys. */
+  market?: MarketState;
 }
 
 export function emptyWalletState(): WalletState {

@@ -22,6 +22,17 @@ export interface LineTransport {
 
 export type LineTransportFactory = (endpoint: SocketEndpoint) => LineTransport;
 
+/** A raw byte stream (WebSocket connections to Nostr relays). */
+export interface ByteTransport {
+  connect(): Promise<void>;
+  send(data: Uint8Array): void;
+  close(): void;
+  onData(handler: (data: Uint8Array) => void): void;
+  onClose(handler: (error?: Error) => void): void;
+}
+
+export type ByteTransportFactory = (endpoint: SocketEndpoint) => ByteTransport;
+
 /** Performs an HTTP POST of a JSON body and resolves with the response body text. */
 export type HttpPost = (request: {
   url: string;
