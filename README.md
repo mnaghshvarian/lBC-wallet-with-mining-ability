@@ -83,9 +83,9 @@ cloud backups of wallet files. It doesn't mine (phones overheat); it shows your 
 **14 languages** — English, فارسی, العربية, اردو, Français, Deutsch, Español, Português,
 Nederlands, Русский, 简体中文, 日本語, 한국어, ไทย (right-to-left layouts included).
 
-| Mining | Built-in node | Persian (right to left) | Phone |
+| Mining | Built-in node | Persian (right to left) | Android |
 | --- | --- | --- | --- |
-| ![Mining](docs/manual/images/mining.png) | ![Node](docs/manual/images/node-running.png) | ![Persian](docs/manual/images/overview-fa.png) | ![Phone](docs/manual/images/phone-overview.png) |
+| ![Mining](docs/manual/images/mining.png) | ![Node](docs/manual/images/node-running.png) | ![Persian](docs/manual/images/overview-fa.png) | ![Android](docs/manual/images/android-overview.png) |
 
 ## Documentation
 

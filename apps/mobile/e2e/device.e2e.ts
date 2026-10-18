@@ -83,8 +83,48 @@ async function shot(page: Page, name: string) {
   // The emulator draws in software: wait until the page has painted, then for the display to catch up.
   await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
   await page.waitForTimeout(1500);
+  for (let i = 0; i < 20 && screenLooksBlank(); i++) await page.waitForTimeout(500);
   await device.screenshot({ path: join(shotsDir, `${name}.png`) });
   log(`screenshot ${name}`);
+}
+
+/** Raw RGBA frame from screencap, or null when the screen cannot be captured. */
+function captureFrame(): { width: number; height: number; pixel: (x: number, y: number) => [number, number, number] } | null {
+  let raw: Buffer;
+  try {
+    raw = execFileSync(ADB, ['exec-out', 'screencap'], { maxBuffer: 256 * 1024 * 1024 });
+  } catch {
+    return null;
+  }
+  if (raw.length < 16) return null;
+  const width = raw.readUInt32LE(0);
+  const height = raw.readUInt32LE(4);
+  const header = raw.length - width * height * 4;
+  if (width === 0 || height === 0 || header < 0) return null;
+  return {
+    width,
+    height,
+    pixel: (x, y) => {
+      const i = header + (y * width + x) * 4;
+      return [raw[i]!, raw[i + 1]!, raw[i + 2]!];
+    },
+  };
+}
+
+/** True while the middle of the screen is one flat colour (the WebView has not painted yet). */
+function screenLooksBlank(): boolean {
+  const frame = captureFrame();
+  if (!frame) return false;
+  const counts = new Map<string, number>();
+  let samples = 0;
+  for (let y = Math.floor(frame.height * 0.25); y < frame.height * 0.75; y += 16) {
+    for (let x = Math.floor(frame.width * 0.1); x < frame.width * 0.9; x += 16) {
+      const key = frame.pixel(x, y).join(',');
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      samples++;
+    }
+  }
+  return Math.max(...counts.values()) / samples > 0.995;
 }
 
 /**
@@ -93,24 +133,15 @@ async function shot(page: Page, name: string) {
  * returns a black frame. Reads the raw frame buffer (RGBA after a header).
  */
 function screenIsProtected(): boolean {
-  let raw: Buffer;
-  try {
-    raw = execFileSync(ADB, ['exec-out', 'screencap'], { maxBuffer: 256 * 1024 * 1024 });
-  } catch {
-    return true;
-  }
-  if (raw.length < 16) return true;
-  const width = raw.readUInt32LE(0);
-  const height = raw.readUInt32LE(4);
-  const header = raw.length - width * height * 4;
-  if (width === 0 || height === 0 || header < 0) return true;
+  const frame = captureFrame();
+  if (!frame) return true;
   let bright = 0;
   let samples = 0;
-  for (let y = Math.floor(height * 0.25); y < height * 0.75; y += 8) {
-    for (let x = Math.floor(width * 0.1); x < width * 0.9; x += 8) {
-      const i = header + (y * width + x) * 4;
+  for (let y = Math.floor(frame.height * 0.25); y < frame.height * 0.75; y += 8) {
+    for (let x = Math.floor(frame.width * 0.1); x < frame.width * 0.9; x += 8) {
+      const [r, g, b] = frame.pixel(x, y);
       samples++;
-      if (raw[i]! + raw[i + 1]! + raw[i + 2]! > 48) bright++;
+      if (r + g + b > 48) bright++;
     }
   }
   return bright / samples < 0.01;

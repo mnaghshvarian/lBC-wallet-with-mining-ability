@@ -251,6 +251,12 @@ After installing, you can switch **Allow from this source** off again for your b
 overheat and drain their battery. The **Mining** page on the phone shows your **pool balance**,
 so you can follow what your computer earns.
 
+| Your wallet | Receive | Check before sending | In Persian |
+| --- | --- | --- | --- |
+| ![The wallet on Android](images/android-overview.png) | ![Receive on Android](images/android-receive.png) | ![Review a payment on Android](images/android-review.png) | ![Persian on Android](images/android-overview-fa.png) |
+
+*(Pictures from the real app on an Android 14 phone emulator, on a test network.)*
+
 > [!IMPORTANT]
 > **Updating the Android app:** install the newer APK the same way; Android keeps your wallets.
 > If Android says *"App not installed as package conflicts with an existing package"*, the new

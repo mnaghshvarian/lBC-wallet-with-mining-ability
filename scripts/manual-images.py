@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Builds the user manual's pictures and animations from the UI test screenshots.
 
-    SCREENSHOT_DIR=... npm run test:ui -w lbc-wallet-desktop      # produces the screenshots
+    SCREENSHOT_DIR=... npm run test:ui -w lbc-wallet-desktop      # desktop screenshots
+    SCREENSHOT_DIR=... npm run test:device -w lbc-wallet-mobile   # Android screenshots (emulator)
     python3 scripts/manual-images.py <screenshot dir>               # needs Pillow
 
-Writes docs/manual/images/*.png and *.gif.
+Writes docs/manual/images/*.png and *.gif for the screenshots the folder holds.
 """
 import os
 import sys
@@ -26,6 +27,11 @@ PICTURES = {
     'phone-overview': '25-phone-overview', 'phone-receive': '26-phone-receive', 'phone-send': '27-phone-send',
     'phone-more': '28-phone-more', 'phone-overview-fa': '23-phone-overview-fa',
 }
+# Real phone screenshots from the Android emulator test, shown at half size.
+ANDROID = {
+    'android-overview': 'android-04-overview', 'android-receive': 'android-05-receive',
+    'android-review': 'android-07-review', 'android-overview-fa': 'android-10-overview-fa',
+}
 ANIMATIONS = {
     'restore': (['01-welcome', '02-restore-phrase', '03-restore-detected', '04-overview'], 1800),
     'create': (['01-welcome', '07-create-phrase', '08-create-verify'], 2000),
@@ -40,12 +46,27 @@ def load(name):
     return Image.open(os.path.join(src, f'{name}.png')).convert('RGB')
 
 
-for target, name in PICTURES.items():
-    img = load(name)
+def have(*names):
+    return all(os.path.exists(os.path.join(src, f'{n}.png')) for n in names)
+
+
+def save_png(img, target):
     # 256 colours keeps the flat UI crisp and the files small.
     img.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(os.path.join(out, f'{target}.png'), optimize=True)
 
+
+for target, name in PICTURES.items():
+    if have(name):
+        save_png(load(name), target)
+
+for target, name in ANDROID.items():
+    if have(name):
+        img = load(name)
+        save_png(img.resize((img.width // 2, img.height // 2), Image.LANCZOS), target)
+
 for target, (frames, ms) in ANIMATIONS.items():
+    if not have(*frames):
+        continue
     images = [load(f) for f in frames]
     scale = 960 / images[0].width if images[0].width > 960 else 1
     images = [i.resize((round(i.width * scale), round(i.height * scale)), Image.LANCZOS) for i in images]
