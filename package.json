@@ -17,12 +17,14 @@
     "test:e2e": "npm run test:e2e -w @lbcwallet/core",
     "typecheck": "npm run typecheck -w @lbcwallet/core -w @lbcwallet/services -w @lbcwallet/ui -w lbc-wallet-desktop -w lbc-wallet-mobile",
     "regtest": "tsx packages/core/e2e/dev-regtest.ts",
-    "build:android": "npm run build:android:release -w lbc-wallet-mobile"
+    "build:android": "npm run build:android:release -w lbc-wallet-mobile",
+    "docs:pdf": "node scripts/manual-pdf.mjs"
   },
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
+    "marked": "18.0.14",
     "tsx": "4.23.15"
   }
 }

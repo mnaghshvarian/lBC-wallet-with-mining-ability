@@ -31,6 +31,7 @@ jobs:
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
             gh release create "$GITHUB_REF_NAME" --draft --title "LBC Wallet ${GITHUB_REF_NAME#v}" --notes-file docs/release-notes.md
+          gh release upload "$GITHUB_REF_NAME" docs/manual/LBC-Wallet-Manual.pdf DISCLAIMER.md --clobber
 
   build:
     name: Package (${{ matrix.os }})

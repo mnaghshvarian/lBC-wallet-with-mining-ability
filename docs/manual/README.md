@@ -2,7 +2,9 @@
 
 This manual explains everything step by step, in plain words. You do **not** need to know
 anything about GitHub, programming or the command line. If a word is new to you, look it up in
-the [glossary](#glossary) at the end.
+the [glossary](#glossary) at the end. You can also
+[download this manual as a PDF](https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/raw/HEAD/docs/manual/LBC-Wallet-Manual.pdf)
+to read offline or print.
 
 **Other languages:** short quick-start guides are available in
 [فارسی](quickstart/fa.md) · [العربية](quickstart/ar.md) · [اردو](quickstart/ur.md) ·
