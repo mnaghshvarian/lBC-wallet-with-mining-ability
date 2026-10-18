@@ -6,7 +6,9 @@ import { fromHex } from '../encoding/bytes.js';
 import type { ChainBackend } from '../net/backend.js';
 import type { EsploraClient, EsploraTx } from '../net/esplora.js';
 import type { NetworkParams } from '../networks.js';
+import { parseHeader } from '../crypto/pow.js';
 import { Transaction } from '../tx/transaction.js';
+import { checkHeaderChain } from '../wallet/headers.js';
 import { verifyTransactionInclusion } from '../wallet/verify.js';
 import type { SwapCoin } from './protocol.js';
 
@@ -35,6 +37,20 @@ export interface FundingClaim {
   height: number;
 }
 
+/**
+ * Why a funding payment does not count yet. `unconfirmed` and `cross-check-failed`
+ * pass with time; `mismatch`, `single-server`, `bad-chain` and `disagreement` mean
+ * the server's word cannot be taken (a lying server, or only one server to ask).
+ */
+export type FundingVerdict =
+  | { ok: true }
+  | { ok: false; reason: 'unconfirmed' | 'mismatch' | 'single-server' | 'bad-chain' | 'disagreement' | 'cross-check-failed'; detail?: string };
+
+/** Blocks after the funding block that a second server must agree on (LBC needs 12 confirmations). */
+const CROSS_CHECK_BLOCKS = 12;
+/** A funding payment deeper than this is not checked (it never is in a running swap). */
+const MAX_FUNDING_DEPTH = 2016;
+
 export interface SwapChain {
   readonly coin: SwapCoin;
   /** Where the chain is read from, for the log. */
@@ -47,10 +63,11 @@ export interface SwapChain {
   feeRate(): Promise<number>;
   /**
    * Checks the other side's funding beyond the server that reported it, before
-   * anything is locked or revealed because of it: on LBC with a merkle proof
-   * against proof-of-work headers, on Bitcoin with independent explorers.
+   * anything is locked or revealed because of it: on LBC with a merkle proof, a
+   * run of headers that obeys the chain's rules up to the tip, and a second hub
+   * that agrees on those blocks; on Bitcoin with independent explorers.
    */
-  verifyFunding(claim: FundingClaim): Promise<boolean>;
+  verifyFunding(claim: FundingClaim): Promise<FundingVerdict>;
 }
 
 export function confirmationsAt(height: number, tip: number): number {
@@ -70,11 +87,14 @@ function fromTransaction(tx: Transaction, height: number): SwapTx {
 export function backendSwapChain(options: {
   backend: () => ChainBackend;
   network: NetworkParams;
-  /** The wallet's verified chain tip. */
+  /** The wallet's chain tip (its proof of work checked by the hub client). */
   tip: () => { height: number; header: string } | null;
   feeRate: () => number;
   /** Broadcast through the wallet, so coins coming back to it show at once. */
   broadcast: (tx: Transaction) => Promise<string>;
+  /** Seconds; for the sanity check of block times. */
+  now?: () => number;
+  log?: (level: 'info' | 'warn', message: string) => void;
 }): SwapChain {
   return {
     coin: 'LBC',
@@ -102,17 +122,46 @@ export function backendSwapChain(options: {
     feeRate: async () => options.feeRate(),
     verifyFunding: async (claim) => {
       const backend = options.backend();
-      // Your own node checks everything itself; a hub must prove the transaction is in a block.
-      if (!backend.untrusted) return true;
-      if (claim.height <= 0) return false;
+      // Your own node checks everything itself; a hub must prove the transaction is in a block,
+      // and that block must sit in a chain the rules allow and another hub knows.
+      if (!backend.untrusted) return { ok: true };
+      const tip = options.tip();
+      if (claim.height <= 0 || !tip || tip.height < claim.height) return { ok: false, reason: 'unconfirmed' };
+      if (tip.height - claim.height > MAX_FUNDING_DEPTH) return { ok: false, reason: 'mismatch', detail: 'the payment is too old to check' };
       const fetched = (await backend.getTransactions([claim.txid])).get(claim.txid);
-      if (!fetched?.merkle || fetched.height !== claim.height) return false;
+      if (!fetched?.merkle || fetched.height !== claim.height) return { ok: false, reason: 'unconfirmed' };
       const tx = Transaction.fromHex(fetched.hex);
       const out = tx.outputs[claim.vout];
-      if (tx.txid !== claim.txid || !out || out.value !== claim.value) return false;
-      const [header] = await backend.getHeaders(claim.height, 1);
-      if (!header) return false;
-      return verifyTransactionInclusion(claim.txid, fetched.merkle, header, claim.height, options.network, options.tip()).ok;
+      if (tx.txid !== claim.txid || !out || out.value !== claim.value) return { ok: false, reason: 'mismatch', detail: 'the server sent a different transaction' };
+      // Every header from two blocks before the payment up to the tip: linked, with valid proof of
+      // work and exactly the difficulty the rule demands, ending in the tip the wallet follows.
+      const from = Math.max(0, claim.height - 2);
+      const headers = await backend.getHeaders(from, tip.height - from + 1);
+      if (headers.length !== tip.height - from + 1) return { ok: false, reason: 'unconfirmed', detail: 'the server has not sent every header yet' };
+      const chain = checkHeaderChain(headers, from, options.network, { now: options.now?.() ?? Math.floor(Date.now() / 1000), tipHash: parseHeader(fromHex(tip.header)).hash });
+      if (!chain.ok) return { ok: false, reason: 'bad-chain', detail: chain.reason };
+      const header = headers[claim.height - from]!;
+      const inclusion = verifyTransactionInclusion(claim.txid, fetched.merkle, header, claim.height, options.network, tip);
+      if (!inclusion.ok) return { ok: false, reason: 'bad-chain', detail: inclusion.reason };
+      // A second hub must know the same blocks: the payment's and those confirming it. With a
+      // single hub configured (the user's own choice, typically their own) there is none to ask.
+      if (!backend.crossCheckHeaders) return { ok: false, reason: 'single-server', detail: 'this connection cannot ask a second hub' };
+      const count = Math.min(CROSS_CHECK_BLOCKS, tip.height - claim.height + 1);
+      let other: { server: string; headers: string[] } | null;
+      try {
+        other = await backend.crossCheckHeaders(claim.height, count);
+      } catch (err) {
+        return { ok: false, reason: 'cross-check-failed', detail: (err as Error).message };
+      }
+      if (!other) {
+        options.log?.('warn', `only one hub is configured, so its word on the payment ${claim.txid.slice(0, 8)}… could not be checked against another`);
+        return { ok: true };
+      }
+      if (other.headers.length < count) return { ok: false, reason: 'unconfirmed', detail: `${other.server} has not seen every confirming block yet` };
+      for (let i = 0; i < count; i++) {
+        if (other.headers[i] !== headers[claim.height - from + i]) return { ok: false, reason: 'disagreement', detail: `${other.server} reports a different block at height ${claim.height + i}` };
+      }
+      return { ok: true };
     },
   };
 }
@@ -135,18 +184,38 @@ function fromEsplora(t: EsploraTx): SwapTx {
  */
 export function esploraSwapChain(client: EsploraClient, crossCheck: EsploraClient[] = []): SwapChain {
   const all = [client, ...crossCheck];
+  let lastTip: number | null = null;
+  /** Answers from every server; one that is down or rate-limited must not stop a swap. */
+  const fromAll = async <T>(ask: (c: EsploraClient) => Promise<T>): Promise<T[]> => {
+    const results = await Promise.allSettled(all.map(ask));
+    const answered: T[] = [];
+    for (const r of results) if (r.status === 'fulfilled') answered.push(r.value);
+    if (answered.length === 0) throw (results[0] as PromiseRejectedResult).reason;
+    return answered;
+  };
   return {
     coin: 'BTC',
     server: client.server,
-    tipHeight: () => client.tipHeight(),
+    tipHeight: async () => {
+      try {
+        lastTip = Math.max(...(await fromAll((c) => c.tipHeight())));
+        return lastTip;
+      } catch (err) {
+        if (lastTip !== null) return lastTip;
+        throw err;
+      }
+    },
     addressTxs: async (address) => {
-      const results = await Promise.allSettled(all.map((c) => c.addressTxs(address)));
-      const answered = results.filter((r): r is PromiseFulfilledResult<EsploraTx[]> => r.status === 'fulfilled');
-      if (answered.length === 0) throw (results[0] as PromiseRejectedResult).reason;
+      const answered = await fromAll((c) => c.addressTxs(address));
       const merged = new Map<string, SwapTx>();
-      for (const { value } of answered) {
+      for (const value of answered) {
         for (const t of value) {
-          const tx = fromEsplora(t);
+          let tx: SwapTx;
+          try {
+            tx = fromEsplora(t);
+          } catch {
+            continue; // one malformed entry from one server is not a reason to stop
+          }
           const seen = merged.get(tx.txid);
           // Servers may disagree while a block propagates: unconfirmed if any says so, else the latest height.
           if (seen) seen.height = seen.height === 0 || tx.height === 0 ? 0 : Math.max(seen.height, tx.height);
@@ -162,13 +231,18 @@ export function esploraSwapChain(client: EsploraClient, crossCheck: EsploraClien
       if (ok) return ok.value;
       throw (results[0] as PromiseRejectedResult).reason;
     },
-    feeRate: () => client.feeRate(2),
+    feeRate: async () => {
+      // The median of the servers' estimates: one wrong or hostile estimate does not set the fee.
+      const rates = (await fromAll((c) => c.feeRate(2))).sort((a, b) => a - b);
+      return rates[Math.floor((rates.length - 1) / 2)]!;
+    },
     verifyFunding: async (claim) => {
       for (const c of all) {
         const t = (await c.addressTxs(claim.address)).find((x) => x.txid === claim.txid);
-        if (!t || !t.status.confirmed || t.status.block_height !== claim.height || t.vout[claim.vout]?.value !== Number(claim.value)) return false;
+        if (!t || !t.status.confirmed) return { ok: false, reason: 'unconfirmed', detail: `${c.server} does not show it confirmed` };
+        if (t.status.block_height !== claim.height || t.vout[claim.vout]?.value !== Number(claim.value)) return { ok: false, reason: 'disagreement', detail: `${c.server} reports it differently` };
       }
-      return true;
+      return { ok: true };
     },
   };
 }

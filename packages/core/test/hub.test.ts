@@ -3,10 +3,26 @@ import { HubBackend } from '../src/net/hub.js';
 import type { LineTransport, SocketEndpoint } from '../src/net/transport.js';
 import { MAINNET, REGTEST, type NetworkParams } from '../src/networks.js';
 import { ByteWriter, toHex } from '../src/encoding/bytes.js';
+import { checkProofOfWork } from '../src/crypto/pow.js';
 
-/** A 112-byte LBRY header with the given time (the hub client does not check proof of work). */
+/** Mainnet's hub rules (stale-tip detection) with regtest's cheap proof of work. */
+const FAST_MAINNET: NetworkParams = { ...MAINNET, powLimitBits: REGTEST.powLimitBits, powLimit: REGTEST.powLimit };
+
+const mined = new Map<number, string>();
+
+/** A 112-byte LBRY header with the given time and valid (regtest-cheap) proof of work: the hub client checks it. */
 function header(time: number): string {
-  return toHex(new ByteWriter(112).i32LE(1).bytes(new Uint8Array(96)).u32LE(time).u32LE(0x1f00ffff).u32LE(0).toBytes());
+  let hex = mined.get(time);
+  if (hex) return hex;
+  for (let nonce = 0; ; nonce++) {
+    const h = new ByteWriter(112).i32LE(1).bytes(new Uint8Array(96)).u32LE(time).u32LE(REGTEST.powLimitBits).u32LE(nonce).toBytes();
+    if (checkProofOfWork(h, REGTEST.powLimit)) {
+      hex = toHex(h);
+      break;
+    }
+  }
+  mined.set(time, hex);
+  return hex;
 }
 
 interface FakeHub {
@@ -52,7 +68,7 @@ function fakeHubs(hubs: Record<string, FakeHub>): (ep: SocketEndpoint) => LineTr
 
 const now = () => Math.floor(Date.now() / 1000);
 
-function backend(hubs: Record<string, FakeHub>, network: NetworkParams = MAINNET) {
+function backend(hubs: Record<string, FakeHub>, network: NetworkParams = FAST_MAINNET) {
   return new HubBackend({
     servers: Object.keys(hubs).map((host) => ({ host, port: 50001 })),
     transportFactory: fakeHubs(hubs),

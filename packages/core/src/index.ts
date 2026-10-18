@@ -19,6 +19,7 @@ export * from './net/hub.js';
 export * from './net/lbcd.js';
 export * from './wallet/types.js';
 export * from './wallet/verify.js';
+export * from './wallet/headers.js';
 export * from './wallet/engine.js';
 export * from './wallet/keystore.js';
 export * from './wallet/restore.js';

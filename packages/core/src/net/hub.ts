@@ -2,7 +2,7 @@ import { Emitter, chunk, mapLimit, sleep } from '../util/emitter.js';
 import { LineRpcClient, RpcError } from './line-rpc.js';
 import type { LineTransportFactory, SocketEndpoint } from './transport.js';
 import type { BackendEvents, BackendStatus, ChainBackend, ChainTip, FetchedTransaction, HistoryItem } from './backend.js';
-import { HEADER_SIZE, parseHeader } from '../crypto/pow.js';
+import { HEADER_SIZE, checkProofOfWork, parseHeader } from '../crypto/pow.js';
 import type { NetworkParams } from '../networks.js';
 
 export interface HubBackendOptions {
@@ -210,8 +210,10 @@ export class HubBackend extends Emitter<BackendEvents> implements ChainBackend {
     return age > limit ? age : null;
   }
 
+  /** A hub's tip must be an LBRY header with valid proof of work; anything else is a broken or lying hub. */
   private checkNetwork(tip: ChainTip) {
     if (tip.header.length !== HEADER_SIZE * 2) throw new Error('server returned a non-LBRY header');
+    if (!checkProofOfWork(hexToBytesSafe(tip.header), this.options.network.powLimit)) throw new Error('server returned a block header with invalid proof of work');
   }
 
   private startKeepalive(client: LineRpcClient) {
@@ -244,7 +246,16 @@ export class HubBackend extends Emitter<BackendEvents> implements ChainBackend {
 
   private handleNotification(method: string, params: unknown) {
     if (method === 'blockchain.headers.subscribe' && Array.isArray(params) && params[0]) {
-      const tip = normalizeTip(params[0] as { hex: string; height: number });
+      let tip: ChainTip;
+      try {
+        tip = normalizeTip(params[0] as { hex: string; height: number });
+        this.checkNetwork(tip);
+      } catch (err) {
+        // A hub announcing an invalid block is broken or lying: leave it for another one.
+        this.log('warn', `hub ${this.current?.host} sent an invalid block header (${(err as Error).message}); switching hubs`);
+        this.client?.close();
+        return;
+      }
       this.tip = tip;
       this.lastTipAt = Date.now();
       this.setStatus({ height: tip.height });
@@ -280,10 +291,37 @@ export class HubBackend extends Emitter<BackendEvents> implements ChainBackend {
 
   async getHeaders(startHeight: number, count: number): Promise<string[]> {
     const result = await this.rpc<{ hex?: string; count: number }>('blockchain.block.headers', [startHeight, count]);
-    const hex = result.hex ?? '';
-    const out: string[] = [];
-    for (let i = 0; i < hex.length; i += HEADER_SIZE * 2) out.push(hex.slice(i, i + HEADER_SIZE * 2));
-    return out;
+    return splitHeaders(result.hex ?? '');
+  }
+
+  /**
+   * The same headers from a hub on another host, connected and handshaken like any
+   * hub (its tip is checked too), so a lying hub can be caught before coins move on
+   * its word. Null when no other hub is configured; throws when none of them answers.
+   */
+  async crossCheckHeaders(startHeight: number, count: number): Promise<{ server: string; headers: string[] } | null> {
+    const current = this.current?.host.toLowerCase();
+    const others = this.options.servers.filter((s) => s.host.toLowerCase() !== current);
+    if (others.length === 0) return null;
+    let lastError: Error | null = null;
+    // Up to three of them, from a different starting point each time so the load spreads.
+    const start = this.serverIndex % others.length;
+    for (let i = 0; i < Math.min(3, others.length); i++) {
+      const endpoint = others[(start + i) % others.length]!;
+      try {
+        const session = await this.open(endpoint);
+        try {
+          const result = await session.client.request<{ hex?: string; count: number }>('blockchain.block.headers', [startHeight, count], 20_000);
+          return { server: `${endpoint.host}:${endpoint.port}`, headers: splitHeaders(result.hex ?? '') };
+        } finally {
+          session.client.close();
+        }
+      } catch (err) {
+        lastError = err as Error;
+        this.log('warn', `cross-check with hub ${endpoint.host}:${endpoint.port} failed: ${lastError.message}`);
+      }
+    }
+    throw lastError ?? new Error('no other hub answered');
   }
 
   async subscribeAddresses(addresses: string[]): Promise<(string | null)[]> {
@@ -346,8 +384,23 @@ export class HubBackend extends Emitter<BackendEvents> implements ChainBackend {
   }
 
   async broadcast(rawHex: string): Promise<string> {
-    return this.rpc<string>('blockchain.transaction.broadcast', [rawHex], 60_000);
+    try {
+      return await this.rpc<string>('blockchain.transaction.broadcast', [rawHex], 60_000);
+    } catch (err) {
+      // Sent twice (say, retried on another hub after a dropped connection): the network has it, which is what matters.
+      if (err instanceof RpcError && /already[- ](have|exists|known|in)/i.test(err.message)) {
+        this.log('info', `broadcast: the network already has the transaction (${err.message})`);
+        return '';
+      }
+      throw err;
+    }
   }
+}
+
+function splitHeaders(hex: string): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < hex.length; i += HEADER_SIZE * 2) out.push(hex.slice(i, i + HEADER_SIZE * 2));
+  return out;
 }
 
 function normalizeTip(raw: { hex: string; height: number } | { hex: string; height: number }[]): ChainTip {

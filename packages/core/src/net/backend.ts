@@ -58,6 +58,11 @@ export interface ChainBackend extends Emitter<BackendEvents> {
   getTip(): Promise<ChainTip>;
   /** Raw headers (hex) for consecutive heights. */
   getHeaders(startHeight: number, count: number): Promise<string[]>;
+  /**
+   * The same headers from a second, independent server, so a lying server can be
+   * caught before coins move on its word. Null when no other server is configured.
+   */
+  crossCheckHeaders?(startHeight: number, count: number): Promise<{ server: string; headers: string[] } | null>;
   /** Subscribes to address status changes and returns current statuses (null = no history). */
   subscribeAddresses(addresses: string[]): Promise<(string | null)[]>;
   getHistory(address: string): Promise<HistoryItem[]>;

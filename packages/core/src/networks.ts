@@ -34,6 +34,11 @@ export interface NetworkParams {
   coinbaseMaturity: number;
   /** Target seconds between blocks. */
   targetBlockTime: number;
+  /**
+   * lbcd's `TargetTimespan`: the difficulty adjusts every block by the time the last block
+   * took, relative to this (150 s on mainnet and testnet, 1 s on regtest).
+   */
+  powTargetTimespan: number;
   p2pPort: number;
   rpcPort: number;
   defaultHubs: HubServer[];
@@ -65,6 +70,7 @@ export const MAINNET: NetworkParams = {
   powLimit: (1n << 240n) - 1n,
   coinbaseMaturity: 100,
   targetBlockTime: 150,
+  powTargetTimespan: 150,
   // 24 block intervals: with a steady hashrate, a gap this long happens by chance less than
   // once in ten billion blocks.
   staleTipSeconds: 60 * 60,
@@ -126,6 +132,7 @@ export const REGTEST: NetworkParams = {
   genesisHash: '6e3fcf1299d4ec5d79c3a4c91d624a4acf9e2e173d95a1a0504f677669687556',
   powLimitBits: 0x207fffff,
   powLimit: (1n << 255n) - 1n,
+  powTargetTimespan: 1,
   p2pPort: 29246,
   rpcPort: 29245,
   defaultHubs: [],

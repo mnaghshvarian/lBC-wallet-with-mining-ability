@@ -211,9 +211,9 @@ describe('Bitcoin through several explorers', () => {
   });
 
   it('trusts the other side\'s payment only when every explorer reports it the same way', async () => {
-    expect(await explorers({ 'https://a.example/api': [funding(100)], 'https://b.example/api': [funding(100)] }).verifyFunding(claim)).toBe(true);
-    expect(await explorers({ 'https://a.example/api': [funding(100)], 'https://b.example/api': [funding(101)] }).verifyFunding(claim)).toBe(false);
-    expect(await explorers({ 'https://a.example/api': [funding(100, 400_000)], 'https://b.example/api': [funding(100)] }).verifyFunding(claim)).toBe(false);
-    expect(await explorers({ 'https://a.example/api': [funding(100)], 'https://b.example/api': [] }).verifyFunding(claim)).toBe(false);
+    expect(await explorers({ 'https://a.example/api': [funding(100)], 'https://b.example/api': [funding(100)] }).verifyFunding(claim)).toEqual({ ok: true });
+    expect(await explorers({ 'https://a.example/api': [funding(100)], 'https://b.example/api': [funding(101)] }).verifyFunding(claim)).toMatchObject({ ok: false, reason: 'disagreement' });
+    expect(await explorers({ 'https://a.example/api': [funding(100, 400_000)], 'https://b.example/api': [funding(100)] }).verifyFunding(claim)).toMatchObject({ ok: false, reason: 'disagreement' });
+    expect(await explorers({ 'https://a.example/api': [funding(100)], 'https://b.example/api': [] }).verifyFunding(claim)).toMatchObject({ ok: false, reason: 'unconfirmed' });
   });
 });
