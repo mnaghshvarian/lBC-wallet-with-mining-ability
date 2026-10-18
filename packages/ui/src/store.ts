@@ -7,6 +7,7 @@ import type {
   NoticeView,
   PriceView,
   Settings,
+  SettingsPatch,
   WalletListItem,
   WalletOverview,
 } from '@lbcwallet/services/api';
@@ -64,7 +65,9 @@ interface AppState {
   navigate: (route: Route) => void;
   boot: () => Promise<void>;
   refreshWallets: () => Promise<WalletListItem[]>;
-  updateSettings: (patch: Partial<Settings>) => Promise<Settings>;
+  updateSettings: (patch: SettingsPatch) => Promise<Settings>;
+  /** Shows new settings, wherever they changed (a page, or the app itself). */
+  applySettings: (settings: Settings) => void;
   setOverview: (o: WalletOverview | null) => void;
   toast: (toast: Omit<Toast, 'id'>) => void;
   dismiss: (id: number) => void;
@@ -185,6 +188,7 @@ export const useApp = create<AppState>((set, get) => ({
     );
     api.on('miner:log', (e) => set((s) => ({ minerLog: [...s.minerLog, e].slice(-500) })));
     api.on('node:status', (n) => set({ node: n }));
+    api.on('settings:changed', (s) => get().applySettings(s));
     api.on('price:update', (p) => set({ price: p }));
     api.on('notice', (n) => get().toast({ kind: n.kind, ...noticeText(n, get().t) }));
 
@@ -203,13 +207,17 @@ export const useApp = create<AppState>((set, get) => ({
 
   updateSettings: async (patch) => {
     const settings = await window.lbc.settings.update(patch);
+    get().applySettings(settings);
+    return settings;
+  },
+
+  applySettings: (settings) => {
     applyTheme(settings.theme);
     setBitcoinUnit(settings.bitcoinUnit);
     const price = settings.showFiat ? get().price : null;
     const language = languageFor(settings);
     if (language !== get().language) set({ language, t: applyLanguage(language) });
     set({ settings, price });
-    return settings;
   },
 
   setOverview: (o) => set((s) => ({ overview: o, version: s.version + 1 })),

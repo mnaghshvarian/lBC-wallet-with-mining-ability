@@ -23,12 +23,20 @@ shows, with pictures, how to install, create a wallet, receive, send and mine.
 
 Check your download against the `SHA256SUMS-*.txt` files below.
 
-### What's new in this version (1.3.1)
+### What's new in this version (1.3.2)
 
-* **1.3.1 replaces 1.3.0.** 1.3.0 was public for about an hour with its git tag on an older
-  commit than the one its files were built from. 1.3.1 is the same code, released again with a
-  tag that matches the files. If you installed 1.3.0, install 1.3.1 over it (on Android, see the
-  note about the temporary signing key below).
+* **Fixed: the node's blockchain folder was forgotten.** When you chose another folder for the
+  built-in node (a bigger drive) and then changed anything else on the Node page, the page sent
+  back its stale copy of the settings and the folder choice was erased: the node then started in
+  the app's own folder and complained about the free space there. Every page now learns about a
+  settings change the moment it happens, and the Node page sends only the setting it changed.
+  If this happened to you, choose the folder once more; the choice now sticks.
+* **Android:** nothing in this version concerns the phone app (it has no node). Keep 1.3.1 on
+  the phone: the APK still uses a temporary signing key, so 1.3.2 would not install over it
+  without uninstalling first.
+* **1.3.1 replaced 1.3.0.** 1.3.0 was public for about an hour with its git tag on an older
+  commit than the one its files were built from; 1.3.1 was the same code with a tag that matches
+  the files.
 * **Reviewed and hardened.** Before this release the whole code was reviewed line by line by a
   second, independent AI model (not a human security audit, which is still needed). What it found
   and what was done is in `docs/REVIEW-2026-10.md`. Among the fixes: the other side's LBC payment

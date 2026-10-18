@@ -24,6 +24,7 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import type { LbcApi } from '@lbcwallet/services/api';
 import { createInterface } from 'node:readline';
 import type { Page } from 'playwright-core';
 import { createWebSocket, newNostrSecret, offerEvent, randomBytes, toHex } from '@lbcwallet/core';
@@ -117,7 +118,7 @@ async function main() {
       autoLockMinutes: 30,
       mining: { mode: 'pool', poolUrl: `stratum+tcp://127.0.0.1:${net.info.poolPort}`, poolApi: '', threads: 2, workerName: 'e2e', poolPassword: 'x', lowPriority: true, pauseOnBattery: false, payoutAddress: '' },
       // The built-in node syncs from the test network's node.
-      node: { enabled: false, dataDir: '', listen: false, peers: [`127.0.0.1:${net.info.p2pPort}`] },
+      node: { enabled: false, dataDir: join(dataDir, 'chain'), listen: false, peers: [`127.0.0.1:${net.info.p2pPort}`] },
       market: { relays: [net.info.relayUrl] },
     }),
   );
@@ -328,6 +329,15 @@ async function main() {
     await page.locator('.nav-item', { hasText: 'Node' }).click();
     await page.getByText('Run a full LBRY node on this computer').waitFor();
     await shot(page, '14-node');
+    // The chosen blockchain folder survives other changes made on this page (it used to be
+    // overwritten by the page's stale copy of the settings), and the page shows it as chosen.
+    await page.getByText('Your chosen folder').waitFor();
+    const listen = page.getByRole('switch', { name: 'Accept incoming connections' });
+    await listen.click();
+    await listen.click();
+    const nodeSettings = await page.evaluate(() => (window as unknown as { lbc: LbcApi }).lbc.settings.get().then((s) => s.node));
+    if (nodeSettings.dataDir !== join(dataDir, 'chain') || nodeSettings.listen) throw new Error(`node settings changed: ${JSON.stringify(nodeSettings)}`);
+    await page.getByText('Your chosen folder').waitFor();
     if (process.env.LBCD_BIN) {
       await page.getByRole('button', { name: 'Start node' }).click();
       await page.locator('.page-header .badge', { hasText: /Syncing|Running/ }).waitFor({ timeout: 60_000 });

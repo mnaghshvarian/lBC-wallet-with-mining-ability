@@ -1,5 +1,5 @@
 import { parseWebSocketUrl } from '@lbcwallet/core';
-import type { HubEndpoint, MiningSettings, NodeSettings, Settings } from './api.js';
+import type { HubEndpoint, MiningSettings, NodeSettings, Settings, SettingsPatch } from './api.js';
 import type { JsonFiles } from './platform.js';
 
 export const DEFAULT_POOL = 'stratum+tcp://lbrypool.net:3334';
@@ -190,7 +190,7 @@ export class SettingsStore {
     return structuredClone(this.current);
   }
 
-  update(patch: Partial<Settings>): Settings {
+  update(patch: SettingsPatch): Settings {
     const prev = this.current;
     const merged = { ...prev, ...patch, mining: { ...prev.mining, ...(patch.mining ?? {}) }, node: { ...prev.node, ...(patch.node ?? {}) } };
     this.current = sanitize(merged, prev, this.cpuCount);

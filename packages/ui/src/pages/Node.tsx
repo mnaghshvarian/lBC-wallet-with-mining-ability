@@ -51,7 +51,7 @@ function PeersField() {
         spellCheck={false}
         dir="ltr"
         onChange={(e) => setText(e.target.value)}
-        onBlur={() => !invalid.length && void updateSettings({ node: { ...settings.node, peers } })}
+        onBlur={() => !invalid.length && void updateSettings({ node: { peers } })}
       />
     </Field>
   );
@@ -188,7 +188,7 @@ export function NodePage() {
               </div>
               <div className="desc">{t('node.listenHint', { port })}</div>
             </div>
-            <Toggle checked={settings.node.listen} onChange={(v) => void updateSettings({ node: { ...settings.node, listen: v } })} label={t('node.listen')} />
+            <Toggle checked={settings.node.listen} onChange={(v) => void updateSettings({ node: { listen: v } })} label={t('node.listen')} />
           </div>
 
           <PeersField />

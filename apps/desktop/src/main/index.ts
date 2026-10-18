@@ -65,6 +65,7 @@ if (!app.requestSingleInstanceLock()) {
     applyTheme();
     await applyProxy(settings.get());
     settings.onChange((next, prev) => {
+      send('settings:changed', next);
       if (next.theme !== prev.theme) applyTheme();
       if (JSON.stringify(next.socks5) !== JSON.stringify(prev.socks5)) void applyProxy(next);
     });

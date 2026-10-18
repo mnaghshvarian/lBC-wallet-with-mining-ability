@@ -575,7 +575,7 @@ export interface LbcApi {
   };
   settings: {
     get(): Promise<Settings>;
-    update(patch: Partial<Settings>): Promise<Settings>;
+    update(patch: SettingsPatch): Promise<Settings>;
   };
   wallets: {
     list(): Promise<WalletListItem[]>;
@@ -668,8 +668,16 @@ export interface LbcApi {
   on<E extends keyof LbcEvents>(event: E, handler: (payload: LbcEvents[E]) => void): () => void;
 }
 
+/**
+ * A settings change. Only the fields given change; `node` and `mining` merge field by field,
+ * so a page sends just the field it changed and never a copy of the others.
+ */
+export type SettingsPatch = Partial<Omit<Settings, 'node' | 'mining'>> & { node?: Partial<NodeSettings>; mining?: Partial<MiningSettings> };
+
 export interface LbcEvents {
   'wallet:changed': WalletOverview;
+  /** The settings changed, on either side; every page shows the new ones. */
+  'settings:changed': Settings;
   'wallet:locked': { reason: 'manual' | 'timeout' | 'system' };
   'network:status': BackendStatusView;
   'miner:stats': MinerStatsView;
@@ -681,7 +689,7 @@ export interface LbcEvents {
   notice: NoticeView;
 }
 
-export const EVENT_CHANNELS: (keyof LbcEvents)[] = ['wallet:changed', 'wallet:locked', 'network:status', 'miner:stats', 'miner:log', 'node:status', 'price:update', 'swap:changed', 'market:changed', 'notice'];
+export const EVENT_CHANNELS: (keyof LbcEvents)[] = ['wallet:changed', 'settings:changed', 'wallet:locked', 'network:status', 'miner:stats', 'miner:log', 'node:status', 'price:update', 'swap:changed', 'market:changed', 'notice'];
 
 /** How every API call answers: a value, or a user-facing error with a translatable code. */
 export type ApiResult<T> = { ok: true; value: T } | { ok: false; error: string; code?: string; params?: Record<string, string | number> };

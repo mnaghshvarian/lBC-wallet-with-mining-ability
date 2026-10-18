@@ -1,5 +1,5 @@
 import { getNetwork, probeHub, WrongPasswordError } from '@lbcwallet/core';
-import type { ApiResult, CreateSource, HubEndpoint, HubTestResult, Settings } from './api.js';
+import type { ApiResult, CreateSource, HubEndpoint, HubTestResult, Settings, SettingsPatch } from './api.js';
 import { lbcdRpc, transportFactory } from './backend.js';
 import { describeError, UserError } from './errors.js';
 import type { MiningInfo } from './mining-info.js';
@@ -67,7 +67,7 @@ export function createCoreHandlers(s: CoreServices): Handlers {
     'settings:update': (patch: unknown) => {
       if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new UserError('invalidSettings');
       const prev = s.settings.get();
-      const next = s.settings.update(patch as Partial<Settings>);
+      const next = s.settings.update(patch as SettingsPatch);
       if (next.network !== prev.network) void s.wallets.lock('manual');
       return next;
     },

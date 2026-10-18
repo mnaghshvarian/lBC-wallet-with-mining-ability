@@ -97,6 +97,19 @@ describe('settings sanitizing', () => {
     store.update({ showFiat: true });
     expect(seen).toHaveLength(1);
   });
+
+  it('merges node and mining patches field by field', () => {
+    // A page sends just the field it changed; the blockchain folder chosen elsewhere must survive.
+    const store = new SettingsStore(memoryFiles(), CPUS);
+    store.update({ node: { dataDir: '/mnt/big/lbc' } });
+    store.update({ node: { listen: true } });
+    store.update({ node: { peers: ['127.0.0.1:9246'] } });
+    expect(store.get().node).toEqual({ enabled: false, dataDir: '/mnt/big/lbc', listen: true, peers: ['127.0.0.1:9246'] });
+    store.update({ mining: { threads: 2 } });
+    expect(store.get().mining.threads).toBe(2);
+    expect(store.get().mining.mode).toBe(defaultSettings(CPUS).mining.mode);
+    expect(store.get().node.dataDir).toBe('/mnt/big/lbc');
+  });
 });
 
 describe('memory files', () => {

@@ -18,6 +18,7 @@ async function main(): Promise<void> {
   const platform = androidPlatform(info, files, new NativeSockets(LbcNative));
   const settings = new SettingsStore(files, platform.cpuCount, 'phone');
   const bus = new EventBus();
+  settings.onChange((next) => bus.emit('settings:changed', next));
 
   const price = new PriceService(platform, settings, (p) => bus.emit('price:update', p));
   const wallets = new WalletService(platform, settings, {
