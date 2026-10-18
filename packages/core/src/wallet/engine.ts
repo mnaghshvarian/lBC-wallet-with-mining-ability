@@ -769,7 +769,7 @@ export class WalletEngine extends Emitter<EngineEvents> {
     const utxos = this.spendableUtxos().map((u) => this.toBuilderUtxo(u));
     if (params.amount === 'max') {
       const r = selectAll(utxos, script, feePerByte);
-      const payment = assembleTransaction(utxos, [{ script, value: r.value }]);
+      const payment = assembleTransaction(r.inputs, [{ script, value: r.value }]);
       return this.register({ payment, recipients: [{ address: params.address, value: r.value }], fee: r.fee, feePerByte, change: 0n, changeAddress: null, total: r.value + r.fee, size: r.size, kind: 'payment' });
     }
     if (params.amount < DUST_THRESHOLD) throw new Error(`Minimum amount is ${Number(DUST_THRESHOLD) / 1e8} LBC`);
@@ -799,7 +799,7 @@ export class WalletEngine extends Emitter<EngineEvents> {
     const script = addressToScript(destination, this.network);
     const utxos = supports.map((u) => this.toBuilderUtxo(u));
     const r = selectAll(utxos, script, rate);
-    const payment = assembleTransaction(utxos, [{ script, value: r.value }]);
+    const payment = assembleTransaction(r.inputs, [{ script, value: r.value }]);
     return this.register({ payment, recipients: [{ address: destination, value: r.value }], fee: r.fee, feePerByte: rate, change: 0n, changeAddress: null, total: r.fee, size: r.size, kind: 'unlock-supports' });
   }
 
@@ -816,16 +816,38 @@ export class WalletEngine extends Emitter<EngineEvents> {
   async broadcast(tx: Transaction, label?: string): Promise<string> {
     const hex = tx.toHex();
     const txid = tx.txid;
-    const returned = await this.backend.broadcast(hex);
-    if (typeof returned === 'string' && returned.length === 64 && returned !== txid) {
-      this.log('warn', `server reported txid ${returned}, expected ${txid}`);
-    }
+    // Written before the network sees it: a crash right after a successful broadcast must not
+    // lose the record of a transaction that is out there.
+    let known = false;
     await this.queue.run(async () => {
       const now = this.now();
+      known = !!this.state.txs[txid];
       this.state.pending[txid] = { txid, hex, createdAt: now };
       this.state.txs[txid] = this.state.txs[txid] ?? { txid, hex, height: 0, firstSeen: now };
       this.parsed.set(txid, tx);
       if (label) this.state.labels[txid] = label;
+      this.flush();
+    });
+    let returned: string;
+    try {
+      returned = await this.backend.broadcast(hex);
+    } catch (err) {
+      // Refused: forget it again (a server that took it after all reports it back through the address subscription).
+      await this.queue.run(async () => {
+        delete this.state.pending[txid];
+        if (!known) {
+          delete this.state.txs[txid];
+          delete this.state.labels[txid];
+          this.parsed.delete(txid);
+        }
+        this.flush();
+      });
+      throw err;
+    }
+    if (typeof returned === 'string' && returned.length === 64 && returned !== txid) {
+      this.log('warn', `server reported txid ${returned}, expected ${txid}`);
+    }
+    await this.queue.run(async () => {
       for (const d of this.drafts.values()) if (d.payment.tx.inputs.some((i) => tx.inputs.some((j) => j.txid === i.txid && j.vout === i.vout))) this.drafts.delete(d.id);
       this.ensureGap();
       this.flush();

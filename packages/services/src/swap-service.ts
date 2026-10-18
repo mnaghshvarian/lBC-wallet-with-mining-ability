@@ -53,6 +53,8 @@ export interface SwapWallet {
   lbc: SwapChain;
   /** Pays dewies from the wallet to an address (a contract); resolves with the transaction id and output index. */
   pay(address: string, amount: bigint, password: string | undefined, label: string): Promise<{ txid: string; vout: number }>;
+  /** Writes the records to disk now, before coins are sent on their strength. */
+  flush?(): void;
 }
 
 export interface SwapServiceDeps {
@@ -111,14 +113,24 @@ function findFunding(txs: SwapTx[], script: Uint8Array, expected?: { txid: strin
   return null;
 }
 
-/** The transaction spending an outpoint, and the input that does. */
-function findSpend(txs: SwapTx[], outpoint: { txid: string; vout: number }): { tx: SwapTx; input: SwapTx['inputs'][number] } | null {
+type Spend = { tx: SwapTx; input: SwapTx['inputs'][number] };
+
+/** Every transaction reported as spending an outpoint, with the input that does, in the servers' order. */
+function findSpends(txs: SwapTx[], outpoint: { txid: string; vout: number }): Spend[] {
+  const out: Spend[] = [];
   for (const tx of txs) {
     const input = tx.inputs.find((i) => i.txid === outpoint.txid && i.vout === outpoint.vout);
-    if (input) return { tx, input };
+    if (input) out.push({ tx, input });
   }
-  return null;
+  return out;
 }
+
+/** Fee rates above these are a wrong or malicious estimate, not a market (smallest unit per byte). */
+const MAX_FEE_RATE: Record<SwapCoin, number> = { BTC: 1000, LBC: 1000 };
+/** A claim or refund never pays more than this share of its value in fees, whatever the estimate says. */
+const MAX_FEE_SHARE = 0.25;
+/** Size of a contract spend, for the fee bounds (buildHtlcSpend knows the exact size). */
+const SPEND_SIZE = 340;
 
 /**
  * Atomic swaps between LBC and Bitcoin (see core/swap/protocol.ts). Swaps are
@@ -487,6 +499,8 @@ export class SwapService {
       };
       this.event(r, 'contract');
       this.save(w, r);
+      // On disk before any payment into it: a crash after paying must not lose the contract's lock time.
+      w.flush?.();
     }
     if (r.give === 'LBC') {
       const ours = r.ours;
@@ -591,7 +605,7 @@ export class SwapService {
     if (r.problem?.code === 'explorer') delete r.problem;
 
     // ---- our contract: funding, and whoever spent it
-    let ourSpend: ReturnType<typeof findSpend> = null;
+    let ourSpend: Spend | null = null;
     if (r.ours) {
       const ourTxs = await give.addressTxs(r.ours.address);
       const found = findFunding(ourTxs, htlcOutputScript(fromHex(r.ours.contract)), r.ours.funding);
@@ -604,45 +618,58 @@ export class SwapService {
       }
       if (r.ours.funding) {
         // Only our refund or their claim, which carries the secret, can spend our contract.
-        // Anything else a server reports is false and must not stop our refund.
-        const spend = findSpend(ourTxs, r.ours.funding);
-        if (spend && r.refund && spend.tx.txid === r.refund.txid) {
-          r.refund.height = spend.tx.height;
-          ourSpend = spend;
-        } else if (spend) {
-          const secret = r.secretHash ? extractSecret(spend.input.scriptSig, fromHex(r.secretHash), spend.input.witness) : null;
-          if (secret) {
-            ourSpend = spend;
-            if (!r.secret) {
-              r.secret = toHex(secret);
-              this.event(r, 'secret');
+        // Anything else a server reports is false and must not stop our refund; every reported
+        // spend is examined, so a false one listed first cannot hide the real one.
+        const spends = findSpends(ourTxs, r.ours.funding);
+        const ourRefund = r.refund ? spends.find((s) => s.tx.txid === r.refund!.txid) : undefined;
+        if (ourRefund) {
+          r.refund!.height = ourRefund.tx.height;
+          ourSpend = ourRefund;
+        } else {
+          for (const spend of spends) {
+            const secret = r.secretHash ? extractSecret(spend.input.scriptSig, fromHex(r.secretHash), spend.input.witness) : null;
+            if (secret) {
+              ourSpend = spend;
+              if (!r.secret) {
+                r.secret = toHex(secret);
+                this.event(r, 'secret');
+              }
+              break;
             }
-          } else this.log('warn', `swap ${r.id}: ignoring ${spend.tx.txid}, reported as spending our contract without the secret`);
+            this.log('warn', `swap ${r.id}: ignoring ${spend.tx.txid}, reported as spending our contract without the secret`);
+          }
         }
       }
     }
 
     // ---- their contract: its funding, and our claim of it
-    let theirSpend: ReturnType<typeof findSpend> = null;
+    let theirSpend: Spend | null = null;
     if (r.theirs?.funding) {
       const theirTxs = await get.addressTxs(r.theirs.address);
       const found = findFunding(theirTxs, htlcOutputScript(fromHex(r.theirs.contract)), r.theirs.funding);
       if (found) {
         r.theirs.funding = { ...r.theirs.funding, value: found.value.toString(), height: found.height };
-        const spend = findSpend(theirTxs, r.theirs.funding);
-        if (spend && r.claim && spend.tx.txid === r.claim.txid) {
-          r.claim.height = spend.tx.height;
-          theirSpend = spend;
-        } else if (spend && now >= r.theirs.locktime) {
-          // Their refund (before their lock time only our claim can spend their contract,
-          // so an earlier report is false): our claim can never confirm.
-          theirSpend = spend;
-          if (r.claim) {
-            this.event(r, 'claim-failed');
-            delete r.claim;
-            r.problem = { code: 'claim-failed' };
+        const spends = findSpends(theirTxs, r.theirs.funding);
+        const ourClaim = r.claim ? spends.find((s) => s.tx.txid === r.claim!.txid) : undefined;
+        if (ourClaim) {
+          r.claim!.height = ourClaim.tx.height;
+          theirSpend = ourClaim;
+        } else {
+          for (const spend of spends) {
+            if (now >= r.theirs.locktime) {
+              // Their refund (before their lock time only our claim can spend their contract,
+              // so an earlier report is false): our claim can never confirm.
+              theirSpend = spend;
+              if (r.claim) {
+                this.event(r, 'claim-failed');
+                delete r.claim;
+                r.problem = { code: 'claim-failed' };
+              }
+              break;
+            }
+            this.log('warn', `swap ${r.id}: ignoring ${spend.tx.txid}, reported as spending their contract before its lock time`);
           }
-        } else if (spend) this.log('warn', `swap ${r.id}: ignoring ${spend.tx.txid}, reported as spending their contract before its lock time`);
+        }
       }
       if (!r.theirs.verified && found && !r.claim) await this.checkTheirs(r, get, found.value, confirmationsAt(found.height, getTip), now);
     }
@@ -733,11 +760,18 @@ export class SwapService {
       return;
     }
     if (result.problems.length > 0) return; // waiting for confirmations
-    const ok = await chain.verifyFunding({ address: theirs.address, txid: theirs.funding!.txid, vout: theirs.funding!.vout, value, height: theirs.funding!.height });
-    if (!ok) {
-      this.log('warn', `swap ${r.id}: their funding could not be verified yet`);
+    const verdict = await chain.verifyFunding({ address: theirs.address, txid: theirs.funding!.txid, vout: theirs.funding!.vout, value, height: theirs.funding!.height });
+    if (!verdict.ok) {
+      if (coin === 'LBC' && (verdict.reason === 'single-server' || verdict.reason === 'bad-chain' || verdict.reason === 'disagreement')) {
+        // Time does not fix this: say so, and keep trying (another hub, or the user's own node, may do).
+        if (r.problem?.code !== 'lbc-unverified') {
+          r.problem = { code: 'lbc-unverified', params: { detail: (verdict.detail ?? verdict.reason).slice(0, 200) } };
+          this.event(r, 'their-lock-unverified', { reason: verdict.reason });
+        }
+      } else this.log('info', `swap ${r.id}: their funding could not be verified yet (${verdict.reason}${verdict.detail ? `: ${verdict.detail}` : ''})`);
       return;
     }
+    if (r.problem?.code === 'lbc-unverified') delete r.problem;
     theirs.verified = true;
     this.event(r, 'their-lock-confirmed');
     if (r.role === 'starter') this.deps.notice({ kind: 'swap', code: 'swapReadyToLock', params: { coin: r.give } });
@@ -751,7 +785,7 @@ export class SwapService {
     const theirs = r.theirs!;
     const coin = theirs.coin;
     const value = BigInt(theirs.funding!.value);
-    const rate = await chain.feeRate();
+    const rate = this.boundedFeeRate(r, coin, await chain.feeRate(), value);
     const { tx } = this.spend(r, coin, {
       contract: fromHex(theirs.contract),
       output: { txid: theirs.funding!.txid, vout: theirs.funding!.vout, value },
@@ -769,7 +803,7 @@ export class SwapService {
 
   private async refund(r: SwapRecord, chain: SwapChain): Promise<void> {
     const ours = r.ours!;
-    const rate = await chain.feeRate();
+    const rate = this.boundedFeeRate(r, r.give, await chain.feeRate(), BigInt(ours.funding!.value));
     const { tx } = this.spend(r, r.give, {
       contract: fromHex(ours.contract),
       output: { txid: ours.funding!.txid, vout: ours.funding!.vout, value: BigInt(ours.funding!.value) },
@@ -790,6 +824,14 @@ export class SwapService {
     }
   }
 
+  /** The estimate, bounded: an absurd rate must not burn the amount. */
+  private boundedFeeRate(r: SwapRecord, coin: SwapCoin, rate: number, value: bigint): number {
+    const byShare = Math.floor((Number(value) * MAX_FEE_SHARE) / SPEND_SIZE);
+    const bounded = Math.max(1, Math.min(rate, MAX_FEE_RATE[coin], byShare));
+    if (bounded !== rate) this.log('warn', `swap ${r.id}: ${coin} fee rate ${rate}/byte bounded to ${bounded}/byte`);
+    return bounded;
+  }
+
   /** Builds a claim or refund; the fee is capped so the output stays above dust. */
   private spend(r: SwapRecord, coin: SwapCoin, params: Parameters<typeof buildHtlcSpend>[0]) {
     try {
@@ -797,8 +839,7 @@ export class SwapService {
     } catch (err) {
       if (!/too small to pay the network fee/.test((err as Error).message)) throw err;
       // Fees spiked: pay what the amount allows rather than not claiming at all.
-      const size = 340;
-      const maxRate = Math.floor(Number(params.output.value - params.dust) / size);
+      const maxRate = Math.floor(Number(params.output.value - params.dust) / SPEND_SIZE);
       if (maxRate < 1) throw err;
       this.log('warn', `swap ${r.id}: ${coin} fee capped at ${maxRate}/byte`);
       return buildHtlcSpend({ ...params, feeRate: maxRate });

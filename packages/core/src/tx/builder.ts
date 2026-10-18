@@ -46,6 +46,22 @@ export function feeFor(size: number, feePerByte: number): bigint {
   return BigInt(Math.ceil(size * feePerByte));
 }
 
+/**
+ * Inputs one transaction may spend. lbcd refuses transactions above 400,000 weight units
+ * (about 675 pay-to-pubkey-hash inputs); the rest of the coins wait for another transaction.
+ */
+export const MAX_INPUTS = 600;
+
+export class TooManyInputsError extends Error {
+  constructor(
+    readonly max: number,
+    readonly coins: number,
+  ) {
+    super('Too many coins for one transaction');
+    this.name = 'TooManyInputsError';
+  }
+}
+
 export class InsufficientFundsError extends Error {
   constructor(
     readonly needed: bigint,
@@ -104,6 +120,7 @@ export function selectCoins(utxos: Utxo[], recipients: Recipient[], changeScript
   if (!best) {
     const acc: Utxo[] = [];
     for (const u of sorted) {
+      if (acc.length >= MAX_INPUTS) throw new TooManyInputsError(MAX_INPUTS, sorted.length);
       acc.push(u);
       const s = evaluate(acc);
       if (s) {
@@ -119,14 +136,18 @@ export function selectCoins(utxos: Utxo[], recipients: Recipient[], changeScript
   return best;
 }
 
-/** Spends every given coin to a single output (send max / sweep / unlock supports). */
-export function selectAll(utxos: Utxo[], destinationScript: Uint8Array, feePerByte: number): { value: bigint; fee: bigint; size: number } {
-  const total = utxos.reduce((s, u) => s + u.value, 0n);
-  const size = estimateSize(utxos.length, [destinationScript]);
+/**
+ * Spends the given coins to a single output (send max / sweep / unlock supports). With more coins
+ * than one transaction may carry, the largest MAX_INPUTS are spent and the rest wait for the next.
+ */
+export function selectAll(utxos: Utxo[], destinationScript: Uint8Array, feePerByte: number): { inputs: Utxo[]; value: bigint; fee: bigint; size: number } {
+  const inputs = utxos.length > MAX_INPUTS ? [...utxos].sort((a, b) => (a.value < b.value ? 1 : a.value > b.value ? -1 : 0)).slice(0, MAX_INPUTS) : utxos;
+  const total = inputs.reduce((s, u) => s + u.value, 0n);
+  const size = estimateSize(inputs.length, [destinationScript]);
   const fee = feeFor(size, feePerByte);
   const value = total - fee;
-  if (utxos.length === 0 || value < DUST_THRESHOLD) throw new InsufficientFundsError(fee + DUST_THRESHOLD, total);
-  return { value, fee, size };
+  if (inputs.length === 0 || value < DUST_THRESHOLD) throw new InsufficientFundsError(fee + DUST_THRESHOLD, total);
+  return { inputs, value, fee, size };
 }
 
 export interface UnsignedPayment {

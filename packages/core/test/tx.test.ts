@@ -6,7 +6,7 @@ import { classifyOutput, decompile, p2pkhScript, supportScript, parseClaimPrefix
 import { decodeAddress, scriptToAddress } from '../src/address.js';
 import { deriveAccountKey, derivePrivateKey, AddressDeriver, publicOnly } from '../src/keys/hd.js';
 import { signP2pkhInput, verifyP2pkhInput, legacySighash } from '../src/tx/sign.js';
-import { assembleTransaction, estimateSize, InsufficientFundsError, selectAll, selectCoins, signTransaction, type Utxo } from '../src/tx/builder.js';
+import { assembleTransaction, estimateSize, InsufficientFundsError, MAX_INPUTS, TooManyInputsError, selectAll, selectCoins, signTransaction, type Utxo } from '../src/tx/builder.js';
 
 // Raw transactions from lbry-sdk tests/unit/wallet/test_transaction.py
 const GENESIS_TX =
@@ -189,8 +189,19 @@ describe('coin selection and fees', () => {
   it('sends max by spending everything minus fee', () => {
     const coins = [coin(1_00000000n, 100, 1), coin(2_00000000n, 100, 2)];
     const r = selectAll(coins, script, 50);
+    expect(r.inputs).toHaveLength(2);
     expect(r.fee).toBe(BigInt((10 + 2 * 148 + 34) * 50));
     expect(r.value).toBe(3_00000000n - r.fee);
+  });
+
+  it('keeps one transaction within what the network accepts', () => {
+    // A mining wallet with many small payouts: send max spends the largest MAX_INPUTS coins,
+    // a fixed amount that would need more than that is refused with a clear error.
+    const many = Array.from({ length: MAX_INPUTS + 100 }, (_, i) => coin(BigInt(10000 + i), 100, i + 1));
+    const r = selectAll(many, script, 1);
+    expect(r.inputs).toHaveLength(MAX_INPUTS);
+    expect(r.inputs.every((u) => u.value >= BigInt(10000 + 100))).toBe(true);
+    expect(() => selectCoins(many, [{ script, value: BigInt(10000 * (MAX_INPUTS + 50)) }], change, 1)).toThrow(TooManyInputsError);
   });
 
   it('assembles and signs a payment end-to-end with self-verification', () => {

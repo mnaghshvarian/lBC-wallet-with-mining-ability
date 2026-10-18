@@ -17,6 +17,7 @@ export const ERROR_MESSAGES = {
   amountNotPositive: 'Enter an amount greater than zero',
   invalidAmount: 'Invalid amount',
   insufficientFunds: 'Insufficient funds: you need {needed} LBC including the fee, but only {available} LBC is spendable.',
+  tooManyCoins: 'This payment would need more than {max} coins in one transaction, which the network refuses. Send a smaller amount, in several payments.',
   draftExpired: 'This transaction is no longer valid; please review it again.',
   networkRejected: 'The network rejected the transaction: {detail}',
   sendFailed: 'Sending failed: {detail}',
