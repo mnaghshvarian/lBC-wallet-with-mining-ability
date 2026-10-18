@@ -59,7 +59,8 @@ export function estimateEarnings(params: {
 }): EarningsEstimate {
   const blockTime = params.blockTimeSeconds ?? 150;
   const reward = Number(blockSubsidy(params.height)) / 1e8;
-  const share = params.networkHashrate > 0 ? params.hashrate / params.networkHashrate : 0;
+  // Your hashrate is part of the network's, so the share can never exceed 100 %.
+  const share = params.networkHashrate > 0 ? Math.min(1, params.hashrate / params.networkHashrate) : 0;
   const blocksPerDay = 86_400 / blockTime;
   const fee = (params.poolFeePercent ?? 0) / 100;
   const lbcPerDay = share * blocksPerDay * reward * (1 - fee);

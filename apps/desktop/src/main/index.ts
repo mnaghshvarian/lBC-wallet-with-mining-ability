@@ -1,0 +1,200 @@
+import { app, BrowserWindow, Menu, nativeTheme, powerMonitor, session, shell, type MenuItemConstructorOptions } from 'electron';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { SettingsStore } from './settings';
+import { WalletService } from './wallet-service';
+import { MinerService } from './miner-service';
+import { PriceService } from './price-service';
+import { registerIpc } from './ipc';
+import { initLog, log } from './log';
+import type { LbcEvents } from '../shared/api';
+
+// Sandbox every renderer process, unless the OS sandbox was explicitly disabled
+// with --no-sandbox (needed on some Linux setups); forcing it then would crash
+// child processes. Renderers still run with `sandbox: true` either way.
+if (!app.commandLine.hasSwitch('no-sandbox')) app.enableSandbox();
+app.setName('LBC Wallet');
+// Portable / test installs can keep their data elsewhere.
+if (process.env.LBC_WALLET_DATA_DIR) app.setPath('userData', process.env.LBC_WALLET_DATA_DIR);
+if (process.platform === 'win32') app.setAppUserModelId('io.github.mnaghshvarian.lbcwallet');
+
+const devServerUrl = process.env['ELECTRON_RENDERER_URL'];
+const rendererFile = join(__dirname, '../renderer/index.html');
+const rendererUrl = pathToFileURL(rendererFile).toString();
+
+function isTrustedUrl(url: string): boolean {
+  if (devServerUrl && !app.isPackaged && url.startsWith(devServerUrl)) return true;
+  return url === rendererUrl || url.startsWith(rendererUrl + '#') || url.startsWith(rendererUrl + '?');
+}
+
+if (!app.requestSingleInstanceLock()) {
+  // Another instance owns the wallet files; focus it instead.
+  app.quit();
+} else {
+  let mainWindow: BrowserWindow | null = null;
+
+  const send = <E extends keyof LbcEvents>(event: E, payload: LbcEvents[E]) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(event, payload);
+  };
+
+  app.on('second-instance', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  });
+
+  app.whenReady().then(async () => {
+    const dataDir = app.getPath('userData');
+    initLog(join(dataDir, 'logs'));
+    log('info', 'app', `starting LBC Wallet ${app.getVersion()} (electron ${process.versions.electron}, ${process.platform}/${process.arch})`);
+
+    const settings = new SettingsStore(dataDir);
+    const applyTheme = () => {
+      nativeTheme.themeSource = settings.get().theme;
+    };
+    applyTheme();
+    settings.onChange((next, prev) => {
+      if (next.theme !== prev.theme) applyTheme();
+    });
+
+    const price = new PriceService(settings, (p) => send('price:update', p));
+    const wallets = new WalletService(dataDir, settings, {
+      changed: (o) => send('wallet:changed', o),
+      locked: (reason) => send('wallet:locked', { reason }),
+      network: (st) => send('network:status', st),
+      notice: (n) => send('notice', n),
+    });
+    const miner = new MinerService({
+      settings,
+      walletAddress: () => wallets.miningAddress(),
+      chainTip: () => wallets.tipBits(),
+      price: () => price.get()?.price ?? null,
+      onStats: (st) => send('miner:stats', st),
+      onLog: (e) => send('miner:log', e),
+      onBlock: (b) => {
+        if (b.accepted) send('notice', { kind: 'block-found', title: 'Block found!', message: `You mined block ${b.height}. The reward matures after 100 confirmations.` });
+      },
+    });
+
+    registerIpc({ wallets, settings, miner, price, isTrustedUrl }, () => mainWindow);
+    price.start();
+
+    // Lock the wallet when the computer sleeps or the screen locks.
+    const systemLock = () => {
+      if (wallets.isOpen) void wallets.lock('system');
+    };
+    powerMonitor.on('suspend', systemLock);
+    powerMonitor.on('lock-screen', systemLock);
+
+    hardenSessions();
+    buildMenu();
+    mainWindow = createWindow();
+    mainWindow.on('closed', () => {
+      mainWindow = null;
+    });
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow();
+    });
+
+    let shuttingDown = false;
+    app.on('before-quit', (event) => {
+      if (shuttingDown) return;
+      event.preventDefault();
+      shuttingDown = true;
+      price.stop();
+      Promise.allSettled([miner.shutdown(), wallets.shutdown()]).finally(() => {
+        log('info', 'app', 'shut down cleanly');
+        app.exit(0);
+      });
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
+}
+
+function hardenSessions(): void {
+  const ses = session.defaultSession;
+  // The renderer needs no device or web permissions at all.
+  ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+  ses.setPermissionCheckHandler(() => false);
+  ses.setDevicePermissionHandler(() => false);
+  // Content-Security-Policy for every response (the HTML also carries a meta CSP).
+  ses.webRequest.onHeadersReceived((details, callback) => {
+    const devExtras = devServerUrl && !app.isPackaged ? " 'unsafe-inline' ws: http://localhost:*" : '';
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          `default-src 'self'; script-src 'self'${devServerUrl && !app.isPackaged ? " 'unsafe-inline'" : ''}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'${devExtras}; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+        ],
+      },
+    });
+  });
+}
+
+function createWindow(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 1220,
+    height: 800,
+    minWidth: 980,
+    minHeight: 640,
+    show: false,
+    title: 'LBC Wallet',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b1020' : '#f5f7fb',
+    autoHideMenuBar: process.platform !== 'darwin',
+    icon: join(__dirname, '../../resources/icon.png'),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      nodeIntegrationInWorker: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      webviewTag: false,
+      spellcheck: false,
+      devTools: !app.isPackaged || process.env.LBC_WALLET_DEVTOOLS === '1',
+    },
+  });
+
+  win.once('ready-to-show', () => win.show());
+
+  // Never navigate away from the app, never open new windows; https links go to the browser.
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!isTrustedUrl(url)) event.preventDefault();
+  });
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://')) void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-attach-webview', (event) => event.preventDefault());
+
+  if (devServerUrl && !app.isPackaged) void win.loadURL(devServerUrl);
+  else void win.loadFile(rendererFile);
+  return win;
+}
+
+function buildMenu(): void {
+  const isMac = process.platform === 'darwin';
+  const template: MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    { role: 'fileMenu' },
+    { role: 'editMenu' },
+    {
+      label: 'View',
+      submenu: [{ role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(!app.isPackaged ? [{ role: 'toggleDevTools' as const }] : [])],
+    },
+    { role: 'windowMenu' },
+    {
+      role: 'help',
+      submenu: [
+        { label: 'Project on GitHub', click: () => void shell.openExternal('https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability') },
+        { label: 'LBRY block explorer', click: () => void shell.openExternal('https://explorer.lbry.com') },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}

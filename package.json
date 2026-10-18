@@ -17,9 +17,13 @@
     "test:e2e": "npm run test:e2e -w @lbcwallet/core",
     "typecheck": "npm run typecheck -w @lbcwallet/core && npm run typecheck -w lbc-wallet-desktop",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "regtest": "tsx packages/core/e2e/dev-regtest.ts"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
   }
 }

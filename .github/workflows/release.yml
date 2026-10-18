@@ -1,0 +1,77 @@
+name: Release
+
+# Builds installers for Linux, Windows and macOS and attaches them to a draft
+# GitHub release. Push a tag like v1.0.0 (or run manually) to trigger it.
+#
+# Optional signing secrets (unsigned builds are produced without them):
+#   macOS:   CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
+#   Windows: WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: --linux
+          - os: windows-latest
+            target: --win
+          - os: macos-latest
+            target: --mac
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Package and publish to a draft release
+        working-directory: apps/desktop
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$CSC_LINK" ] && [ -z "$WIN_CSC_LINK" ]; then export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
+          PUBLISH=never
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then PUBLISH=always; fi
+          npx electron-builder --config electron-builder.yml ${{ matrix.target }} --publish "$PUBLISH"
+      - name: Checksums
+        shell: bash
+        working-directory: apps/desktop
+        run: |
+          cd release/*/
+          find . -maxdepth 1 -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.tar.gz' -o -name '*.exe' -o -name '*.dmg' -o -name '*.zip' \) -print0 \
+            | xargs -0 shasum -a 256 > SHA256SUMS-${{ runner.os }}.txt
+          cat SHA256SUMS-${{ runner.os }}.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lbc-wallet-${{ runner.os }}
+          path: |
+            apps/desktop/release/*/*.AppImage
+            apps/desktop/release/*/*.deb
+            apps/desktop/release/*/*.tar.gz
+            apps/desktop/release/*/*.exe
+            apps/desktop/release/*/*.dmg
+            apps/desktop/release/*/*.zip
+            apps/desktop/release/*/SHA256SUMS-*.txt
+          if-no-files-found: warn

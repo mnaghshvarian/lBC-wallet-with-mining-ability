@@ -38,7 +38,7 @@ function nompReverseByteOrder(hex: string): string {
   return toHex(swapWords(fromHex(hex)).reverse());
 }
 
-export async function startTestPool(rpc: LbcdRpc, payoutScript: Uint8Array, difficulty: number): Promise<TestPool> {
+export async function startTestPool(rpc: LbcdRpc, payoutScript: Uint8Array, difficulty: number, listenPort = 0): Promise<TestPool> {
   const extranonce1Size = 4;
   const extranonce2Size = 4;
   let jobSeq = 0;
@@ -144,7 +144,7 @@ export async function startTestPool(rpc: LbcdRpc, payoutScript: Uint8Array, diff
     socket.on('close', () => sockets.delete(socket));
     socket.on('error', () => undefined);
   });
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+  await new Promise<void>((resolve) => server.listen(listenPort, '127.0.0.1', () => resolve()));
   state.port = (server.address() as net.AddressInfo).port;
   state.close = () =>
     new Promise((resolve) => {

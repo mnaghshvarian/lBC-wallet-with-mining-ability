@@ -39,7 +39,7 @@ export interface WalletEngineOptions {
 type EngineEvents = {
   changed: void;
   sync: SyncInfo;
-  notice: { kind: 'received' | 'confirmed' | 'dropped'; txid: string; amount?: bigint };
+  notice: { kind: 'received' | 'confirmed' | 'dropped'; txid: string; amount?: bigint; type?: TxType };
 };
 
 export interface PaymentDraft {
@@ -173,6 +173,11 @@ export class WalletEngine extends Emitter<EngineEvents> {
     this.emit('changed', undefined);
     if (this.persistTimer) clearTimeout(this.persistTimer);
     this.persistTimer = setTimeout(() => this.flush(), 1000);
+  }
+
+  /** Call after mutating `state` directly (e.g. contacts) so it is persisted and observers refresh. */
+  stateChanged(): void {
+    this.changed();
   }
 
   /** Writes state immediately. */
@@ -364,7 +369,7 @@ export class WalletEngine extends Emitter<EngineEvents> {
         for (const txid of Object.keys(this.state.txs)) {
           if (!before.has(txid) && !this.state.pending[txid]) {
             const s = this.summarize(this.state.txs[txid]!);
-            if (s.amount > 0n) this.emit('notice', { kind: 'received', txid, amount: s.amount });
+            if (s.amount > 0n) this.emit('notice', { kind: 'received', txid, amount: s.amount, type: s.type });
           }
         }
         this.changed();

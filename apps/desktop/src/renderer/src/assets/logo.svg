@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="lbcw-g" x1="28" y1="18" x2="228" y2="238" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2FD6A3"/>
+      <stop offset="0.55" stop-color="#3FB8D9"/>
+      <stop offset="1" stop-color="#8F7DFF"/>
+    </linearGradient>
+    <linearGradient id="lbcw-shine" x1="128" y1="16" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path d="M116 19.5a24 24 0 0 1 24 0l78.6 45.4a24 24 0 0 1 12 20.8v90.6a24 24 0 0 1-12 20.8L140 242.5a24 24 0 0 1-24 0l-78.6-45.4a24 24 0 0 1-12-20.8V85.7a24 24 0 0 1 12-20.8z" fill="url(#lbcw-g)"/>
+  <path d="M116 19.5a24 24 0 0 1 24 0l78.6 45.4a24 24 0 0 1 12 20.8V128H25.4V85.7a24 24 0 0 1 12-20.8z" fill="url(#lbcw-shine)"/>
+  <path d="M94 70h30v88h52v28H94z" fill="#0A0F1E"/>
+  <path d="M168 66l14 14-14 14-14-14z" fill="#0A0F1E"/>
+</svg>

@@ -1,0 +1,46 @@
+{
+  "name": "lbc-wallet-desktop",
+  "productName": "LBC Wallet",
+  "version": "1.0.0",
+  "description": "Non-custodial LBRY Credits (LBC) wallet with a built-in miner",
+  "license": "MIT",
+  "author": {
+    "name": "LBC Wallet contributors",
+    "email": "m.naghshvarian@gmail.com"
+  },
+  "homepage": "https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",
+    "icons": "node scripts/make-icons.mjs",
+    "dist": "npm run build && electron-builder --config electron-builder.yml",
+    "dist:linux": "npm run build && electron-builder --config electron-builder.yml --linux",
+    "dist:win": "npm run build && electron-builder --config electron-builder.yml --win",
+    "dist:mac": "npm run build && electron-builder --config electron-builder.yml --mac",
+    "test:ui": "tsx e2e/ui.e2e.ts"
+  },
+  "devDependencies": {
+    "@lbcwallet/core": "*",
+    "@resvg/resvg-js": "2.6.2",
+    "@types/node": "26.6.5",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.1.2",
+    "electron": "44.9.0",
+    "electron-builder": "26.17.0",
+    "electron-vite": "5.0.0",
+    "lucide-react": "1.51.0",
+    "qrcode": "1.5.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "6.0.3",
+    "vite": "7.3.7",
+    "zustand": "5.0.15",
+    "playwright-core": "1.64.1"
+  }
+}
