@@ -167,7 +167,8 @@ export function Send({ initialTo }: { initialTo?: string }) {
                 placeholder="0.00"
                 onChange={(e) => {
                   setMax(false);
-                  setAmount(e.target.value.replace(/[^0-9.,]/g, ''));
+                  // Arabic-Indic, Persian and Devanagari digits and the Arabic decimal sign "٫" are typed too; parseLbc reads them.
+                  setAmount(e.target.value.replace(/[^0-9.,\u066b\u0660-\u0669\u06f0-\u06f9\u0966-\u096f]/g, ''));
                 }}
               />
               <div className="input-suffix">
