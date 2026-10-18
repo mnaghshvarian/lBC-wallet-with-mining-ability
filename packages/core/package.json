@@ -1,0 +1,31 @@
+{
+  "name": "@lbcwallet/core",
+  "version": "1.0.0",
+  "description": "Platform-agnostic LBRY Credits wallet core: keys, addresses, transactions, hub client, sync engine and mining protocol",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --dir test",
+    "test:watch": "vitest --dir test",
+    "test:e2e": "vitest run --dir e2e --no-file-parallelism",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@noble/ciphers": "2.4.0",
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "@scure/base": "2.4.0",
+    "@scure/bip32": "2.4.0",
+    "@scure/bip39": "2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

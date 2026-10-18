@@ -1,0 +1,25 @@
+{
+  "name": "lbc-wallet-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Non-custodial LBRY Credits (LBC) wallet with built-in mining",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:wasm": "npm run build -w @lbcwallet/miner-wasm",
+    "dev": "npm run dev -w lbc-wallet-desktop",
+    "build": "npm run build -w lbc-wallet-desktop",
+    "dist": "npm run dist -w lbc-wallet-desktop",
+    "test": "npm run test -w @lbcwallet/core",
+    "test:e2e": "npm run test:e2e -w @lbcwallet/core",
+    "typecheck": "npm run typecheck -w @lbcwallet/core && npm run typecheck -w lbc-wallet-desktop",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
