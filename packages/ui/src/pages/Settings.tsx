@@ -96,6 +96,14 @@ function General() {
           ))}
         </select>
       </Row>
+      <Row title={t('settings.bitcoinUnit')} desc={t('settings.bitcoinUnitHint')}>
+        <select className="select" style={{ width: 220 }} value={s.bitcoinUnit} onChange={(e) => void update({ bitcoinUnit: e.target.value as 'auto' | 'btc' | 'sats' | 'sci' })} aria-label={t('settings.bitcoinUnit')}>
+          <option value="auto">{t('settings.bitcoinUnitAuto')}</option>
+          <option value="btc">{t('settings.bitcoinUnitBtc')}</option>
+          <option value="sats">{t('settings.bitcoinUnitSats')}</option>
+          <option value="sci">{t('settings.bitcoinUnitSci')}</option>
+        </select>
+      </Row>
       <Row title={t('settings.hideBalances')} desc={t('settings.hideBalancesHint')}>
         <Toggle checked={s.hideBalances} onChange={(v) => void update({ hideBalances: v })} label={t('settings.hideBalances')} />
       </Row>

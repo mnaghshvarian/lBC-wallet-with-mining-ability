@@ -47,6 +47,8 @@ export interface NodeSettings {
   peers: string[];
 }
 
+export type BitcoinUnit = 'auto' | 'btc' | 'sats' | 'sci';
+
 export interface Settings {
   network: NetworkName;
   /** UI language code (e.g. "fa"), or "auto" to follow the system. */
@@ -56,6 +58,11 @@ export interface Settings {
   theme: 'system' | 'dark' | 'light';
   fiatCurrency: string;
   showFiat: boolean;
+  /**
+   * How Bitcoin amounts are shown in swaps and on the Market: automatic (sats below
+   * 0.001 BTC, BTC above), always BTC, always sats, or scientific notation (2.05e-5 BTC).
+   */
+  bitcoinUnit: BitcoinUnit;
   hideBalances: boolean;
   /** Where the wallet reads the blockchain: public hubs, your own lbcd, or the built-in node (hubs until it is synced). */
   backendMode: 'hub' | 'lbcd' | 'local';

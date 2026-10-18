@@ -608,8 +608,10 @@ The built-in node finds other nodes through LBRY's DNS seeds, and falls back to 
 
 ![Settings](images/settings-general.png)
 
-* **General:** language, theme (light/dark), fiat prices (USD, EUR…), hide balances (useful when
-  sharing your screen), block explorer link.
+* **General:** language, theme (light/dark), fiat prices (USD, EUR…), **Bitcoin unit** (how
+  Bitcoin amounts are shown in swaps and on the Market: *Automatic* uses sats for small amounts
+  and BTC for large ones; or always BTC, always sats, or scientific notation like 2.05e-5 BTC),
+  hide balances (useful when sharing your screen), block explorer link.
 * **Network:** how the wallet reads the blockchain — **Public servers** (the default, fast and
   light), **Built-in node**, or **My own node**. You can add your own LBRY servers and route
   everything through **Tor** (SOCKS5 proxy) for more privacy. **Bitcoin explorer for swaps**
@@ -618,7 +620,7 @@ The built-in node finds other nodes through LBRY's DNS seeds, and falls back to 
   empty for the default list).
 * **Security:**
   * **Auto-lock** — the wallet locks itself after some minutes without use (15 by default) and
-    when the computer sleeps.
+    when the computer sleeps. The inactivity lock waits while a swap is running.
   * **Ask for the password on every send** — strongly recommended (on by default).
   * **Change password**, **Show recovery phrase** (make sure nobody is watching!) and
     **Extended public key** (for watch-only wallets).
@@ -859,7 +861,10 @@ tick both boxes and click **I understand — open the board**.
 * **Price per LBC** is in **sats** (1 sat = 0.00000001 BTC). Next to it you see how far the price
   is **above or below the market price**.
 * **Available** is how much LBC the offer still has, and **from …** the smallest part you can take.
-* **In Bitcoin** is what the whole available amount costs.
+* **In Bitcoin** is what the whole available amount costs. Small Bitcoin amounts are shown in
+  **sats** and large ones in BTC, so the numbers stay readable whatever LBC's price does. Prefer
+  one fixed unit — always BTC, always sats, or scientific notation such as 2.05e-5 BTC — under
+  **Settings → General → Bitcoin unit**.
 * **Market price** (right) shows what LBC trades for on the exchanges — the LBC/USDT market on
   MEXC (or CoinPaprika's average when MEXC cannot be reached) — in US dollars, sats and Monero, and
   converts any amount for you. It is only for comparison: offers set their own prices.

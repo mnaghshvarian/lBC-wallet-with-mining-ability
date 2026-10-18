@@ -11,7 +11,7 @@ import type {
   WalletOverview,
 } from '@lbcwallet/services/api';
 import { createTranslator, languageInfo, resolveLanguage, type Params, type Translate } from './i18n';
-import { lbc, setFormatLanguage } from './lib/format';
+import { lbc, setBitcoinUnit, setFormatLanguage } from './lib/format';
 
 /** Version of the disclaimer users must accept (bump when its substance changes). */
 export const TERMS_VERSION = '2026-10';
@@ -160,6 +160,7 @@ export const useApp = create<AppState>((set, get) => ({
       api.node.status().catch(() => null),
     ]);
     applyTheme(settings.theme);
+    setBitcoinUnit(settings.bitcoinUnit);
     const language = languageFor(settings);
     const t = applyLanguage(language);
     let route: Route = { name: 'welcome' };
@@ -203,6 +204,7 @@ export const useApp = create<AppState>((set, get) => ({
   updateSettings: async (patch) => {
     const settings = await window.lbc.settings.update(patch);
     applyTheme(settings.theme);
+    setBitcoinUnit(settings.bitcoinUnit);
     const price = settings.showFiat ? get().price : null;
     const language = languageFor(settings);
     if (language !== get().language) set({ language, t: applyLanguage(language) });

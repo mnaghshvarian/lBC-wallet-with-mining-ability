@@ -4,12 +4,11 @@ import { btcForLbc, parseLbc } from '@lbcwallet/core/ui';
 import { MARKET_TERMS_VERSION, type MarketOfferView, type MarketPriceView, type MarketTradeView, type MarketView, type MyOfferView, type SwapCoinName, type SwapView } from '@lbcwallet/services/api';
 import { errorMessage, useApp, useT } from '../store';
 import { Badge, Button, Callout, Field, Modal, Segmented, Spinner } from '../components/ui';
-import { formatFiat, lbc, number, relativeTime, significant } from '../lib/format';
+import { coin, formatFiat, lbc, number, relativeTime, significant } from '../lib/format';
 import type { Translate } from '../i18n';
 import { SwapDetail } from './Swap';
 
 /** "20 LBC" / "0.01 BTC" from an amount in the coin's smallest unit (both have 8 decimals). */
-const coin = (units: string | bigint, c: SwapCoinName) => `${lbc(units)} ${c}`;
 const LBC_UNITS = 100_000_000n;
 /** Smallest swap: below these, network fees eat too much (the services check the same). */
 const MIN_LBC = 10n * LBC_UNITS;

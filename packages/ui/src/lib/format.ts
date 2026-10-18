@@ -1,5 +1,5 @@
 import { formatHashrate, formatLbc, parseLbc } from '@lbcwallet/core/ui';
-import type { PriceView, TxType } from '@lbcwallet/services/api';
+import type { BitcoinUnit, PriceView, TxType } from '@lbcwallet/services/api';
 import { createTranslator, type Translate } from '../i18n';
 
 export { formatHashrate, parseLbc };
@@ -13,6 +13,37 @@ let t: Translate = createTranslator('en');
 export function setFormatLanguage(lang: string, translate: Translate): void {
   locale = `${lang}-u-nu-latn`;
   t = translate;
+}
+
+/** How Bitcoin amounts are shown (Settings → General → Bitcoin unit). */
+let bitcoinUnit: BitcoinUnit = 'auto';
+
+/** Called by the store whenever the settings change. */
+export function setBitcoinUnit(unit: BitcoinUnit): void {
+  bitcoinUnit = unit;
+}
+
+/** Below this, "Automatic" shows satoshis: 0.001 BTC. */
+const AUTO_SATS_BELOW = 100_000n;
+
+/**
+ * Formats satoshis the way the Bitcoin unit setting says: BTC with all its zeros,
+ * sats ("20,500 sats"), scientific notation ("2.05e-5 BTC"), or automatic — sats
+ * below 0.001 BTC and BTC above — so the small Bitcoin values of LBC stay readable
+ * whatever its price does.
+ */
+export function btc(sats: string | bigint, unit: BitcoinUnit = bitcoinUnit): string {
+  const v = typeof sats === 'bigint' ? sats : BigInt(sats || '0');
+  const abs = v < 0n ? -v : v;
+  const chosen = unit === 'auto' ? (abs < AUTO_SATS_BELOW ? 'sats' : 'btc') : unit;
+  if (chosen === 'sats') return t('market.sats', { n: number(Number(v)) });
+  if (chosen === 'sci' && abs > 0n && abs < 10_000_000n) return `${(Number(v) / 1e8).toExponential(2)} BTC`;
+  return `${formatLbc(v, { minDecimals: 2, maxDecimals: 8 })} BTC`;
+}
+
+/** An amount of either swap coin, as the Swap and Market pages show it. */
+export function coin(units: string | bigint, c: 'LBC' | 'BTC'): string {
+  return c === 'BTC' ? btc(units) : `${lbc(units)} LBC`;
 }
 
 /** Formats a dewies string as LBC. */

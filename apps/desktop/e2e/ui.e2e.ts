@@ -297,7 +297,7 @@ async function main() {
     const take = page.locator('.modal');
     await take.locator('input').first().fill('10000');
     await take.getByPlaceholder('bc1…').fill('bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080');
-    await take.getByText(/You give 0\.000205 BTC and get 10,000\.00 LBC/).waitFor();
+    await take.getByText(/You give 20,500 sats and get 10,000\.00 LBC/).waitFor();
     await shot(page, '14d-market-take');
     await take.getByRole('button', { name: /^Buy 10,000/ }).click();
     // Nobody answers this offer (no wallet behind it): the take waits, then gives up after 10 minutes.

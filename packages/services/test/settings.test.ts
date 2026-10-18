@@ -48,6 +48,11 @@ describe('settings sanitizing', () => {
     for (const lang of ['fa', 'ar', 'zh-CN', 'ur', 'hi', 'th', 'nl']) expect(sanitize({ language: lang }, base, CPUS).language).toBe(lang);
   });
 
+  it('accepts only the Bitcoin units it knows', () => {
+    for (const unit of ['auto', 'btc', 'sats', 'sci'] as const) expect(sanitize({ bitcoinUnit: unit }, base, CPUS).bitcoinUnit).toBe(unit);
+    expect(sanitize({ bitcoinUnit: 'mbtc' as never }, base, CPUS).bitcoinUnit).toBe('auto');
+  });
+
   it('bounds mining and node settings', () => {
     const s = sanitize(
       { mining: { ...base.mining, threads: 10_000, idleMinutes: 0, workerName: 'rig 1;', onlyWhenIdle: true }, node: { enabled: true, dataDir: '/data/lbc', listen: 'yes' as unknown as boolean, peers: ['node.example.com:9246', '10.0.0.2:9246', '[2001:db8::1]:9246', 'bad host:1', 'x:0', 'x:70000', 42 as unknown as string] } },

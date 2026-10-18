@@ -46,6 +46,9 @@ Check your download against the `SHA256SUMS-*.txt` files below.
     board are strangers, and a trade can keep coins locked for up to 48 hours.
   * Paying with USDT or Monero: change them to Bitcoin first (for example in Trust Wallet or Cake
     Wallet). The manual has a step-by-step guide.
+* **Bitcoin amounts you can read.** A new *Settings → General → Bitcoin unit* option: *Automatic*
+  shows small amounts in sats and large ones in BTC (so "0.00000205 BTC" becomes "205 sats"
+  whatever LBC's price does), or choose always BTC, always sats, or scientific notation.
 * **Hindi.** The app and a quick-start guide are now available in Hindi: 15 languages in all.
 * **Manual:** new chapters on the Market and on paying with other coins; *Do I need to download
   the blockchain?* (no; it is about 100 GB, not 2 TB) and *Which servers does the wallet use?*

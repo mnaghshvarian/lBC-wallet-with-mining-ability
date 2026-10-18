@@ -4,11 +4,10 @@ import type { SwapCodeView, SwapCoinName, SwapContractView, SwapStage, SwapView 
 import { errorMessage, useApp, useT } from '../store';
 import { Badge, Button, Callout, CopyButton, Field, PasswordInput, Segmented } from '../components/ui';
 import { AddressText, QrCode } from '../components/display';
-import { dateTime, lbc, list, parseLbc, relativeTime } from '../lib/format';
+import { coin, dateTime, lbc, list, parseLbc, relativeTime, significant } from '../lib/format';
 import type { Translate } from '../i18n';
 
 /** "20 LBC" / "0.01 BTC" from an amount in the coin's smallest unit (both have 8 decimals). */
-const coin = (units: string, c: SwapCoinName) => `${lbc(units)} ${c}`;
 const amountOf = (s: Pick<SwapView, 'lbc' | 'btc'>, c: SwapCoinName) => (c === 'LBC' ? s.lbc : s.btc);
 
 const DONE: SwapStage[] = ['completed', 'refunded', 'cancelled', 'failed'];
@@ -325,7 +324,11 @@ function StartForm({ onDone }: { onDone: (s: SwapView) => void }) {
           <input className="input" inputMode="decimal" value={btcText} onChange={(e) => setBtcText(e.target.value)} placeholder="0.00000000" />
         </Field>
       </div>
-      {price !== null && <div className="small text-2">{t('swap.start.price', { price: price.toFixed(10).replace(/0+$/, ''), lbcPerBtc: Math.round(1 / price).toLocaleString('en-US') })}</div>}
+      {price !== null && (
+        <div className="small text-2">
+          {t('swap.start.priceSats', { sats: significant(price * 1e8, 3), btc: price.toFixed(10).replace(/0+$/, ''), lbcPerBtc: Math.round(1 / price).toLocaleString('en-US') })}
+        </div>
+      )}
       <Field label={give === 'LBC' ? t('swap.start.btcReceive') : t('swap.start.btcRefund')} hint={t('swap.start.btcAddressHint')}>
         <input className="input mono" value={btcAddress} onChange={(e) => setBtcAddress(e.target.value)} placeholder="bc1…" spellCheck={false} />
       </Field>
