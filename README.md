@@ -75,7 +75,8 @@ Installers are attached to each [GitHub release](../../releases) (built by
 Check downloads against the `SHA256SUMS-*.txt` files in the release.
 
 * **Unsigned builds.** Unless the release says it is signed, Windows SmartScreen will warn
-  (*More info → Run anyway*), and macOS needs a right-click *→ Open* the first time.
+  (*More info → Run anyway*). On macOS, open the app once, then allow it under *System Settings →
+  Privacy & Security → Open Anyway* (right-click *→ Open* on macOS 14 and older).
 * **Ubuntu 24.04 and newer** restrict the user namespaces that Electron's sandbox uses. Prefer
   the `.deb`, which installs an AppArmor profile for the app. The AppImage needs the restriction
   relaxed (`sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0`) or an AppArmor profile.

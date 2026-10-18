@@ -52,9 +52,16 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "$CSC_LINK" ] && [ -z "$WIN_CSC_LINK" ]; then export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
+          EXTRA=()
+          if [ "$RUNNER_OS" = "macOS" ] && [ -z "$CSC_LINK" ]; then
+            # No Developer ID certificate: ad-hoc sign, because flipping the fuses breaks
+            # Electron's own signature and Apple Silicon refuses to run unsigned code.
+            # The hardened runtime needs a real identity (it is only required for notarization).
+            EXTRA=(-c.mac.identity=- -c.mac.hardenedRuntime=false)
+          fi
           PUBLISH=never
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then PUBLISH=always; fi
-          npx electron-builder --config electron-builder.yml ${{ matrix.target }} --publish "$PUBLISH"
+          npx electron-builder --config electron-builder.yml ${{ matrix.target }} --publish "$PUBLISH" "${EXTRA[@]}"
       - name: Checksums
         shell: bash
         working-directory: apps/desktop
