@@ -34,6 +34,12 @@ Check your download against the `SHA256SUMS-*.txt` files below.
   Russian, Chinese, Japanese, Korean, Thai (right-to-left layouts included).
 * **Disclaimer** to accept on first start, in every language; license page in the installers.
 * Linux **.rpm** packages and **ARM64** builds; download names without version numbers.
+* **Stuck public servers are skipped:** a server whose newest block is over an hour old (one of
+  the default servers currently is) is passed over for an up-to-date one, and the wallet moves
+  on if its server stops announcing new blocks.
+* With **Tor/SOCKS5** on, the built-in node's connections go through the proxy too.
+* Recovery-phrase and private-key screens are hidden from screenshots and screen sharing
+  (Android, Windows, macOS).
 * Fix: solo mining on fast test networks could overload the miner.
 
 ### Good to know

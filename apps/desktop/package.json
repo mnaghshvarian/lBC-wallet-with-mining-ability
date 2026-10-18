@@ -1,7 +1,7 @@
 {
   "name": "lbc-wallet-desktop",
   "productName": "LBC Wallet",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Non-custodial LBRY Credits (LBC) wallet with a built-in miner",
   "license": "MIT",
   "author": {

@@ -1,6 +1,6 @@
 {
   "name": "lbc-wallet-mobile",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "LBC Wallet for Android: the shared wallet services and UI in a Capacitor app",
   "license": "MIT",
   "private": true,
