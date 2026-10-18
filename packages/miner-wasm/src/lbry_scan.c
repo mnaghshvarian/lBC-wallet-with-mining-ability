@@ -14,6 +14,11 @@
  * call scan(start, count) repeatedly. When it reports a hit, found_nonce() and
  * hash_ptr() describe the result.
  *
+ * The file is compiled twice: a portable scalar module, and one built with
+ * -msimd128 whose scan() hashes four consecutive nonces per pass in the lanes
+ * of 128-bit vectors (SHA-512 runs two lanes at a time in 64-bit lanes).
+ * hash_nonce() is always the scalar reference implementation.
+ *
  * SPDX-License-Identifier: MIT
  */
 #include <stdint.h>
@@ -327,6 +332,21 @@ EXPORT(prepare) void prepare(void) {
   g_found = 0;
 }
 
+/* Checks one finished hash against the target; records it on a hit. */
+static int check_hit(uint32_t nonce, const uint32_t h4[8]) {
+  /* Most significant 32 bits of the little-endian hash value are bytes 31..28. */
+  uint32_t top = bswap32(h4[7]);
+  if (top > g_target_top) return 0;
+  store_hash(h4);
+  if (top < g_target_top || hash_le_target()) {
+    g_found = 1;
+    g_found_nonce = nonce;
+    return 1;
+  }
+  return 0;
+}
+
+#ifndef __wasm_simd128__
 /*
  * Scans `count` nonces starting at `start` (wrapping is the caller's concern).
  * Stops at the first hash <= target. Returns the number of hashes computed.
@@ -335,20 +355,241 @@ EXPORT(scan) uint32_t scan(uint32_t start, uint32_t count) {
   uint32_t h4[8];
   g_found = 0;
   for (uint32_t i = 0; i < count; i++) {
-    uint32_t nonce = start + i;
-    lbry_hash_words(nonce, h4);
-    /* Most significant 32 bits of the little-endian hash value are bytes 31..28. */
-    uint32_t top = bswap32(h4[7]);
-    if (top > g_target_top) continue;
-    store_hash(h4);
-    if (top < g_target_top || hash_le_target()) {
-      g_found = 1;
-      g_found_nonce = nonce;
-      return i + 1;
-    }
+    lbry_hash_words(start + i, h4);
+    if (check_hit(start + i, h4)) return i + 1;
   }
   return count;
 }
+#endif
+
+#ifdef __wasm_simd128__
+/* ---------------------------------------------------- 4-way SIMD scanning */
+#include <wasm_simd128.h>
+
+typedef v128_t x4; /* four 32-bit lanes (or two 64-bit lanes for SHA-512) */
+
+#define SPLAT(x) wasm_i32x4_splat((int32_t)(x))
+#define SPLAT64(x) wasm_i64x2_splat((int64_t)(x))
+#define ADD wasm_i32x4_add
+#define ADD64 wasm_i64x2_add
+#define XOR wasm_v128_xor
+#define OR wasm_v128_or
+
+static inline x4 rotr_x4(x4 x, int n) { return OR(wasm_u32x4_shr(x, n), wasm_i32x4_shl(x, 32 - n)); }
+static inline x4 rotl_x4(x4 x, int n) { return OR(wasm_i32x4_shl(x, n), wasm_u32x4_shr(x, 32 - n)); }
+static inline x4 rotr_x2(x4 x, int n) { return OR(wasm_u64x2_shr(x, n), wasm_i64x2_shl(x, 64 - n)); }
+static inline x4 bswap_x4(x4 x) { return wasm_i8x16_shuffle(x, x, 3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12); }
+
+static void sha256_compress_x4(x4 out[8], const x4 in[8], const x4 block[16]) {
+  x4 w[64];
+  for (int i = 0; i < 16; i++) w[i] = block[i];
+#pragma clang loop unroll(full)
+  for (int i = 16; i < 64; i++) {
+    x4 s0 = XOR(XOR(rotr_x4(w[i - 15], 7), rotr_x4(w[i - 15], 18)), wasm_u32x4_shr(w[i - 15], 3));
+    x4 s1 = XOR(XOR(rotr_x4(w[i - 2], 17), rotr_x4(w[i - 2], 19)), wasm_u32x4_shr(w[i - 2], 10));
+    w[i] = ADD(ADD(w[i - 16], s0), ADD(w[i - 7], s1));
+  }
+  x4 a = in[0], b = in[1], c = in[2], d = in[3], e = in[4], f = in[5], g = in[6], h = in[7];
+#pragma clang loop unroll(full)
+  for (int i = 0; i < 64; i++) {
+    x4 S1 = XOR(XOR(rotr_x4(e, 6), rotr_x4(e, 11)), rotr_x4(e, 25));
+    x4 ch = wasm_v128_bitselect(f, g, e);
+    x4 t1 = ADD(ADD(h, S1), ADD(ch, ADD(SPLAT(K256[i]), w[i])));
+    x4 S0 = XOR(XOR(rotr_x4(a, 2), rotr_x4(a, 13)), rotr_x4(a, 22));
+    x4 maj = wasm_v128_bitselect(c, a, XOR(a, b));
+    x4 t2 = ADD(S0, maj);
+    h = g;
+    g = f;
+    f = e;
+    e = ADD(d, t1);
+    d = c;
+    c = b;
+    b = a;
+    a = ADD(t1, t2);
+  }
+  out[0] = ADD(in[0], a);
+  out[1] = ADD(in[1], b);
+  out[2] = ADD(in[2], c);
+  out[3] = ADD(in[3], d);
+  out[4] = ADD(in[4], e);
+  out[5] = ADD(in[5], f);
+  out[6] = ADD(in[6], g);
+  out[7] = ADD(in[7], h);
+}
+
+/* SHA-512 of two 32-byte messages at once (one per 64-bit lane). */
+static void sha512_32_x2(x4 out[8], const x4 m[4]) {
+  x4 w[80];
+  w[0] = m[0];
+  w[1] = m[1];
+  w[2] = m[2];
+  w[3] = m[3];
+  w[4] = SPLAT64(0x8000000000000000ULL);
+  for (int i = 5; i < 15; i++) w[i] = wasm_i64x2_const(0, 0);
+  w[15] = SPLAT64(256);
+#pragma clang loop unroll(full)
+  for (int i = 16; i < 80; i++) {
+    x4 s0 = XOR(XOR(rotr_x2(w[i - 15], 1), rotr_x2(w[i - 15], 8)), wasm_u64x2_shr(w[i - 15], 7));
+    x4 s1 = XOR(XOR(rotr_x2(w[i - 2], 19), rotr_x2(w[i - 2], 61)), wasm_u64x2_shr(w[i - 2], 6));
+    w[i] = ADD64(ADD64(w[i - 16], s0), ADD64(w[i - 7], s1));
+  }
+  x4 a = SPLAT64(IV512[0]), b = SPLAT64(IV512[1]), c = SPLAT64(IV512[2]), d = SPLAT64(IV512[3]);
+  x4 e = SPLAT64(IV512[4]), f = SPLAT64(IV512[5]), g = SPLAT64(IV512[6]), h = SPLAT64(IV512[7]);
+#pragma clang loop unroll(full)
+  for (int i = 0; i < 80; i++) {
+    x4 S1 = XOR(XOR(rotr_x2(e, 14), rotr_x2(e, 18)), rotr_x2(e, 41));
+    x4 ch = wasm_v128_bitselect(f, g, e);
+    x4 t1 = ADD64(ADD64(h, S1), ADD64(ch, ADD64(SPLAT64(K512[i]), w[i])));
+    x4 S0 = XOR(XOR(rotr_x2(a, 28), rotr_x2(a, 34)), rotr_x2(a, 39));
+    x4 maj = wasm_v128_bitselect(c, a, XOR(a, b));
+    x4 t2 = ADD64(S0, maj);
+    h = g;
+    g = f;
+    f = e;
+    e = ADD64(d, t1);
+    d = c;
+    c = b;
+    b = a;
+    a = ADD64(t1, t2);
+  }
+  out[0] = ADD64(SPLAT64(IV512[0]), a);
+  out[1] = ADD64(SPLAT64(IV512[1]), b);
+  out[2] = ADD64(SPLAT64(IV512[2]), c);
+  out[3] = ADD64(SPLAT64(IV512[3]), d);
+  out[4] = ADD64(SPLAT64(IV512[4]), e);
+  out[5] = ADD64(SPLAT64(IV512[5]), f);
+  out[6] = ADD64(SPLAT64(IV512[6]), g);
+  out[7] = ADD64(SPLAT64(IV512[7]), h);
+}
+
+static inline x4 rf_x4(int j, x4 x, x4 y, x4 z) {
+  switch (j) {
+    case 0: return XOR(XOR(x, y), z);
+    case 1: return wasm_v128_bitselect(y, z, x);
+    case 2: return XOR(OR(x, wasm_v128_not(y)), z);
+    case 3: return wasm_v128_bitselect(x, y, z);
+    default: return XOR(x, OR(y, wasm_v128_not(z)));
+  }
+}
+
+static void ripemd160_32_x4(x4 out[5], const x4 m[8]) {
+  x4 X[16];
+  for (int i = 0; i < 8; i++) X[i] = m[i];
+  X[8] = SPLAT(0x80);
+  for (int i = 9; i < 14; i++) X[i] = SPLAT(0);
+  X[14] = SPLAT(256);
+  X[15] = SPLAT(0);
+  x4 al = SPLAT(0x67452301), bl = SPLAT(0xefcdab89), cl = SPLAT(0x98badcfe), dl = SPLAT(0x10325476),
+     el = SPLAT(0xc3d2e1f0);
+  x4 ar = al, br = bl, cr = cl, dr = dl, er = el;
+#pragma clang loop unroll(full)
+  for (int i = 0; i < 80; i++) {
+    int j = i >> 4;
+    x4 t = ADD(rotl_x4(ADD(ADD(al, rf_x4(j, bl, cl, dl)), ADD(X[RL[i]], SPLAT(KL[j]))), SL[i]), el);
+    al = el;
+    el = dl;
+    dl = rotl_x4(cl, 10);
+    cl = bl;
+    bl = t;
+    t = ADD(rotl_x4(ADD(ADD(ar, rf_x4(4 - j, br, cr, dr)), ADD(X[RR[i]], SPLAT(KR[j]))), SR[i]), er);
+    ar = er;
+    er = dr;
+    dr = rotl_x4(cr, 10);
+    cr = br;
+    br = t;
+  }
+  x4 t = ADD(SPLAT(0xefcdab89), ADD(cl, dr));
+  out[1] = ADD(SPLAT(0x98badcfe), ADD(dl, er));
+  out[2] = ADD(SPLAT(0x10325476), ADD(el, ar));
+  out[3] = ADD(SPLAT(0xc3d2e1f0), ADD(al, br));
+  out[4] = ADD(SPLAT(0x67452301), ADD(bl, cr));
+  out[0] = t;
+}
+
+/* LBRY hashes of nonces n..n+3; lane k of h4[i] is word i of nonce n+k's final state. */
+static void lbry_hash_x4(uint32_t nonce, x4 h4[8]) {
+  x4 blk[16], st[8], h1[8], h2[8], h3[8];
+  for (int i = 0; i < 16; i++) blk[i] = SPLAT(g_tail[i]);
+  blk[11] = bswap_x4(ADD(SPLAT(nonce), wasm_i32x4_make(0, 1, 2, 3)));
+  for (int i = 0; i < 8; i++) st[i] = SPLAT(g_midstate[i]);
+  sha256_compress_x4(h1, st, blk); /* SHA256(header) */
+
+  for (int i = 0; i < 8; i++) {
+    blk[i] = h1[i];
+    st[i] = SPLAT(IV256[i]);
+  }
+  blk[8] = SPLAT(0x80000000u);
+  for (int i = 9; i < 15; i++) blk[i] = SPLAT(0);
+  blk[15] = SPLAT(256);
+  sha256_compress_x4(h2, st, blk); /* SHA256d(header) */
+
+  /* SHA-512 two lanes at a time; 64-bit word i is h2[2i] << 32 | h2[2i + 1]. */
+  x4 m01[4], m23[4], e01[8], e23[8];
+  for (int i = 0; i < 4; i++) {
+    m01[i] = wasm_i32x4_shuffle(h2[2 * i + 1], h2[2 * i], 0, 4, 1, 5);
+    m23[i] = wasm_i32x4_shuffle(h2[2 * i + 1], h2[2 * i], 2, 6, 3, 7);
+  }
+  sha512_32_x2(e01, m01);
+  sha512_32_x2(e23, m23);
+
+  /* Back to four 32-bit lanes: RIPEMD-160 reads the digest as little-endian words. */
+  x4 lw[8], rw[8];
+  for (int i = 0; i < 4; i++) {
+    lw[2 * i] = bswap_x4(wasm_i32x4_shuffle(e01[i], e23[i], 1, 3, 5, 7));
+    lw[2 * i + 1] = bswap_x4(wasm_i32x4_shuffle(e01[i], e23[i], 0, 2, 4, 6));
+    rw[2 * i] = bswap_x4(wasm_i32x4_shuffle(e01[i + 4], e23[i + 4], 1, 3, 5, 7));
+    rw[2 * i + 1] = bswap_x4(wasm_i32x4_shuffle(e01[i + 4], e23[i + 4], 0, 2, 4, 6));
+  }
+  x4 left[5], right[5];
+  ripemd160_32_x4(left, lw);
+  ripemd160_32_x4(right, rw);
+
+  for (int i = 0; i < 5; i++) {
+    blk[i] = bswap_x4(left[i]);
+    blk[5 + i] = bswap_x4(right[i]);
+  }
+  blk[10] = SPLAT(0x80000000u);
+  for (int i = 11; i < 15; i++) blk[i] = SPLAT(0);
+  blk[15] = SPLAT(320);
+  sha256_compress_x4(h3, st, blk);
+
+  for (int i = 0; i < 8; i++) blk[i] = h3[i];
+  blk[8] = SPLAT(0x80000000u);
+  for (int i = 9; i < 15; i++) blk[i] = SPLAT(0);
+  blk[15] = SPLAT(256);
+  sha256_compress_x4(h4, st, blk);
+}
+
+/*
+ * Scans `count` nonces starting at `start` (wrapping is the caller's concern),
+ * four at a time. Stops at the first hash <= target, in nonce order. Returns
+ * the number of hashes up to and including the hit.
+ */
+EXPORT(scan) uint32_t scan(uint32_t start, uint32_t count) {
+  x4 h4[8];
+  g_found = 0;
+  const x4 limit = SPLAT(g_target_top);
+  uint32_t i = 0;
+  for (; count - i >= 4; i += 4) {
+    lbry_hash_x4(start + i, h4);
+    /* Unsigned compare of each lane's most significant 32 bits against the target's. */
+    if (!wasm_v128_any_true(wasm_u32x4_le(bswap_x4(h4[7]), limit))) continue;
+    uint32_t lanes[8][4];
+    for (int w = 0; w < 8; w++) wasm_v128_store(lanes[w], h4[w]);
+    for (int k = 0; k < 4; k++) {
+      uint32_t words[8];
+      for (int w = 0; w < 8; w++) words[w] = lanes[w][k];
+      if (check_hit(start + i + k, words)) return i + k + 1;
+    }
+  }
+  uint32_t h[8];
+  for (; i < count; i++) {
+    lbry_hash_words(start + i, h);
+    if (check_hit(start + i, h)) return i + 1;
+  }
+  return count;
+}
+#endif
 
 /* Computes the hash of the current header with a given nonce into hash_ptr() (for verification). */
 EXPORT(hash_nonce) void hash_nonce(uint32_t nonce) {

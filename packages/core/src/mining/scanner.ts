@@ -1,5 +1,5 @@
 import { base64 } from '@scure/base';
-import { LBRY_SCAN_WASM_BASE64 } from './lbry-scan-wasm.generated.js';
+import { LBRY_SCAN_SIMD_WASM_BASE64, LBRY_SCAN_WASM_BASE64 } from './lbry-scan-wasm.generated.js';
 import { HEADER_SIZE } from '../crypto/pow.js';
 import { bigIntToHash } from '../crypto/pow.js';
 
@@ -15,15 +15,30 @@ interface ScanExports {
   hash_nonce(nonce: number): void;
 }
 
-let compiled: Promise<WebAssembly.Module> | null = null;
+/** 'simd' hashes four nonces per pass with WebAssembly SIMD; 'scalar' is the portable fallback. */
+export type ScannerFlavor = 'simd' | 'scalar';
 
-function wasmBytes(): Uint8Array {
-  return base64.decode(LBRY_SCAN_WASM_BASE64);
+const compiled: Partial<Record<ScannerFlavor, Promise<WebAssembly.Module>>> = {};
+let simdOk: boolean | undefined;
+
+function wasmBytes(flavor: ScannerFlavor): Uint8Array {
+  return base64.decode(flavor === 'simd' ? LBRY_SCAN_SIMD_WASM_BASE64 : LBRY_SCAN_WASM_BASE64);
 }
 
-export function compileScanner(): Promise<WebAssembly.Module> {
-  if (!compiled) compiled = WebAssembly.compile(wasmBytes() as BufferSource);
-  return compiled;
+/** Whether this runtime supports WebAssembly SIMD (all current Electron and Node.js builds do). */
+export function simdSupported(): boolean {
+  simdOk ??= WebAssembly.validate(wasmBytes('simd') as BufferSource);
+  return simdOk;
+}
+
+/** The fastest scanner this runtime can run. */
+export function bestScannerFlavor(): ScannerFlavor {
+  return simdSupported() ? 'simd' : 'scalar';
+}
+
+export function compileScanner(flavor: ScannerFlavor = bestScannerFlavor()): Promise<WebAssembly.Module> {
+  compiled[flavor] ??= WebAssembly.compile(wasmBytes(flavor) as BufferSource);
+  return compiled[flavor];
 }
 
 export interface ScanResult {
@@ -40,12 +55,14 @@ export interface ScanResult {
  * thread; each instance owns its own linear memory.
  */
 export class LbryScanner {
-  private constructor(private readonly x: ScanExports) {}
+  private constructor(
+    private readonly x: ScanExports,
+    readonly flavor: ScannerFlavor,
+  ) {}
 
-  static async create(module?: WebAssembly.Module): Promise<LbryScanner> {
-    const mod = module ?? (await compileScanner());
-    const instance = await WebAssembly.instantiate(mod, {});
-    return new LbryScanner(instance.exports as unknown as ScanExports);
+  static async create(flavor: ScannerFlavor = bestScannerFlavor()): Promise<LbryScanner> {
+    const instance = await WebAssembly.instantiate(await compileScanner(flavor), {});
+    return new LbryScanner(instance.exports as unknown as ScanExports, flavor);
   }
 
   private view(ptr: number, len: number): Uint8Array {

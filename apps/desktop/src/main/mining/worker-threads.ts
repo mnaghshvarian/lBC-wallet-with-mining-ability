@@ -1,5 +1,5 @@
 import { Worker } from 'node:worker_threads';
-import type { HashThreads, WorkUnit } from '@lbcwallet/core';
+import type { HashThreads, ScannerFlavor, WorkUnit } from '@lbcwallet/core';
 
 /** HashThreads backed by Node worker_threads running hash-worker.js. */
 export class WorkerThreads implements HashThreads {
@@ -7,6 +7,8 @@ export class WorkerThreads implements HashThreads {
   private hit: (thread: number, key: string, nonce: number) => void = () => {};
   private exhausted: (thread: number, key: string) => void = () => {};
   private hashes: (thread: number, count: number) => void = () => {};
+  /** Scanner build the threads are running (reported by each thread when it starts). */
+  engine: ScannerFlavor = 'scalar';
 
   private constructor(readonly size: number) {}
 
@@ -18,10 +20,11 @@ export class WorkerThreads implements HashThreads {
         t.workers.push(w);
         return new Promise<void>((resolve, reject) => {
           const timer = setTimeout(() => reject(new Error('hash worker did not start')), 15_000);
-          w.on('message', (msg: { type: string; key?: string; nonce?: number; count?: number; message?: string }) => {
+          w.on('message', (msg: { type: string; key?: string; nonce?: number; count?: number; message?: string; engine?: ScannerFlavor }) => {
             switch (msg.type) {
               case 'ready':
                 clearTimeout(timer);
+                if (msg.engine) t.engine = msg.engine;
                 resolve();
                 break;
               case 'hit':

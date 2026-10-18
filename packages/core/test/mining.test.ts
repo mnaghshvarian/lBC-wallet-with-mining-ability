@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LbryScanner } from '../src/mining/scanner.js';
+import { LbryScanner, simdSupported } from '../src/mining/scanner.js';
 import { bitsToTarget, hashToBigInt, lbryPowHash } from '../src/crypto/pow.js';
 import { ByteWriter, fromHex, hashFromHex, toHex, concatBytes } from '../src/encoding/bytes.js';
 import { sha256d } from '../src/crypto/hash.js';
@@ -28,9 +28,10 @@ const genesis = new ByteWriter(112)
   .u32LE(0)
   .toBytes();
 
-describe('WASM LBRY scanner', () => {
+describe.each(['simd', 'scalar'] as const)('WASM LBRY scanner (%s)', (flavor) => {
   it('matches the reference implementation for many nonces and headers', async () => {
-    const scanner = await LbryScanner.create();
+    const scanner = await LbryScanner.create(flavor);
+    expect(scanner.flavor).toBe(flavor);
     for (let trial = 0; trial < 5; trial++) {
       const header = genesis.slice();
       header[40] = trial; // vary the merkle root (first 64 bytes → midstate)
@@ -45,7 +46,7 @@ describe('WASM LBRY scanner', () => {
   });
 
   it('finds the genesis nonce at the genesis target', async () => {
-    const scanner = await LbryScanner.create();
+    const scanner = await LbryScanner.create(flavor);
     scanner.setWork(genesis, bitsToTarget(0x1f00ffff));
     const r = scanner.scan(1200, 200);
     expect(r.found).toBe(true);
@@ -57,23 +58,61 @@ describe('WASM LBRY scanner', () => {
     expect(toHex(r.hash!)).toBe(toHex(lbryPowHash(header)));
   });
 
+  it('reports every hit in nonce order with the exact hash, for any slice length', async () => {
+    const scanner = await LbryScanner.create(flavor);
+    const header = genesis.slice();
+    header[77] = 0x5a;
+    const target = 1n << 252n; // about one hash in sixteen qualifies
+    scanner.setWork(header, target);
+    const expected: number[] = [];
+    for (let n = 1000; n < 2200; n++) {
+      setNonce(header, n);
+      if (hashToBigInt(lbryPowHash(header)) <= target) expected.push(n);
+    }
+    const hits: number[] = [];
+    let next = 1000;
+    let step = 0;
+    while (next < 2200) {
+      const count = Math.min([1, 2, 3, 4, 5, 7, 8, 13, 64][step++ % 9]!, 2200 - next);
+      const r = scanner.scan(next, count);
+      if (r.found) {
+        expect(r.hashes).toBe(r.nonce! - next + 1);
+        setNonce(header, r.nonce!);
+        expect(toHex(r.hash!)).toBe(toHex(lbryPowHash(header)));
+        hits.push(r.nonce!);
+      } else {
+        expect(r.hashes).toBe(count);
+      }
+      next += r.hashes;
+    }
+    expect(expected.length).toBeGreaterThan(40);
+    expect(hits).toEqual(expected);
+  });
+
   it('reports no hit for an impossible target and counts hashes', async () => {
-    const scanner = await LbryScanner.create();
+    const scanner = await LbryScanner.create(flavor);
     scanner.setWork(genesis, 1n);
     expect(scanner.scan(0, 5000)).toEqual({ hashes: 5000, found: false });
+    expect(scanner.scan(0xffffffff - 6, 7)).toEqual({ hashes: 7, found: false });
   });
 
   it('runs fast enough to be useful (> 50 kH/s even on slow CI)', async () => {
-    const scanner = await LbryScanner.create();
+    const scanner = await LbryScanner.create(flavor);
     scanner.setWork(genesis, 0n);
+    scanner.scan(0, 20_000); // warm up (lets the engine tier up the module)
     const n = 200_000;
     const t = performance.now();
     scanner.scan(0, n);
     const seconds = (performance.now() - t) / 1000;
     const rate = n / seconds;
-    console.log(`WASM scanner: ${formatHashrate(rate)} on one thread`);
+    console.log(`WASM scanner (${flavor}): ${formatHashrate(rate)} on one thread`);
     expect(rate).toBeGreaterThan(50_000);
   });
+});
+
+it('uses the SIMD scanner by default', async () => {
+  expect(simdSupported()).toBe(true);
+  expect((await LbryScanner.create()).flavor).toBe('simd');
 });
 
 describe('Stratum work (LBRY pools)', () => {

@@ -58,7 +58,7 @@ async function main(): Promise<void> {
       job = null;
     }
   });
-  port.postMessage({ type: 'ready' });
+  port.postMessage({ type: 'ready', engine: scanner.flavor });
 }
 
 void main().catch((err) => {

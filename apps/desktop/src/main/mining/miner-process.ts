@@ -51,6 +51,11 @@ async function start(msg: MinerStartMessage): Promise<void> {
   }
   const workerPath = msg.workerPath || join(__dirname, 'hashWorker.js');
   threads = await WorkerThreads.create(msg.threads, workerPath, (m) => post({ type: 'log', entry: { level: 'error', message: m, at: Date.now() } }));
+  const engine = threads.engine === 'simd' ? 'WebAssembly SIMD, 4 nonces per pass' : 'WebAssembly scalar';
+  post({
+    type: 'log',
+    entry: { level: 'info', message: `${msg.threads} hashing thread${msg.threads === 1 ? '' : 's'} (${engine}${msg.lowPriority ? ', low priority' : ''})`, at: Date.now() },
+  });
   coordinator = new MinerCoordinator(threads);
   coordinator.on('stats', (stats) => post({ type: 'stats', stats }));
   coordinator.on('log', (entry) => post({ type: 'log', entry }));
