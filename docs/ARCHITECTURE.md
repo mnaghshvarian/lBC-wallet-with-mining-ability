@@ -15,30 +15,34 @@ lbc-wallet/
 │   │   │   ├── keys/             BIP39, LBRY ("lbryum") seeds, BIP32/BIP44 derivation
 │   │   │   ├── tx/               serialization, legacy sighash, signing, coin selection
 │   │   │   ├── vault.ts          scrypt + AES-256-GCM sealed boxes
-│   │   │   ├── net/              line-JSON-RPC, LBRY hub client, lbcd RPC backend, Esplora (Bitcoin) client
+│   │   │   ├── net/              line-JSON-RPC, LBRY hub client, lbcd RPC backend, Esplora (Bitcoin) client, WebSocket client
 │   │   │   ├── wallet/           sync engine, SPV verification, keystore, restore scan
 │   │   │   ├── mining/           Stratum client, solo GBT work, coordinator, WASM scanner, supply
 │   │   │   ├── swap/             atomic swap contract (HTLC), protocol rules, swap codes, chain access
+│   │   │   ├── nostr/            Nostr events (signatures, proof of work), NIP-44 encryption, relay pool
+│   │   │   ├── market/           order board: offers, trade messages, prices
 │   │   │   ├── ui.ts             key-free formatting entry for user interfaces
 │   │   │   └── node/             Node.js TCP/TLS/SOCKS5 and HTTP transports
 │   │   ├── test/                 unit tests (LBRY SDK vectors, consensus vectors)
-│   │   ├── e2e/                  tests against a real lbcd (regtest) + hub emulator + test pool (+ btcd for swaps)
+│   │   ├── e2e/                  tests against a real lbcd (regtest) + hub emulator + test pool (+ btcd for swaps, + a Nostr test relay)
 │   │   └── mainnet/              read-only checks against the real network and the Bitcoin explorers
 │   ├── services/             @lbcwallet/services — the application API, shared by all apps
 │   │   ├── api.ts                the typed API contract (channels, views, events)
 │   │   ├── platform.ts           what services need from the OS: files, sockets, HTTPS, logs
 │   │   ├── wallet-service.ts     open/lock wallets, sync, send, contacts, notices
 │   │   ├── swap-service.ts       runs atomic swaps: codes, checks, locking, collecting, refunds
+│   │   ├── market-service.ts     the order board: publishes offers, answers takes, passes swap codes along
+│   │   ├── market-price.ts       reference price for the Market (MEXC, CoinPaprika)
 │   │   ├── backend.ts            picks hubs, your own lbcd, or the built-in node
 │   │   ├── settings.ts           settings with validation of every field
 │   │   ├── handlers.ts           validates untrusted arguments of every API call
 │   │   ├── client.ts             builds `window.lbc` on top of a transport
 │   │   ├── errors.ts             error codes the UI translates
-│   │   ├── e2e/                  swaps between two wallets on lbcd + btcd regtest
+│   │   ├── e2e/                  swaps and Market trades between two wallets on lbcd + btcd regtest
 │   │   └── mainnet/              a real payment from a small test wallet (started by hand in CI)
 │   ├── ui/                   @lbcwallet/ui — React screens for desktop and phone
 │   │   ├── pages/ components/    every screen; phone layout below 760 px
-│   │   └── i18n/                 14 languages, plural rules, right-to-left support
+│   │   └── i18n/                 15 languages, plural rules, right-to-left support
 │   └── miner-wasm/           C source of the LBRY proof-of-work scanner → WebAssembly
 ├── apps/
 │   ├── desktop/              Electron app
@@ -53,7 +57,7 @@ lbc-wallet/
 │   │   └── mainnet/              the built-in node on mainnet; the installed app used on mainnet
 │   └── mobile/               Android app (Capacitor)
 │       ├── src/                  boots the same services and UI inside the app; phone miner (Web Workers)
-│       ├── android/              native project; LbcNativePlugin.java: files, sockets, secure screens
+│       ├── android/              native project; LbcNativePlugin.java: files, line and raw sockets, secure screens
 │       └── e2e/                  regtest test of the Android build + emulator test
 └── scripts/                  lbcd build, manual images and PDF, Android icons
 ```
@@ -209,6 +213,38 @@ of the core's swap module:
   (through `core/e2e/esplora-emulator.ts`), with time rules shortened to minutes. One swap
   completes, each side gets a refund once, and a dishonest lock code is refused. The mainnet
   check queries the real Bitcoin explorers.
+
+## Market
+
+`MarketService` (`packages/services/src/market-service.ts`) is the order board. It uses the
+swap engine for everything that touches coins, and adds only the meeting point and the
+messages:
+
+* **Transport** (`core/src/net/websocket.ts`, `core/src/nostr/relays.ts`): a small RFC 6455
+  WebSocket client over the platform's own byte sockets — Node TCP/TLS (with SOCKS5) on desktop,
+  raw sockets in the Android plugin — so relay connections follow the proxy setting like every
+  other connection. `RelayPool` publishes to every relay and reads from all of them, reconnects
+  with backoff, and passes on only events whose id and signature verify and that match the
+  subscription's filters.
+* **Protocol** (`core/src/market/protocol.ts`): offers are replaceable Nostr events of kind 30078
+  (NIP-78) with a `d` tag per offer, an expiry (NIP-40, one hour, renewed every 20 minutes) and
+  12 bits of proof of work (NIP-13). Trade messages are kind 30078 events with a `d` tag per
+  trade, addressed with a `p` tag and encrypted with NIP-44 v2: *take* (16 bits of proof of
+  work), *invite* or *decline*, then each side's *lock* code. Prices are the ratio of an offer's
+  two amounts; a part's Bitcoin is rounded in the maker's favour (`market/price.ts`).
+* **Roles:** the maker starts the swap and locks second; the taker joins and locks first. The
+  maker's wallet answers a take by itself (first come, first served, at most three waiting per
+  offer) and takes the amount off the offer until the trade ends; the taker's wallet joins only
+  an invite with exactly the amounts it took. Lock codes are sent as soon as each side's coins
+  are locked. Time limits: 10 minutes for an answer, 20 minutes for the taker to lock (enforced
+  by the swap's `lockBy`), 40 minutes before the maker gives up.
+* **State** lives in the wallet's sealed state (`WalletState.market`): offers with their keys,
+  and trades with their keys, the last message (sent again until a relay takes it) and the swap
+  they became. Offers are published only while the wallet is open, and taken down when it locks.
+* **Tests:** the WebSocket codec and NIP-44 against the official vectors, events and proof of
+  work, the offer and message formats, the relay pool against a local test relay
+  (`core/e2e/nostr-relay.ts`, also part of the development network), and two end-to-end trades
+  between wallets on `lbcd` + `btcd` through that relay.
 
 ## Built-in node
 

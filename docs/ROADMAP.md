@@ -1,6 +1,6 @@
 # Roadmap
 
-## Where we are (version 1.2)
+## Where we are (version 1.3)
 
 | | Status |
 | --- | --- |
@@ -9,8 +9,9 @@
 | **Built-in full node** (LBRY's official `lbcd`, bundled), choose where the blockchain is stored, wallet switches to it once synced, solo mining through it | done |
 | **Android app** (APK), a complete wallet on its own, same code and screens as desktop, **pool mining on the phone** while it is charging and cool | done |
 | **Atomic swaps LBC ↔ Bitcoin** in the wallet, person to person, no exchange or escrow | done (1.2) |
+| **Market**: an order board for LBC ↔ Bitcoin over Nostr relays, offers priced against MEXC, taken offers settled as atomic swaps between the two wallets | done (1.3) |
 | LBC supply figures (left to mine, reward now, next drop) | done (1.2) |
-| **14 languages**, including right-to-left Persian, Arabic and Urdu | done |
+| **15 languages**, including right-to-left Persian, Arabic and Urdu, and Hindi (1.3) | done |
 | Disclaimer that must be accepted on first start; beginner manual with pictures | done |
 | Independent security audit | **not yet — see below** |
 
@@ -114,8 +115,17 @@ recommended path is:
    Next steps:
    * **Litecoin and Dogecoin** use the same contract. What is missing is a reliable public
      server to read their chains (an Esplora-style API) and tests against their nodes.
-   * **An offer board** (for example over Nostr), so people can find each other without a
-     chat.
+   * **An offer board — done in 1.3 (the Market).** Offers are Nostr events (kind 30078,
+     with proof of work) on five public relays by default; a take, the answer and the lock codes
+     are NIP-44-encrypted messages between per-offer and per-trade keys, and the two wallets run
+     the swap between themselves. Next for the Market:
+     * **Proof of funds** for offers that sell LBC (a signature from an address holding the
+       amount, checked against the chain), so fake offers cannot fill the board.
+     * **Optional reputation**: a maker may keep one key across offers and show finished trades,
+       at some cost in privacy.
+     * **Automatic locking for makers** who choose it (keeping a spending authorisation for the
+       offer's amount while it is open), so a taken offer does not wait for its maker.
+     * Notifications on the phone when an offer is taken while the app is in the background.
    * **Not possible the same way:** **USDT, Ether and Solana tokens** have no Bitcoin-style
      scripts. Swapping them needs an HTLC smart contract on Ethereum or Solana, plus a wallet
      for that chain inside the app. **Monero** has no scripts at all. LBC ↔ XMR would need
@@ -127,8 +137,8 @@ recommended path is:
      peer-to-peer order book. Its LBC side also relies on Electrum servers run by a single
      operator (cipig.net). A small contract inside the wallet, tested on real nodes, is easier
      to review and keeps the wallet independent.
-2. **Measure demand.** If swaps attract makers and takers, add an order book with reputation
-   and optional mediation.
+2. **Measure demand.** The Market is the order book; if it attracts makers and takers, add
+   reputation and optional mediation.
 3. **Only then a Haveno-style fiat market**, either as a fork with LBC multisig escrow or by
    contributing LBC support to an existing network — whichever the community can operate and
    maintain.

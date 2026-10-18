@@ -73,9 +73,12 @@ the phone is charging, and it pauses when the battery gets warm.
 
 ## 8. Run your own node (optional, computers only)
 
-Click **Node**, choose a folder with about **150 GB** free space (**Change…**), and click
-**Start node**. The first download takes one to three days. When it reaches 100 %, the wallet uses
-your own node, and you can mine **Solo**.
+You do **not** need to download the blockchain: without a node, the wallet uses public LBRY
+servers and checks every payment against the blocks' proof of work. Phones always work this way.
+To run your own node anyway, click **Node**, choose a folder with about **150 GB** free space
+(**Change…**; the chain is about 100 GB, not 2 TB), and click **Start node**. The first download
+takes one to three days. When it reaches 100 %, the wallet uses your own node, and you can mine
+**Solo**.
 
 ## 9. Swap LBC and Bitcoin (optional)
 
@@ -84,6 +87,17 @@ either both of you get paid, or both get your coins back. One of you clicks **St
 sends the invite code; the other clicks **Join with a code**. Keep the app open until the swap
 shows **Completed**. Swaps are new: start with a small amount. Details:
 [manual, section 21](../README.md#21-buy-sell-or-swap-lbc).
+
+## 10. Buy or sell LBC on the Market (optional)
+
+**Market** shows offers from other LBC Wallet users to buy or sell LBC for Bitcoin, with the
+exchange price next to them for comparison. Read the warning on the page first. Click **Buy** or
+**Sell** on an offer, choose the amount and your Bitcoin address, and confirm: the other wallet
+answers within seconds, and the trade runs as a swap (you lock first; both wallets collect by
+themselves). Or click **Post an offer** to set your own price; it stays on the board while your
+wallet is open. Only LBC and Bitcoin can be traded this way: to pay with USDT or Monero, change
+them to Bitcoin first (for example in Cake Wallet or Trust Wallet). Details:
+[manual, section 22](../README.md#22-trade-on-the-market).
 
 ## Help
 

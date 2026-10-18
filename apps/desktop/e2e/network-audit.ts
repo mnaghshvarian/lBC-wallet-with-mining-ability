@@ -8,8 +8,10 @@
  *   xvfb-run -a npm run test:privacy -w lbc-wallet-desktop
  *
  * Set APP_EXECUTABLE to audit a packaged build instead of the dev build.
- * (Hub, pool and node connections are plain TCP/TLS sockets opened by Node and
- * only happen once a wallet is open or mining starts; they are not covered here.)
+ * (Hub, pool, node and order board relay connections are plain TCP/TLS sockets
+ * opened by Node and only happen once a wallet is open, mining starts or the
+ * Market is used; they are not covered here. The Market's reference prices are
+ * read only while the Market page is in use.)
  */
 import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -18,7 +20,8 @@ import { join, resolve } from 'node:path';
 import electronPath from 'electron';
 
 const appDir = resolve(__dirname, '..');
-const PRICE_APIS = [/^https:\/\/api\.coinpaprika\.com\/v1\/tickers\/lbc-lbry-credits\?/, /^https:\/\/api\.coingecko\.com\/api\/v3\/simple\/price\?/];
+// CoinPaprika, and MEXC's LBC/USDT market when CoinPaprika cannot be reached.
+const PRICE_APIS = [/^https:\/\/api\.coinpaprika\.com\/v1\/tickers\/lbc-lbry-credits\?/, /^https:\/\/api\.mexc\.com\/api\/v3\/ticker\/24hr\?symbol=LBCUSDT$/];
 
 async function requestedUrls(settings: Record<string, unknown>): Promise<string[]> {
   const dataDir = mkdtempSync(join(tmpdir(), 'lbc-wallet-audit-'));

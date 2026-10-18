@@ -26,6 +26,9 @@ PICTURES = {
     'settings-security': '18-settings-security', 'settings-about': '19-settings-about', 'overview-fa': '21-overview-fa',
     'phone-overview': '25-phone-overview', 'phone-receive': '26-phone-receive', 'phone-send': '27-phone-send',
     'phone-more': '28-phone-more', 'phone-overview-fa': '23-phone-overview-fa',
+    'market-warning': '14b-market-warning', 'market-board': '14c-market-board', 'market-take': '14d-market-take',
+    'market-waiting': '14e-market-waiting', 'market-post': '14f-market-post', 'market-mine': '14g-market-mine',
+    'phone-market': '29-phone-market',
 }
 # Real phone screenshots from the Android emulator test, shown at half size.
 ANDROID = {

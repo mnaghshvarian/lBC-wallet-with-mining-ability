@@ -5,7 +5,7 @@
 
 By downloading, installing, running or otherwise using LBC Wallet ("the software") you confirm
 that you have read, understood and accepted this disclaimer. If you do not agree, do not use the
-software. The app shows a summary of this text on first start, in 14 languages, and you must
+software. The app shows a summary of this text on first start, in 15 languages, and you must
 accept it before you can use the wallet. If a translation differs from this English text, the
 English text applies.
 
@@ -66,31 +66,53 @@ and processor time, and — when you allow incoming connections — asks your ro
 (UPnP) so other nodes can connect to it. Check your disk space, data plan and network rules before
 turning it on.
 
-## 7. Third-party services and privacy
+## 7. Swaps and the Market (order board)
+
+* **Atomic swaps** (the Swap page) and **trades on the Market** lock your coins in contracts on
+  the LBC and Bitcoin blockchains. If a swap does not finish, your coins come back only after the
+  lock time (up to 48 hours), and only while the app runs with that wallet unlocked. Bugs in this
+  code can lose the coins involved. Swaps and the Market are new and not audited.
+* **The Market is not an exchange, a broker or a marketplace operator.** Nobody runs it, holds
+  coins, checks the people who post or take offers, sets or guarantees prices, settles disputes
+  or reverses trades. Offers come from anonymous strangers and can be misleading, far from the
+  market price, or never honoured. A trade can keep your coins locked for up to 48 hours and cost
+  network fees even if the other side never completes it. The market price shown for comparison
+  comes from third parties and may be wrong or out of date.
+* Offers and trade messages travel through **Nostr relays** run by third parties, who can see
+  your IP address and when your keys exchange messages (not their content), and may delay,
+  drop or censor them.
+* **Trading crypto may be regulated** where you live (licences, identity checks, taxes,
+  reporting, or bans on some coins or services). You alone are responsible for whether you may
+  trade, with whom, and for declaring it. The project does not provide, and is not, a regulated
+  financial service.
+* Before using the Market the app shows its own warning, which you must accept.
+
+## 8. Third-party services and privacy
 
 To work, the app connects to services run by other people: public LBRY wallet servers ("hubs"),
-mining pools, and — only if you turn on fiat prices — price services (CoinPaprika, CoinGecko). Links
+mining pools, Bitcoin explorers for swaps, Nostr relays for the Market, and — only if you turn on
+fiat prices or open the Market — price services (CoinPaprika, MEXC). Links
 you open go to GitHub or a block explorer. **Their operators can see your IP address and which
 addresses or transactions you ask about**, and may log it. The app itself sends no analytics or
 telemetry. For more privacy, use your own node or route connections through Tor (SOCKS5).
 
-## 8. Not advice
+## 9. Not advice
 
 Nothing in the software or its documentation is financial, investment, legal or tax advice. The
 value of LBC can fall to zero, and buying or selling it may be difficult.
 
-## 9. Your responsibility
+## 10. Your responsibility
 
 You are responsible for complying with the laws, regulations, sanctions and tax rules that apply to
 you, and for how you use the software.
 
-## 10. No affiliation
+## 11. No affiliation
 
 LBC Wallet is an independent community project. It is **not affiliated with, endorsed by or
 supported by LBRY Inc., Odysee, the LBRY Foundation, or any exchange or mining pool.** Names and
 trademarks belong to their owners.
 
-## 11. Downloads
+## 12. Downloads
 
 Only download the software from the project's official GitHub releases page:
 <https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/releases>. Check the SHA-256

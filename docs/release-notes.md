@@ -23,28 +23,28 @@ shows, with pictures, how to install, create a wallet, receive, send and mine.
 
 Check your download against the `SHA256SUMS-*.txt` files below.
 
-### What's new in this version (1.2.0)
+### What's new in this version (1.3.0)
 
-* **Swap LBC ↔ Bitcoin with another person** — no exchange, no middleman. Atomic swaps with
-  hash-time-locked contracts: either both of you get paid, or both get your coins back after the
-  lock time.
-  * The wallet checks the other side's contract before it locks anything or reveals the secret.
-    LBC payments are verified with SPV proofs, and Bitcoin payments are cross-checked by
-    blockstream.info and mempool.space.
-  * You can use your own Bitcoin explorer in *Settings → Network*.
-  * From 20,000 sats up to 0.05 BTC while swaps are new.
-* **Mine on your Android phone.** The phone app is now a complete wallet on its own, and it
-  can mine through a pool. It mines only while the app is on the screen and the phone is
-  charging (you can allow battery mining down to 30 %). It pauses when the battery reaches
-  40 °C, when Android reports overheating, and in battery saver.
-* **How much LBC is left to mine.** A new *LBC supply* card on the Mining page shows how much
-  LBC is left, the reward now, the next reward drop and the last reward (around 2035). It is
-  computed from the chain's own reward rule.
-* **Tested like a real user:** every change now installs the Windows and macOS apps, runs the
-  full UI test on the installed app and uninstalls it. A weekly check opens the installed
-  Windows app on the real LBC network.
-* Tiny mining estimates read as normal numbers (0.0098 LBC/day, not 9.80e-3).
-* The phone shows up at the pool as worker `phone` instead of `desktop`.
+* **Market: buy and sell LBC for Bitcoin with other people, without an exchange.** A new
+  *Market* page shows offers from other LBC Wallet users, priced against the exchange price
+  (MEXC) in sats, US dollars and Monero. Take an offer, or post your own with your price and the
+  smallest part people can take.
+  * A taken offer becomes an atomic swap between the two wallets, which pass the swap codes
+    along by themselves: no codes to copy, nobody holds anyone's coins, no accounts, no fees.
+  * Offers and encrypted trade messages travel through public Nostr relays (five by default;
+    change them in *Settings → Network*). Each offer and trade uses a new key.
+  * The Market shows its own warning, which you must accept first. Read it: the people on the
+    board are strangers, and a trade can keep coins locked for up to 48 hours.
+  * Paying with USDT or Monero: change them to Bitcoin first (for example in Trust Wallet or Cake
+    Wallet). The manual has a step-by-step guide.
+* **Hindi.** The app and a quick-start guide are now available in Hindi: 15 languages in all.
+* **Manual:** new chapters on the Market and on paying with other coins; *Do I need to download
+  the blockchain?* (no; it is about 100 GB, not 2 TB) and *Which servers does the wallet use?*
+* **Prices:** CoinGecko is no longer used (its LBC price was far from where LBC trades); MEXC's
+  LBC/USDT market is the fallback for US dollar prices.
+* **Questions about LBC's future** (fork, rename, privacy, RandomX): see the new document
+  *docs/LBC-FUTURE.md*, including the SEC and CFTC interpretation of 17 March 2026 that names
+  LBRY Credits (LBC) as a digital commodity.
 
 ### Good to know
 
@@ -53,9 +53,10 @@ Check your download against the `SHA256SUMS-*.txt` files below.
   Anyway*. Details in the manual.
 * **Mining income is tiny on a normal computer, and even smaller on a phone** (LBC is mined
   mostly by specialized hardware). Mine to support the network, not for profit.
-* **Swaps are new and not audited.** Start with the smallest amount. Keep the app open, with the
-  wallet unlocked, until the swap shows *Completed*. Finish a swap on the device where you
-  started it: its keys are not in your recovery phrase.
+* **Swaps and the Market are new and not audited.** Start with the smallest amount. Keep the
+  app open, with the wallet unlocked, while you have offers up and until each swap shows
+  *Completed*. Finish a swap on the device where you started it: its keys are not in your
+  recovery phrase.
 * **Ubuntu 24.04+:** prefer the `.deb` over the AppImage.
 * **Android:** Android only installs an update signed with the same key as the installed app.
   If a note below says this APK uses a temporary signing key, a later version may need the old

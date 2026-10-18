@@ -11,8 +11,8 @@ to read offline or print.
 [Français](quickstart/fr.md) · [Deutsch](quickstart/de.md) · [Español](quickstart/es.md) ·
 [Português](quickstart/pt.md) · [Nederlands](quickstart/nl.md) · [Русский](quickstart/ru.md) ·
 [简体中文](quickstart/zh-CN.md) · [日本語](quickstart/ja.md) · [한국어](quickstart/ko.md) ·
-[ไทย](quickstart/th.md) · [English](quickstart/en.md). The app itself is available in all of
-these languages.
+[ไทย](quickstart/th.md) · [हिन्दी](quickstart/hi.md) · [English](quickstart/en.md). The app
+itself is available in all of these 15 languages.
 
 > [!WARNING]
 > **Please read this first.** LBC Wallet is free, experimental software made by volunteers.
@@ -46,7 +46,9 @@ these languages.
 19. [Problems and solutions](#19-problems-and-solutions)
 20. [Check that your download is genuine (optional)](#20-check-that-your-download-is-genuine-optional)
 21. [Buy, sell or swap LBC](#21-buy-sell-or-swap-lbc)
-22. [Glossary](#glossary)
+22. [Trade on the Market](#22-trade-on-the-market)
+23. [Paying with USDT, Monero or other coins](#23-paying-with-usdt-monero-or-other-coins)
+24. [Glossary](#glossary)
 
 ---
 
@@ -59,7 +61,8 @@ these languages.
 * **receive** LBC from other people, exchanges and mining pools;
 * **send** LBC to anyone;
 * **mine** LBC with your computer (like in the Monero GUI wallet) or your Android phone;
-* **swap** LBC and Bitcoin directly with another person, with no exchange in between;
+* **buy and sell** LBC for Bitcoin with other people on the **Market**, an order board with no
+  exchange in between, or **swap** directly with someone you know;
 * **run your own LBRY node** (a full copy of the LBC blockchain), so you don't depend on anyone
   else's servers;
 * see and **unlock tips and supports** you received on LBRY / Odysee.
@@ -508,6 +511,20 @@ reward rule every LBRY node checks:
 
 ## 15. Run your own node
 
+### Do I need to download the blockchain?
+
+**No.** Without a node, LBC Wallet reads the blockchain through public LBRY servers (see
+[Which servers does the wallet use?](#which-servers-does-the-wallet-use) below) and downloads
+only what concerns your wallet: a few megabytes. It still checks every payment it shows against
+the blocks' proof of work, so a server cannot invent payments. This is how most people use it,
+and how the Android app always works.
+
+The LBC blockchain is about **100 GB** today (about 150 GB with the indexes the wallet needs),
+not 2 TB. You only need it if you want the extra privacy and independence of your own node, want
+to help the network, or want to solo mine.
+
+### What a node is
+
 A **node** is a program that keeps a full copy of the LBC blockchain, checks every block itself
 and shares the blocks with other nodes. Running one is like Monero GUI's *local node*:
 
@@ -553,6 +570,35 @@ LBC Wallet includes **lbcd**, LBRY's official node software, unchanged.
 * Advanced: you can also connect the wallet to an lbcd node you run yourself elsewhere
   (**Settings → Network → My own node**).
 
+### Which servers does the wallet use?
+
+Without a node, the wallet connects to one of these public LBRY servers ("hubs"), on port 50001.
+It starts at a random one, tests that it is on the real LBC chain and up to date, and moves on
+by itself when one is down or behind:
+
+| Server | Run by |
+| --- | --- |
+| `a-hub1.odysee.com`, `b-hub1.odysee.com`, `c-hub1.odysee.com`, `s-hub1.odysee.com` | Odysee |
+| `hub.lbry.grin.io` | the community |
+| `hub.lizard.technology` | the community |
+| `s1.lbry.network` | the community |
+
+In our check on 18 October 2026, the four Odysee servers and `hub.lbry.grin.io` were up to date,
+`s1.lbry.network` was about 230 blocks behind (the wallet skips it while it is), and
+`hub.lizard.technology` did not answer. The **LBRY Foundation** publishes the hub software (its
+source code is on its site and on GitHub as LBRYFoundation/hub) but, as far as we could find, does
+not run a public server of its own; if it starts one, add it in **Settings → Network → Add a
+server** (host name and port 50001), and it will appear in a later version's default list.
+
+* **Test** in **Settings → Network** shows each server's response time and block height.
+* You can add servers you trust, or remove the defaults and use only yours.
+* The Android app uses the same list and the same checks.
+* For the most privacy, use your own node (desktop) or route the connections through Tor
+  (**Settings → Network → SOCKS5 proxy**, desktop).
+
+The built-in node finds other nodes through LBRY's DNS seeds, and falls back to well-known nodes
+(for example LBRYPool's) when the seeds give it none.
+
 ---
 
 ## 16. Settings
@@ -565,7 +611,8 @@ LBC Wallet includes **lbcd**, LBRY's official node software, unchanged.
   light), **Built-in node**, or **My own node**. You can add your own LBRY servers and route
   everything through **Tor** (SOCKS5 proxy) for more privacy. **Bitcoin explorer for swaps**
   lets you use your own Bitcoin server instead of blockstream.info (leave it empty if you don't
-  know what that is).
+  know what that is). **Order board relays** lists the Nostr relays the Market uses (leave it
+  empty for the default list).
 * **Security:**
   * **Auto-lock** — the wallet locks itself after some minutes without use (15 by default) and
     when the computer sleeps.
@@ -679,6 +726,14 @@ how the files were made.
 
 ## 21. Buy, sell or swap LBC
 
+There are three ways:
+
+* **On an exchange** such as MEXC: an exchange holds your coins while you trade.
+* **On the Market** in LBC Wallet: other LBC Wallet users post offers to buy or sell LBC for
+  Bitcoin, and a taken offer settles as an atomic swap; nobody holds your coins. See
+  [section 22](#22-trade-on-the-market).
+* **With a swap code**, with someone you already know: the **Swap** page, below.
+
 ### On an exchange
 
 Today LBC trades on very few markets. In October 2026 the only market that price trackers such
@@ -755,7 +810,204 @@ contract. Bitcoin, Litecoin and Dogecoin do. Litecoin or Dogecoin may come later
 a reliable public server to read their blockchains. **USDT, Ethereum and Solana** would need a
 contract written for those networks. **Monero** works very differently and needs much more
 complex cryptography. Those may come later; until then there is no safe way to swap them
-without a middleman. See the [roadmap](../ROADMAP.md).
+without a middleman. How to pay with them anyway, in two steps:
+[section 23](#23-paying-with-usdt-monero-or-other-coins). See also the
+[roadmap](../ROADMAP.md).
+
+---
+
+## 22. Trade on the Market
+
+The **Market** page is an **order board**: other LBC Wallet users post offers to sell LBC for
+Bitcoin or to buy LBC with Bitcoin, at their own prices, and you can take any of them — or post
+your own. It works like the order book of an exchange, but **there is no exchange**: nobody holds
+your coins, there is no account and no fee. When an offer is taken, the two wallets set up an
+**atomic swap** between themselves (the same contracts as the **Swap** page, see
+[section 21](#21-buy-sell-or-swap-lbc)), passing the codes along by themselves. Either both of you
+get paid, or both of you get your coins back.
+
+Offers and the messages between the two wallets travel through **Nostr relays**: public servers,
+run by volunteers and companies, that pass short messages along. The messages are encrypted;
+each offer and each trade uses a new key, so trades are not linked to your wallet or to each
+other. LBC Wallet uses five free relays by default and you can change them in
+**Settings → Network → Order board relays**.
+
+### The first time
+
+Click **Market** (on a phone: **More → Market**). The page first shows its own warning. Read it,
+tick both boxes and click **I understand — open the board**.
+
+![The Market's warning](images/market-warning.png)
+
+### Reading the board
+
+![The board](images/market-board.png)
+
+* **Buy LBC** lists the people *selling* LBC; **Sell LBC** lists the people *buying* it. The best
+  price is at the top.
+* **Price per LBC** is in **sats** (1 sat = 0.00000001 BTC). Next to it you see how far the price
+  is **above or below the market price**.
+* **Available** is how much LBC the offer still has, and **from …** the smallest part you can take.
+* **In Bitcoin** is what the whole available amount costs.
+* **Market price** (right) shows what LBC trades for on the exchanges — the LBC/USDT market on
+  MEXC (or CoinPaprika's average when MEXC cannot be reached) — in US dollars, sats and Monero, and
+  converts any amount for you. It is only for comparison: offers set their own prices.
+
+### Buy LBC (take a sell offer)
+
+1. On **Buy LBC**, click **Buy** next to an offer.
+2. Type how much LBC you want (between the offer's smallest part and what is available) and
+   **your Bitcoin address for a refund** (any Bitcoin address of yours, for example from Trust
+   Wallet or Cake Wallet). The window shows exactly what you give and get.
+
+   ![Taking an offer](images/market-take.png)
+
+3. Click **Buy …**. The other wallet answers within seconds when it is online (it gives up after
+   10 minutes if not; then nothing happened and you can try another offer).
+4. When it accepts, **you lock first**: the window shows a Bitcoin **contract address** and the
+   **exact amount**. Pay it **in one payment, from your Bitcoin wallet, within 20 minutes**.
+5. Wait. After 2 Bitcoin confirmations (about 20 minutes) the seller's wallet asks them to lock
+   their LBC, then 12 LBC confirmations (about 30 minutes) follow, and your wallet **collects the
+   LBC by itself**. The trade shows **Done**.
+
+### Sell LBC (take a buy offer)
+
+1. On **Sell LBC**, click **Sell** next to an offer, type the amount, and **your Bitcoin address
+   to receive the Bitcoin**.
+2. When the other wallet accepts, **you lock first**: click **Lock …** and enter your password.
+   Your LBC goes into the contract.
+3. After 12 LBC confirmations (about 30 minutes) the buyer pays their Bitcoin into their contract;
+   after 2 Bitcoin confirmations your wallet **collects the Bitcoin** to your address by itself.
+
+### Post your own offer
+
+1. Click **Post an offer**.
+2. Choose **Sell LBC (get Bitcoin)** or **Buy LBC (pay Bitcoin)**, the amount of LBC, and your
+   price in sats per LBC (**Use the market price** fills in the exchange price).
+3. **Smallest part someone can take:** leave it empty for the smallest swap that is worth its
+   network fees at your price (20,000 sats of Bitcoin, at least 10 LBC).
+4. Enter your Bitcoin address (to receive Bitcoin, or for a refund when you buy) and click
+   **Post the offer**.
+
+   ![Posting an offer](images/market-post.png)
+
+Your offer appears on the board and under **Your offers**, with how many relays carry it. It is
+renewed every 20 minutes **while this wallet is open**, and taken down when the wallet locks or
+when you click **Take down**.
+
+![Your offer on the board](images/market-mine.png)
+
+**When someone takes your offer**, LBC Wallet tells you ("Your offer was taken"). Their coins are
+locked first. When they are confirmed, you get **"Swap: your turn"**: open **Market**, find the
+trade under **Your trades**, and lock your part — LBC with your password, or Bitcoin by paying the
+contract address and amount shown, from your Bitcoin wallet. **You have 12 hours to do this**;
+after that the swap stops and their coins go back to them. Then both wallets collect by
+themselves.
+
+### Times to know
+
+| What | How long |
+| --- | --- |
+| The other wallet answers a take | seconds; gives up after 10 minutes |
+| The person who took an offer locks | within 20 minutes of the answer |
+| The person who posted the offer waits for that lock | 40 minutes, then the offer is free again |
+| Bitcoin is trusted after | 2 confirmations, about 20 minutes |
+| LBC is trusted after | 12 confirmations, about 30 minutes |
+| The person who posted locks | within 12 hours of being asked |
+| Locked coins come back if the swap stops | after 48 hours (who took) or 24 hours (who posted) |
+
+> [!IMPORTANT]
+> * **Nobody checks the people on the board.** Anyone can post an offer at any price and walk
+>   away. Someone can take your offer and never lock (your offer is blocked for up to 40
+>   minutes), or post an offer and never lock after you (your coins stay locked until they come
+>   back after 48 hours). Nobody can take your coins without paying, but you can lose time and
+>   network fees.
+> * **Keep LBC Wallet open, with that wallet unlocked,** while you have offers up and until your
+>   trades show **Done**. Auto-lock (Settings → Security) takes your offers down.
+> * **Compare the price** with the market price, and start with small amounts.
+> * Pay Bitcoin **only to the contract address shown in your own LBC Wallet**, the exact amount,
+>   in one payment.
+> * The Market is new and **not audited**. Trading crypto may be regulated where you live
+>   (licences, taxes, reporting): you are responsible for following those rules.
+
+### Problems
+
+* **"Connected to 0 of 5 relays"** — check your internet connection. Some networks block
+  WebSocket connections; try another network, or other relays in **Settings → Network**.
+* **"Expired — no answer in time"** — the wallet that posted the offer was not open. Nothing of
+  yours was locked; try another offer.
+* **"Declined"** — the offer was already taken, closed, or its price changed. Nothing was locked.
+* **"Not on any relay yet"** under your offer — no relay could be reached; the wallet keeps
+  trying.
+* **The market price is not shown** — the price services could not be reached. Check the price
+  on an exchange site before you trade.
+
+---
+
+## 23. Paying with USDT, Monero or other coins
+
+The Market trades **LBC for Bitcoin only**, because only coins whose blockchains support the same
+kind of locked contract can be swapped without anyone holding them. USDT is a token on other
+networks (such as Tron or Ethereum) that would need a contract of its own; Monero has no such
+contracts at all and needs very different cryptography (see [section 21](#21-buy-sell-or-swap-lbc)).
+
+**Why doesn't LBC Wallet simply take deposits of USDT, Bitcoin or Monero and trade for you, like
+an exchange?** Because whoever holds other people's coins becomes a custodian: in most countries
+that needs a licence (money transmitter, virtual asset service provider, …), identity checks of
+every user, audits and insurance, and it creates a single place that can be hacked, frozen or
+run away with the money. That is exactly what LBC Wallet is built to avoid. Nobody — not the
+developers, not a server — ever holds your coins.
+
+So paying with another coin takes **two steps**: change it to Bitcoin first, then trade the
+Bitcoin for LBC on the Market (or the other way round when you sell).
+
+### Wallets you may already have
+
+**Trust Wallet** and **Cake Wallet** do not hold LBC, but they hold Bitcoin, USDT and (Cake
+Wallet) Monero, and both have a built-in exchange. Use them together with LBC Wallet:
+
+* their **Bitcoin address** is "your Bitcoin address" on the Market (to receive Bitcoin, or for a
+  refund);
+* you **pay** the Bitcoin contract from them;
+* their built-in exchange changes USDT or Monero to Bitcoin and back.
+
+Their built-in exchanges use third-party services: those hold your coins for the few minutes of
+the exchange, take a fee, and may ask for identity documents. Check the rate and start small.
+
+### Buy LBC with USDT (example with Trust Wallet)
+
+1. In Trust Wallet, **swap USDT for Bitcoin** (enough for the LBC plus about 5 % for fees).
+2. In LBC Wallet, **Market → Buy LBC**, choose an offer, type the amount, and paste your **Trust
+   Wallet Bitcoin address** as the refund address. Click **Buy …**.
+3. When the other wallet accepts, LBC Wallet shows the contract address and exact amount. In
+   Trust Wallet, **send** exactly that amount of Bitcoin to that address, in one payment.
+4. Wait about an hour: the LBC arrives in LBC Wallet by itself.
+
+### Buy LBC with Monero (example with Cake Wallet)
+
+1. In Cake Wallet, use **Exchange** to change XMR to BTC, into Cake Wallet's own Bitcoin wallet.
+   (Experienced users can also use a Monero–Bitcoin atomic-swap program such as UnstoppableSwap,
+   which needs no third party.)
+2. Continue as above, paying the contract from Cake Wallet's Bitcoin wallet.
+
+### Sell LBC for USDT or Monero
+
+1. In LBC Wallet, **Market → Sell LBC**, take an offer, and enter your **Trust Wallet or Cake
+   Wallet Bitcoin address** to receive the Bitcoin. Lock your LBC.
+2. When the trade shows **Done**, the Bitcoin is in that wallet: change it to USDT (Trust Wallet)
+   or Monero (Cake Wallet) with its built-in exchange.
+
+### Move ("withdraw") your coins
+
+* **LBC** stays in LBC Wallet until you **Send** it, for example to another LBC wallet or to an
+  exchange's LBC deposit address (check the exchange's page for its LBC network and send a small
+  amount first).
+* **Bitcoin** from a trade goes straight to the Bitcoin address you entered: it is already in
+  your own wallet.
+
+Without the Market, the only other option is an exchange that lists LBC (MEXC lists LBC/USDT),
+where you deposit, trade and withdraw — with the exchange holding your coins meanwhile (see
+[section 21](#21-buy-sell-or-swap-lbc)).
 
 ---
 
@@ -773,6 +1025,12 @@ without a middleman. See the [roadmap](../ROADMAP.md).
 * **Hub / server** — a public LBRY server that helps light wallets read the blockchain. It never
   sees your keys.
 * **Lock time** — in a swap, the time after which locked coins can go back to their owner.
+* **Market / order board** — the page where LBC Wallet users post and take offers to swap LBC
+  and Bitcoin, with no exchange in between.
+* **Nostr relay** — a public server that passes short messages along; the Market uses relays for
+  its offers and trade messages.
+* **Offer** — an order on the board to sell or buy LBC at a price; you **take** someone's offer or
+  **post** your own.
 * **LBC / dewies** — LBRY Credits; 1 LBC = 100,000,000 dewies.
 * **Mining** — using computing power to create new blocks; miners earn new LBC and fees.
 * **Node (full node)** — a program that keeps and checks the whole blockchain.

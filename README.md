@@ -2,8 +2,8 @@
 
 **A free, non-custodial wallet for LBRY Credits (LBC) — with a built-in miner and a built-in
 full node, like the Monero GUI.** Keep, send and receive LBC, mine it with your computer or
-phone, swap it for Bitcoin directly with another person, and run your own LBRY node. For
-**Windows, Mac, Linux and Android**, in **14 languages**.
+phone, buy and sell it for Bitcoin on a built-in **order board** with no exchange in between,
+and run your own LBRY node. For **Windows, Mac, Linux and Android**, in **15 languages**.
 
 > [!CAUTION]
 > **Experimental, unaudited software — use it at your own risk.** No independent security audit
@@ -25,7 +25,7 @@ knowledge needed ([PDF version](https://github.com/mnaghshvarian/lBC-wallet-with
 [Nederlands](docs/manual/quickstart/nl.md) · [Русский](docs/manual/quickstart/ru.md) ·
 [简体中文](docs/manual/quickstart/zh-CN.md) · [日本語](docs/manual/quickstart/ja.md) ·
 [한국어](docs/manual/quickstart/ko.md) · [ไทย](docs/manual/quickstart/th.md) ·
-[English](docs/manual/quickstart/en.md).
+[हिन्दी](docs/manual/quickstart/hi.md) · [English](docs/manual/quickstart/en.md).
 
 | Your device | Download (always the newest version) |
 | --- | --- |
@@ -83,6 +83,14 @@ AES-256-GCM).
 * When the node is ready, the wallet reads the chain from it instead of public servers, and solo
   mining uses it.
 
+**Market: an order board for LBC ↔ Bitcoin** — see other people's offers to buy or sell LBC,
+priced against the exchange price (MEXC), take one, or post your own. There is no exchange: offers
+and encrypted trade messages travel through public **Nostr relays**, and a taken offer settles as
+an atomic swap between the two wallets, which pass the swap codes along by themselves. Nobody holds
+anyone's coins, there are no accounts and no fees. A separate warning must be accepted first.
+Paying with USDT or Monero works in two steps (change them to Bitcoin first, for example in Trust
+Wallet or Cake Wallet): see the [manual](docs/manual/README.md#23-paying-with-usdt-monero-or-other-coins).
+
 **Swaps: LBC ↔ Bitcoin** — trade directly with another person, with no exchange and no
 middleman. Atomic swaps with hash-time-locked contracts: either both of you get paid, or both
 get your coins back after the lock time. The other side's contract is checked before anything
@@ -93,7 +101,7 @@ two independent explorers. New and unaudited, so start small (from 20,000 sats, 
 Pool mining while charging, screenshots blocked on secret screens, no cloud backups of wallet
 files.
 
-**14 languages** — English, فارسی, العربية, اردو, Français, Deutsch, Español, Português,
+**15 languages** — English, فارسی, العربية, اردو, हिन्दी, Français, Deutsch, Español, Português,
 Nederlands, Русский, 简体中文, 日本語, 한국어, ไทย (right-to-left layouts included).
 
 | Mining | Built-in node | Persian (right to left) | Android |
@@ -111,18 +119,23 @@ Nederlands, Русский, 简体中文, 日本語, 한국어, ไทย (right
 * [Testing on the real network](docs/TESTING-MAINNET.md) — what CI checks on mainnet, the
   real-payment test, and a checklist for testers
 * [Roadmap](docs/ROADMAP.md) — next: a decentralized (P2Pool-style) mining pool in the wallet,
-  more coins and an offer board for swaps
+  proof of funds and reputation for Market offers, more coins
+* [Fork, rename, privacy or RandomX?](docs/LBC-FUTURE.md) — questions about LBC's future, and the
+  SEC's March 2026 interpretation naming LBC a digital commodity
 
 ## How it is tested
 
 Every push runs, on GitHub's servers:
 
 * unit tests with LBRY's own test vectors (seeds, keys, addresses, signatures, proof of work),
-  and translation checks for all 14 languages;
+  and translation checks for all 15 languages;
 * end-to-end tests against a real `lbcd` on a private test network: payments, tips, restore,
   SPV proofs over the hub protocol, blocks mined solo and through a Stratum pool;
 * **atomic swaps between two wallets on a real `lbcd` and a real Bitcoin node (`btcd`)**: a
   completed swap, a refund on each side, and a dishonest contract that is refused;
+* **the Market**: one wallet posts an offer on a local Nostr relay, another takes part of it, and
+  the two wallets run the whole swap between themselves; takes that do not fit, and a take that
+  nobody answers, end without anything locked;
 * the real desktop app driven by a robot (development build and the packaged, locked-down
   build): disclaimer, restore, create with backup check, send, confirm, pool mining, **starting
   the built-in node, syncing it and solo-mining through it**, settings, Persian and phone layouts;

@@ -37,7 +37,7 @@ bash scripts/build-btcd.sh                      # btcd (Bitcoin node) for the sw
 
 | Command | What it does |
 | --- | --- |
-| `LBCD_BIN=… BTCD_BIN=… npm run test:e2e` | Wallet, hub-protocol and mining tests against a throw-away lbcd on regtest; with `BTCD_BIN`, also LBC ↔ Bitcoin swaps between two wallets on lbcd + btcd |
+| `LBCD_BIN=… BTCD_BIN=… npm run test:e2e` | Wallet, hub-protocol and mining tests against a throw-away lbcd on regtest; with `BTCD_BIN`, also LBC ↔ Bitcoin swaps and Market trades between two wallets on lbcd + btcd (the Market through a local Nostr test relay) |
 | `LBCD_BIN=… xvfb-run -a npm run test:ui -w lbc-wallet-desktop` | Drives the built app through the disclaimer, restore, create, send, confirm, pool mining, the built-in node (sync + solo mining), settings, Persian and phone layouts; screenshots in `apps/desktop/e2e/screenshots` |
 | `APP_EXECUTABLE=… npm run test:ui -w lbc-wallet-desktop` | The same flow against a packaged build (`apps/desktop/release/<version>/linux-unpacked/lbc-wallet`) |
 | `xvfb-run -a npm run test:privacy -w lbc-wallet-desktop` | Network audit: no requests except the optional price feed |
@@ -53,14 +53,16 @@ bash scripts/build-btcd.sh                      # btcd (Bitcoin node) for the sw
 
 ## A local network to play with
 
-`LBCD_BIN=… npm run regtest` starts lbcd on regtest, an LBRY hub emulator and a Stratum test pool,
-and prints their ports as JSON (hub `127.0.0.1:50101`, pool `stratum+tcp://127.0.0.1:33340`, lbcd
-P2P port). The funded wallet is the BIP39 phrase `abandon abandon abandon abandon abandon abandon
+`LBCD_BIN=… npm run regtest` starts lbcd on regtest, an LBRY hub emulator, a Stratum test pool and
+a Nostr test relay, and prints their ports as JSON (hub `127.0.0.1:50101`, pool
+`stratum+tcp://127.0.0.1:33340`, relay `ws://127.0.0.1:7447`, lbcd P2P port). The funded wallet is the BIP39 phrase `abandon abandon abandon abandon abandon abandon
 abandon abandon abandon abandon abandon about`. Type `mine 10` and Enter to mine ten blocks.
 
 In the app: **Settings → About → Developer mode**, network **Regtest**, then **Settings →
 Network**: turn off the default hubs and add `127.0.0.1:50101`. To try the built-in node, add the
-regtest node's P2P address under *Show advanced options* on the Node page.
+regtest node's P2P address under *Show advanced options* on the Node page. To try the Market,
+enter `ws://127.0.0.1:7447` under *Order board relays* (Settings → Network); two app instances
+with different data folders (`LBC_WALLET_DATA_DIR`) can then trade with each other.
 
 ## The bundled full node
 

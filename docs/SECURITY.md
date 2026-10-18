@@ -133,6 +133,34 @@ can take the other's coins:
   and a real Bitcoin node (`btcd`) on private test networks, including refunds and a dishonest
   contract. The Bitcoin explorers are checked against the real Bitcoin network every week.
 
+## The Market (order board)
+
+The Market lists offers to swap LBC and Bitcoin and turns a taken offer into an atomic swap, so
+everything in the section above applies to its trades. On top of that:
+
+* **Nobody holds coins and nobody is trusted.** There is no server of ours. Offers are signed
+  Nostr events on public relays; the take, the answer and the swap codes are encrypted messages
+  (NIP-44 version 2: secp256k1 key agreement, ChaCha20, HMAC-SHA256) between the two wallets.
+  Every event is checked (id = hash of its content, BIP-340 signature) before it is used, and
+  only events that match what was asked for are accepted, so a relay can withhold or delay
+  messages but cannot forge or change them.
+* **The swap checks do not change.** An invite from the other wallet must state exactly the
+  amounts that were taken, and the joining wallet then checks the contracts on both chains as in
+  any swap. A lock code that does not pay this wallet is refused.
+* **Fresh keys.** Each offer has its own Nostr key, and each take another, kept in the wallet's
+  encrypted state. Relays see that two keys exchange a few messages, and when, but not what they
+  say or which wallets they belong to.
+* **Spam and griefing.** Anyone can post offers (each needs a small proof of work) or take
+  offers (a larger proof of work) and then walk away. The consequences are bounded: a take that
+  is never followed by a lock blocks at most the taken part of an offer, for 40 minutes; an offer
+  whose maker never locks keeps the taker's coins until their refund after 48 hours. Offers
+  cannot yet prove that their maker holds the coins (planned: proof of funds). The app shows its
+  own warning about this before the Market can be used.
+* **Stale or replayed messages** are ignored: takes older than 10 minutes, answers to takes that
+  gave up, and any message for a trade in another state.
+* **Your IP address** is visible to the relays you connect to (route the app through Tor with the
+  SOCKS5 option on desktop to hide it).
+
 ## What the wallet connects to
 
 | Connection | When | What it reveals |
@@ -140,7 +168,9 @@ can take the other's coins:
 | LBRY hubs | While a wallet is open (until your own node is in sync) | Your addresses (as script hashes) and your IP address to the hub operator. LBRY's public hubs use unencrypted connections (as LBRY Desktop does), so your network provider can see them too — use Tor or your own node to avoid that. |
 | Your own node (built-in or configured) | While a wallet is open | Nothing outside your computer or network |
 | Other LBRY nodes (peer-to-peer), including LBRYPool's node to find the first peers | Only while the built-in node runs | Your IP address, as an LBRY node |
-| Price API (CoinPaprika, CoinGecko as fallback) | Only if *Show fiat value* is on | Your IP address |
+| Price API (CoinPaprika; MEXC's LBC/USDT market as a fallback for US dollars) | Only if *Show fiat value* is on | Your IP address |
+| Nostr relays (five public relays by default, or those in *Settings → Network*) | While the Market page is open, and while you have open offers or running trades | Your IP address; the offers you post (public by design); encrypted trade messages between one-time keys |
+| Market price (MEXC, CoinPaprika as fallback) | While the Market page is open | Your IP address |
 | Mining pool | Only while mining | Your payout address and IP address |
 | Bitcoin explorers (blockstream.info and mempool.space, or your own Esplora server) | While a swap is active, and when the swap form shows the Bitcoin fee | The contract addresses and transactions of your swaps, and your IP address (not your wallet's addresses) |
 | Pool balance API (e.g. lbrypool.net) | When the Mining page shows the pool balance | Your payout address |
@@ -151,8 +181,8 @@ Chromium's spellchecker (which would download dictionaries from Google) is turne
 automated network audit (`npm run test:privacy`, run in CI against the packaged app) fails
 if the app makes any HTTP request at startup other than the optional price feed.
 
-**Tor / SOCKS5 (desktop).** With the SOCKS5 option on, hub, pool, price, pool-balance and
-Bitcoin explorer connections all go through the proxy, and host names are resolved by the proxy, so DNS does not
+**Tor / SOCKS5 (desktop).** With the SOCKS5 option on, hub, pool, price, pool-balance,
+Bitcoin explorer and Nostr relay connections all go through the proxy, and host names are resolved by the proxy, so DNS does not
 leak either. The built-in node uses the proxy for its peer connections, as described above. The
 connection to an lbcd node you configured yourself under *Settings → Network* is made directly
 (it is normally on your computer or local network).

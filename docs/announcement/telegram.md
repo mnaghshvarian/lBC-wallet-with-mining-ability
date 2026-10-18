@@ -1,4 +1,8 @@
-# Telegram announcement (draft)
+# Telegram announcement (draft, version 1.2)
+
+> For version 1.3 use [community-update.md](community-update.md): it has no links or web
+> addresses (as the group prefers), the Market, Hindi, and the SEC's March 2026 interpretation
+> naming LBC a digital commodity.
 
 Copy the text between the lines into the LBRY / LBC Telegram group. It is plain text, under
 Telegram's 4,096-character limit, and the links work without formatting. Publish the GitHub
