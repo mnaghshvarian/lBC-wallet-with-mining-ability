@@ -144,13 +144,19 @@ describe('LBC mainnet (read-only)', () => {
       const coinbase = Transaction.fromHex(toHex(concatBytes(work.coinb1, extranonce, work.coinb2)));
       poolPayout = coinbase.outputs.map((o) => scriptToAddress(o.script, MAINNET)).find((x): x is string => !!x) ?? null;
       console.log(`pool coinbase pays to ${poolPayout}`);
-      // The pool builds on the tip the hubs report (or a block newer than it).
-      const latest = await backend.getTip();
-      const recent = await backend.getHeaders(latest.height - 3, 4);
+      // The pool builds on the chain the hubs serve. Its node can be a block
+      // ahead of them for a moment, so give the hubs a minute to catch up.
       const prev = reversedHex(work.prevHash);
-      const known = recent.map((h) => parseHeader(fromHex(h)).hash);
+      let latest = await backend.getTip();
+      let known: string[] = [];
+      for (let attempt = 0; attempt < 12; attempt++) {
+        latest = await backend.getTip();
+        known = (await backend.getHeaders(latest.height - 3, 4)).map((h) => parseHeader(fromHex(h)).hash);
+        if (known.includes(prev)) break;
+        await new Promise((r) => setTimeout(r, 5_000));
+      }
       console.log(`pool job ${work.jobId} builds on ${prev} (hub tip #${latest.height} ${known[3]})`);
-      expect(known.includes(prev) || work.ntime >= parseHeader(fromHex(latest.header)).timestamp).toBe(true);
+      expect(known).toContain(prev);
       // Same difficulty regime as the chain (bits within a factor of 16).
       const tipBits = parseHeader(fromHex(latest.header)).bits;
       const ratio = Number(tipBits & 0xffffff) / Number(work.bits & 0xffffff) * 256 ** ((tipBits >>> 24) - (work.bits >>> 24));
@@ -159,7 +165,7 @@ describe('LBC mainnet (read-only)', () => {
     } finally {
       client.close();
     }
-  }, 90_000);
+  }, 150_000);
 
   it('verifies merkle proofs of recent transactions with several transactions per block', async () => {
     // The payout address of LBRYPool (taken from its coinbase in the pool test) receives block rewards.

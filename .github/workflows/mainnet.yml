@@ -1,8 +1,12 @@
 name: Mainnet check
 
-# Read-only checks against the real LBC network. Nothing is mined (GitHub's
-# terms forbid mining on Actions) and nothing is spent: the pool check only
-# logs in and receives work, and the node check only downloads the chain.
+# Checks against the real LBC network (and the Bitcoin explorers swaps use).
+# Nothing is mined (GitHub's terms forbid mining on Actions). The checks on
+# every push are read-only: the pool check only logs in and receives work, the
+# node check only downloads the chain, and the Windows app opens a new, empty
+# wallet. Real payments cost a network fee, so they run only when started by
+# hand (Actions → Mainnet check → Run workflow) with a test wallet configured
+# (the MAINNET_TEST_PHRASE secret, see docs/TESTING-MAINNET.md).
 on:
   push:
     branches: [main, master, 'feature/**']
@@ -34,7 +38,7 @@ jobs:
       - name: Build the bundled full node (lbcd)
         run: bash scripts/build-lbcd.sh linux-x64
       - run: npm ci
-      - name: Public hubs, headers with proof of work, a real transaction's merkle proof, LBRYPool login
+      - name: Public hubs, headers with proof of work, a real transaction's merkle proof, LBRYPool login, Bitcoin explorers for swaps
         run: npm run test:mainnet -w @lbcwallet/core
       - name: Which LBRY full nodes accept peer connections (version handshake only)
         if: ${{ !cancelled() }}
@@ -42,3 +46,75 @@ jobs:
       - name: The built-in node finds peers and syncs mainnet blocks
         if: ${{ !cancelled() }}
         run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" npx tsx apps/desktop/mainnet/node-sync.ts 8
+
+  payment:
+    # A real payment costs a network fee, so it only runs when started by hand,
+    # from a small dedicated test wallet.
+    name: A real LBC payment (test wallet sends to itself)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MAINNET_TEST_PHRASE: ${{ secrets.MAINNET_TEST_PHRASE }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Restore the test wallet, send 0.01 LBC to itself, wait for the confirmation
+        if: env.MAINNET_TEST_PHRASE != ''
+        run: npx tsx packages/services/mainnet/self-send.ts
+      - name: No test wallet configured
+        if: env.MAINNET_TEST_PHRASE == ''
+        run: echo "::notice::Skipped. To test a real payment, add a repository secret MAINNET_TEST_PHRASE with the recovery phrase of a separate wallet holding about 1 LBC (see docs/TESTING-MAINNET.md)."
+
+  windows-app:
+    # The installed Windows app, used the way a person would, on the real
+    # network. Started by hand with a test wallet configured, it restores that
+    # wallet and sends a real payment through the Send screen, after the payment
+    # job so the two never spend the same coins.
+    name: Installed Windows app on the real network
+    needs: payment
+    if: ${{ !cancelled() }}
+    runs-on: windows-latest
+    timeout-minutes: 80
+    defaults:
+      run:
+        shell: bash
+    env:
+      MAINNET_TEST_PHRASE: ${{ github.event_name == 'workflow_dispatch' && secrets.MAINNET_TEST_PHRASE || '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.24'
+      - name: Build lbcd (bundled in the installer)
+        run: bash scripts/build-lbcd.sh win-x64
+      - run: npm ci
+      - run: npm run build
+      - name: Build the installer (unsigned)
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --config electron-builder.yml --win nsis --x64 --publish never
+      - name: Install silently
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem apps/desktop/release/*/LBC-Wallet-Setup-x64.exe | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          "APP_EXECUTABLE=$(Join-Path $env:LOCALAPPDATA 'Programs\LBC Wallet\LBC Wallet.exe')" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Open a wallet on LBC mainnet, sync, check supply, servers and the swap fee (and send a real payment when started by hand)
+        run: SCREENSHOT_DIR="$RUNNER_TEMP/screenshots-mainnet" npx tsx apps/desktop/mainnet/app-mainnet.ts
+      - name: Upload screenshots (never taken while a recovery phrase is on screen)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots-windows-mainnet
+          path: ${{ runner.temp }}/screenshots-mainnet
+          if-no-files-found: ignore
