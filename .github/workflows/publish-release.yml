@@ -1,0 +1,75 @@
+name: Publish release
+
+# Publishes a draft that the Release workflow built, after checking that every
+# file the README links to is attached. Run it from the Actions tab ("Run
+# workflow") with the version, e.g. 1.3.0. The tag is created on the commit the
+# newest successful Release run built from, unless a commit is given.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version of the draft to publish, e.g. 1.3.0'
+        required: true
+      commit:
+        description: 'Commit the files were built from (default: the newest successful Release run)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish the draft
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TAG: v${{ inputs.version }}
+    steps:
+      - name: Check the draft and its files
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --json isDraft,name,assets > release.json
+          jq -e '.isDraft' release.json > /dev/null || { echo "::error::$TAG is already published"; exit 1; }
+          names=$(jq -r '.assets[].name' release.json)
+          printf 'Files on the draft:\n%s\n' "$names"
+          missing=0
+          for f in LBC-Wallet-Setup-x64.exe LBC-Wallet-Portable-x64.exe \
+                   LBC-Wallet-mac-arm64.dmg LBC-Wallet-mac-x64.dmg \
+                   lbc-wallet_amd64.deb lbc-wallet_arm64.deb lbc-wallet.x86_64.rpm lbc-wallet.aarch64.rpm \
+                   LBC-Wallet-linux-x86_64.AppImage LBC-Wallet-linux-arm64.AppImage \
+                   LBC-Wallet-android.apk \
+                   SHA256SUMS-Windows.txt SHA256SUMS-macOS.txt SHA256SUMS-Linux.txt SHA256SUMS-Android.txt \
+                   LBC-Wallet-Manual.pdf DISCLAIMER.md; do
+            grep -qx "$f" <<< "$names" || { echo "::error::missing on the draft: $f"; missing=1; }
+          done
+          [ "$missing" = 0 ]
+      - name: Find the commit the files were built from
+        id: built
+        env:
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          if [ -z "$COMMIT" ]; then
+            COMMIT=$(gh run list --workflow release.yml --status success --limit 1 --json headSha --jq '.[0].headSha')
+          fi
+          [ -n "$COMMIT" ] || { echo "::error::no successful Release run found; pass the commit"; exit 1; }
+          echo "The tag will point at $COMMIT"
+          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+      - name: Publish
+        env:
+          COMMIT: ${{ steps.built.outputs.commit }}
+        run: gh release edit "$TAG" --target "$COMMIT" --draft=false --latest
+      - name: Check the download links
+        run: |
+          set -euo pipefail
+          sleep 15
+          for f in LBC-Wallet-android.apk LBC-Wallet-Setup-x64.exe LBC-Wallet-mac-arm64.dmg lbc-wallet_amd64.deb; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' -I "https://github.com/$GH_REPO/releases/latest/download/$f")
+            echo "$f: HTTP $code"
+            case "$code" in 200|302) ;; *) echo "::error::$f is not downloadable"; exit 1;; esac
+          done
+          echo "Published: https://github.com/$GH_REPO/releases/tag/$TAG"
