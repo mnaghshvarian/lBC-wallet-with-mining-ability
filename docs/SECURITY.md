@@ -32,9 +32,10 @@ The Android app runs the same wallet code as the desktop app, inside the app's o
   app data (`allowBackup="false"` and data-extraction rules), so wallet files are never uploaded
   to a cloud backup. Your recovery phrase is the backup.
 * **Screenshots blocked on secret screens** — while a recovery phrase or private key is shown
-  or typed, the screen is marked secure: screenshots, screen recordings and the recent-apps
-  preview show a black screen. (On Windows and macOS the desktop app likewise hides its window
-  from screenshots and screen sharing on those screens.)
+  or typed, the screen is marked secure: Android refuses screenshots, and screen recordings and
+  the recent-apps preview show a black screen (checked in CI on an Android 14 emulator). On
+  Windows and macOS the desktop app likewise hides its window from screenshots and screen
+  sharing on those screens.
 * **Network** — the WebView that draws the UI may load only the app's bundled files (strict
   Content-Security-Policy, no network access of its own). Hub connections are native sockets
   (for hubs that offer TLS, the certificate *and* the host name are verified); prices and pool
@@ -66,6 +67,10 @@ The desktop app can run **lbcd**, LBRY's official full node, the way the Monero 
   your IP address to those peers as someone running an LBRY node, but **not** which addresses
   are yours: once the node is in sync, the wallet asks only your own node, so public hub servers
   no longer learn your addresses.
+* **Finding the first peers** — LBRY's DNS seeds currently point at nodes that no longer
+  answer. If the node has no peer 45 seconds after starting, it asks LBRYPool's public node
+  (`lbrypool.net:9246`) once, which tells it about other nodes. That node sees your IP address,
+  like any peer.
 * **Incoming connections** (off by default) — when you switch this on, the node accepts
   connections on port 9246 and asks your router to open that port (UPnP). Anyone on the internet
   can then see that your IP address runs an LBRY node. Leave it off for privacy.
@@ -82,7 +87,7 @@ The desktop app can run **lbcd**, LBRY's official full node, the way the Monero 
 | --- | --- | --- |
 | LBRY hubs | While a wallet is open (until your own node is in sync) | Your addresses (as script hashes) and your IP address to the hub operator. LBRY's public hubs use unencrypted connections (as LBRY Desktop does), so your network provider can see them too — use Tor or your own node to avoid that. |
 | Your own node (built-in or configured) | While a wallet is open | Nothing outside your computer or network |
-| Other LBRY nodes (peer-to-peer) | Only while the built-in node runs | Your IP address, as an LBRY node |
+| Other LBRY nodes (peer-to-peer), including LBRYPool's node to find the first peers | Only while the built-in node runs | Your IP address, as an LBRY node |
 | Price API (CoinPaprika, CoinGecko as fallback) | Only if *Show fiat value* is on | Your IP address |
 | Mining pool | Only while mining | Your payout address and IP address |
 | Pool balance API (e.g. lbrypool.net) | When the Mining page shows the pool balance | Your payout address |

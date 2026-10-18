@@ -11,7 +11,7 @@ import { existsSync, mkdirSync, accessSync, constants, writeFileSync } from 'nod
 import { readdir, stat, statfs } from 'node:fs/promises';
 import { totalmem, constants as osConstants, setPriority } from 'node:os';
 import { join } from 'node:path';
-import { LbcdRpc } from '@lbcwallet/core';
+import { getNetwork, LbcdRpc } from '@lbcwallet/core';
 import { nodeHttpPost } from '@lbcwallet/core/node';
 import { UserError, describeError, type LocalNode, type NetworkName, type NodeRequirementsView, type NodeStatusView, type NoticeView, type Settings, type SettingsStore } from '@lbcwallet/services';
 import type { SoloNode } from './miner-service';
@@ -27,6 +27,9 @@ const BLOCK_SECONDS = 150;
 const SYNCED_LAG_SECONDS = 2 * 60 * 60;
 const P2P_PORT: Record<NetworkName, number> = { mainnet: 9246, testnet: 19246, regtest: 29246 };
 const STOP_TIMEOUT_MS = 90_000;
+/** With no peer this long after start, the node is asked to try the network's known nodes. */
+const BOOTSTRAP_AFTER_MS = 45_000;
+const BOOTSTRAP_RETRY_MS = 5 * 60_000;
 
 export interface NodeServiceDeps {
   settings: SettingsStore;
@@ -129,6 +132,7 @@ export class NodeService {
   private rate: { at: number; height: number }[] = [];
   private stopping: Promise<void> | null = null;
   private wasSynced = false;
+  private lastBootstrap = 0;
 
   constructor(private readonly deps: NodeServiceDeps) {
     this.current = this.offStatus();
@@ -342,6 +346,7 @@ export class NodeService {
       const first = this.rate[0]!;
       const perSec = this.rate.length > 1 ? (info.blocks - first.height) / ((Date.now() - first.at) / 1000) : 0;
       const etaSeconds = !synced && perSec > 0 ? Math.round((networkHeight - info.blocks) / perSec) : null;
+      if (peers.length === 0) void this.bootstrap(rpc);
       this.publish({
         state: synced ? 'synced' : 'syncing',
         height: info.blocks,
@@ -367,6 +372,23 @@ export class NodeService {
       // The RPC server needs a moment after start, and lbcd answers 503s while busy.
       if (this.current.state !== 'starting') log('warn', `node status: ${describeError(err).message}`);
       this.schedulePoll(2_000);
+    }
+  }
+
+  /**
+   * lbcd finds its first peers through LBRY's DNS seeds, which list only a few
+   * nodes. If none of them answers, ask lbcd to try the network's known nodes
+   * once each; after one connection it learns more addresses by itself (and
+   * remembers them for the next start).
+   */
+  private async bootstrap(rpc: LbcdRpc): Promise<void> {
+    const peers = getNetwork(this.network).bootstrapPeers ?? [];
+    const startedAt = this.current.startedAt;
+    if (peers.length === 0 || !startedAt || Date.now() - startedAt < BOOTSTRAP_AFTER_MS || Date.now() - this.lastBootstrap < BOOTSTRAP_RETRY_MS) return;
+    this.lastBootstrap = Date.now();
+    log('info', `no peers yet; asking lbcd to try ${peers.length} known LBRY nodes`);
+    for (const peer of peers) {
+      await rpc.call('addnode', [peer, 'onetry'], 10_000).catch((err: unknown) => log('warn', `addnode ${peer}: ${describeError(err).message}`));
     }
   }
 

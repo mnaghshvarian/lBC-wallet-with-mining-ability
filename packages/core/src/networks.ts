@@ -42,6 +42,11 @@ export interface NetworkParams {
    * where blocks come steadily; test networks make blocks irregularly or on demand.
    */
   staleTipSeconds?: number;
+  /**
+   * Full nodes (`host:port`) a new node tries when the DNS seeds give it no
+   * working peer. Checked weekly by the mainnet probe.
+   */
+  bootstrapPeers?: string[];
   /** `{txid}` / `{address}` / `{height}` placeholders. */
   explorer?: { tx: string; address: string; block: string };
 }
@@ -63,6 +68,10 @@ export const MAINNET: NetworkParams = {
   // 24 block intervals: with a steady hashrate, a gap this long happens by chance less than
   // once in ten billion blocks.
   staleTipSeconds: 60 * 60,
+  // lbcd's DNS seeds (dnsseed1-3.lbry.com, seed.allaboutlbc.com) point at three nodes that no
+  // longer answer, and seed.lbry.grin.io does not resolve (checked October 2026). LBRYPool's
+  // node accepts peers; once connected, a new node learns other addresses from it.
+  bootstrapPeers: ['lbrypool.net:9246'],
   p2pPort: 9246,
   rpcPort: 9245,
   defaultHubs: [
@@ -87,6 +96,7 @@ export const TESTNET: NetworkParams = {
   ...MAINNET,
   name: 'testnet',
   staleTipSeconds: undefined,
+  bootstrapPeers: undefined,
   displayName: 'LBRY Credits Testnet',
   pubKeyHashPrefix: 111,
   scriptHashPrefix: 196,
@@ -105,6 +115,7 @@ export const REGTEST: NetworkParams = {
   ...MAINNET,
   name: 'regtest',
   staleTipSeconds: undefined,
+  bootstrapPeers: undefined,
   displayName: 'LBRY Credits Regtest',
   pubKeyHashPrefix: 111,
   scriptHashPrefix: 196,

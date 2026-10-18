@@ -37,6 +37,8 @@ Check your download against the `SHA256SUMS-*.txt` files below.
 * **Stuck public servers are skipped:** a server whose newest block is over an hour old (one of
   the default servers currently is) is passed over for an up-to-date one, and the wallet moves
   on if its server stops announcing new blocks.
+* The built-in node **finds peers even though LBRY's DNS seeds are down**: it asks LBRYPool's
+  public node for addresses when no seed answers.
 * With **Tor/SOCKS5** on, the built-in node's connections go through the proxy too.
 * Recovery-phrase and private-key screens are hidden from screenshots and screen sharing
   (Android, Windows, macOS).

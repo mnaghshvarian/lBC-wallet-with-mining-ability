@@ -65,25 +65,45 @@ async function startNetwork() {
 
 let device: AndroidDevice;
 
+/** Closes system dialogs (e.g. "launcher isn't responding" on a busy emulator) that would cover screenshots. */
+function closeSystemDialogs(): void {
+  try {
+    adb('shell', 'am', 'broadcast', '-a', 'android.intent.action.CLOSE_SYSTEM_DIALOGS');
+  } catch {
+    // not fatal
+  }
+}
+
 /** A full-screen phone screenshot (status bar included), as users see it. */
 async function shot(page: Page, name: string) {
-  await page.waitForTimeout(500);
   for (let i = 0; i < 6 && (await page.locator('.toast').count()) > 0; i++) {
     await page.locator('.toast').first().click({ timeout: 1000 }).catch(() => undefined);
   }
+  closeSystemDialogs();
+  // The emulator draws in software: wait until the page has painted, then for the display to catch up.
+  await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+  await page.waitForTimeout(1500);
   await device.screenshot({ path: join(shotsDir, `${name}.png`) });
   log(`screenshot ${name}`);
 }
 
 /**
- * True when the middle of the screen is black, which is what Android captures
- * for a window with FLAG_SECURE. Reads the raw frame buffer (RGBA after a header).
+ * True when the screen cannot be captured, which is what FLAG_SECURE does:
+ * depending on the Android version, screencap is refused (no frame at all) or
+ * returns a black frame. Reads the raw frame buffer (RGBA after a header).
  */
-function screenIsBlackedOut(): boolean {
-  const raw = execFileSync(ADB, ['exec-out', 'screencap'], { maxBuffer: 256 * 1024 * 1024 });
+function screenIsProtected(): boolean {
+  let raw: Buffer;
+  try {
+    raw = execFileSync(ADB, ['exec-out', 'screencap'], { maxBuffer: 256 * 1024 * 1024 });
+  } catch {
+    return true;
+  }
+  if (raw.length < 16) return true;
   const width = raw.readUInt32LE(0);
   const height = raw.readUInt32LE(4);
   const header = raw.length - width * height * 4;
+  if (width === 0 || height === 0 || header < 0) return true;
   let bright = 0;
   let samples = 0;
   for (let y = Math.floor(height * 0.25); y < height * 0.75; y += 8) {
@@ -134,6 +154,13 @@ async function main() {
   const net = await startNetwork();
   log(`network ready: hub ${net.info.hubPort}`);
   try {
+    // System error dialogs (another app being slow on a busy emulator) would cover the screenshots.
+    try {
+      adb('shell', 'settings', 'put', 'global', 'hide_error_dialogs', '1');
+    } catch {
+      log('could not hide system error dialogs');
+    }
+    closeSystemDialogs();
     adb('install', '-r', '-t', APK);
     adb('shell', 'pm', 'clear', PKG);
     // Start on the test network with the host's hub (10.0.2.2 is the host as seen from the emulator).
@@ -154,12 +181,18 @@ async function main() {
     await page.getByRole('button', { name: /I agree/ }).click();
     await page.getByText('A non-custodial wallet for LBRY Credits').waitFor();
     await shot(page, 'android-02-welcome');
+    // Control: an ordinary screen can be captured, so the check below can tell the difference.
+    if (screenIsProtected()) throw new Error('screen capture does not work on this device, so screenshot blocking cannot be checked');
     await page.getByRole('button', { name: /Restore from a recovery phrase/ }).click();
     await page.getByPlaceholder('word1 word2 word3 …').fill(net.info.fundedPhrase);
     await page.getByText(/Valid 12-word BIP39 phrase/).waitFor();
-    // The phrase screen is protected: Android captures it as a black screen.
-    await page.waitForTimeout(500);
-    if (!screenIsBlackedOut()) throw new Error('the recovery phrase screen was not protected from screenshots');
+    // The phrase screen is protected: Android refuses to capture it (or captures black).
+    let protectedScreen = false;
+    for (let i = 0; i < 20 && !protectedScreen; i++) {
+      await page.waitForTimeout(500);
+      protectedScreen = screenIsProtected();
+    }
+    if (!protectedScreen) throw new Error('the recovery phrase screen was not protected from screenshots');
     log('recovery phrase screen is protected from screenshots');
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByText(/Found your wallet/).waitFor({ timeout: 60_000 });

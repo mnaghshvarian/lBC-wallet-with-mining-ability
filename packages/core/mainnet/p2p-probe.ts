@@ -6,7 +6,8 @@
  *
  *   npx tsx packages/core/mainnet/p2p-probe.ts [host[:port] ...]
  *
- * Prints one line per address and a summary; exits with 1 when no node answers.
+ * Prints one line per address and a summary; exits with 1 when no node answers,
+ * or when none of the wallet's bootstrap peers (MAINNET.bootstrapPeers) does.
  */
 import { connect } from 'node:net';
 import { resolve4 } from 'node:dns/promises';
@@ -17,7 +18,7 @@ import { MAINNET } from '../src/networks.js';
 /** lbcd's mainnet DNS seeds (chaincfg/params.go). */
 const DNS_SEEDS = ['dnsseed1.lbry.com', 'dnsseed2.lbry.com', 'dnsseed3.lbry.com', 'seed.lbry.grin.io', 'seed.allaboutlbc.com'];
 /** Hosts known to run LBRY infrastructure; their full nodes may accept peers too. */
-const CANDIDATES = [...MAINNET.defaultHubs.map((h) => h.host), 'lbrypool.net', 'explorer.lbry.com'];
+const CANDIDATES = [...(MAINNET.bootstrapPeers ?? []), ...MAINNET.defaultHubs.map((h) => h.host), 'lbrypool.net', 'explorer.lbry.com'];
 
 const MAGIC = 0xf1aae4fa; // wire.MainNet
 const PROTOCOL_VERSION = 70013;
@@ -52,6 +53,8 @@ interface PeerVersion {
   version: number;
   userAgent: string;
   height: number;
+  /** Addresses the node shared after `getaddr`: "ip:port" with the time it last saw them. */
+  known: { address: string; seen: number }[];
 }
 
 function parseVersion(payload: Uint8Array): PeerVersion {
@@ -61,18 +64,50 @@ function parseVersion(payload: Uint8Array): PeerVersion {
   const agentLength = r.u8(); // user agents are short: one-byte length
   const userAgent = new TextDecoder().decode(r.bytes(agentLength));
   const height = r.u32LE();
-  return { version, userAgent, height };
+  return { version, userAgent, height, known: [] };
 }
 
+function varint(r: ByteReader): number {
+  const n = r.u8();
+  if (n < 0xfd) return n;
+  if (n === 0xfd) return r.u16LE();
+  if (n === 0xfe) return r.u32LE();
+  return Number(r.u64LE());
+}
+
+/** An `addr` message: (time, services, IPv6-mapped address, big-endian port) entries. */
+function parseAddr(payload: Uint8Array): { address: string; seen: number }[] {
+  const r = new ByteReader(payload);
+  const out: { address: string; seen: number }[] = [];
+  for (let i = varint(r); i > 0 && r.remaining >= 30; i--) {
+    const seen = r.u32LE();
+    r.bytes(8);
+    const ip = r.bytes(16);
+    const port = (r.u8() << 8) | r.u8();
+    const v4 = ip.slice(0, 12).every((b, j) => b === (j < 10 ? 0 : 0xff));
+    const host = v4 ? [...ip.slice(12)].join('.') : `[${[...Array(8)].map((_, j) => ((ip[2 * j]! << 8) | ip[2 * j + 1]!).toString(16)).join(':')}]`;
+    out.push({ address: `${host}:${port}`, seen });
+  }
+  return out;
+}
+
+/**
+ * Handshakes with a node and asks it for the addresses it knows. Resolves with
+ * its version once it has answered `getaddr` (or after a short wait).
+ */
 function probe(host: string, port: number, timeoutMs = 10_000): Promise<PeerVersion> {
   return new Promise((resolve, reject) => {
     const socket = connect({ host, port });
     let buffer = Buffer.alloc(0);
-    const done = (err: Error | null, v?: PeerVersion) => {
+    let peer: PeerVersion | null = null;
+    let finished = false;
+    const done = (err: Error | null) => {
+      if (finished) return;
+      finished = true;
       clearTimeout(timer);
       socket.destroy();
-      if (err) reject(err);
-      else resolve(v!);
+      if (peer) resolve(peer);
+      else reject(err ?? new Error('no version message'));
     };
     const timer = setTimeout(() => done(new Error(buffer.length ? 'no version message' : 'timeout')), timeoutMs);
     socket.once('connect', () => socket.write(message('version', versionPayload())));
@@ -85,9 +120,20 @@ function probe(host: string, port: number, timeoutMs = 10_000): Promise<PeerVers
         const command = buffer.subarray(4, 16).toString('ascii').replace(/\0+$/, '');
         const length = buffer.readUInt32LE(16);
         if (buffer.length < 24 + length) return;
-        const payload = buffer.subarray(24, 24 + length);
+        const payload = new Uint8Array(buffer.subarray(24, 24 + length));
         buffer = buffer.subarray(24 + length);
-        if (command === 'version') return done(null, parseVersion(new Uint8Array(payload)));
+        if (command === 'version') {
+          peer = parseVersion(payload);
+          socket.write(message('verack', new Uint8Array(0)));
+          socket.write(message('getaddr', new Uint8Array(0)));
+          // A node that knows no addresses may not answer at all.
+          setTimeout(() => done(null), 5_000);
+        } else if (command === 'ping') {
+          socket.write(message('pong', payload));
+        } else if (command === 'addr' && peer) {
+          peer.known.push(...parseAddr(payload));
+          if (peer.known.length > 1) return done(null);
+        }
       }
     });
   });
@@ -112,12 +158,16 @@ async function main() {
     if (DNS_SEEDS.includes(host)) console.log(`${host} → ${addresses.join(', ') || '(none)'}`);
     for (const a of addresses) if (!targets.has(`${a}:${port}`)) targets.set(`${a}:${port}`, { port, via: host });
   }
+  const known = new Map<string, number>();
+  const answered = new Set<string>();
   const results = await Promise.all(
     [...targets.entries()].map(async ([key, { port, via }]) => {
       const ip = key.slice(0, key.lastIndexOf(':'));
       try {
         const v = await probe(ip, port);
-        console.log(`✓ ${key} (${via}): ${v.userAgent}, protocol ${v.version}, height ${v.height}`);
+        console.log(`✓ ${key} (${via}): ${v.userAgent}, protocol ${v.version}, height ${v.height}, shared ${v.known.length} addresses`);
+        for (const k of v.known) known.set(k.address, Math.max(known.get(k.address) ?? 0, k.seen));
+        answered.add(via);
         return true;
       } catch (err) {
         console.log(`✗ ${key} (${via}): ${(err as Error).message}`);
@@ -127,6 +177,33 @@ async function main() {
   );
   const ok = results.filter(Boolean).length;
   console.log(`${ok} of ${results.length} addresses answered as LBRY nodes`);
+
+  // Nodes the reachable ones have heard from recently: try those too (one round).
+  const dayAgo = Date.now() / 1000 - 24 * 3600;
+  const fresh = [...known.entries()].filter(([a, seen]) => seen > dayAgo && !targets.has(a)).sort((a, b) => b[1] - a[1]).slice(0, 60);
+  if (fresh.length > 0) {
+    console.log(`trying ${fresh.length} of ${known.size} shared addresses seen in the last 24 hours`);
+    const second = await Promise.all(
+      fresh.map(async ([address]) => {
+        const i = address.lastIndexOf(':');
+        try {
+          const v = await probe(address.slice(0, i).replace(/^\[|\]$/g, ''), Number(address.slice(i + 1)), 8_000);
+          console.log(`✓ ${address}: ${v.userAgent}, height ${v.height}`);
+          return true;
+        } catch (err) {
+          console.log(`✗ ${address}: ${(err as Error).message}`);
+          return false;
+        }
+      }),
+    );
+    console.log(`${second.filter(Boolean).length} of ${second.length} shared addresses answered`);
+  }
+  const bootstrap = (MAINNET.bootstrapPeers ?? []).map((p) => p.slice(0, p.lastIndexOf(':')));
+  if (bootstrap.length > 0) {
+    const working = bootstrap.filter((h) => answered.has(h));
+    console.log(`bootstrap peers answering: ${working.length} of ${bootstrap.length}${working.length ? ` (${working.join(', ')})` : ''}`);
+    if (working.length === 0) process.exit(1);
+  }
   if (ok === 0) process.exit(1);
 }
 

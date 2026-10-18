@@ -39,6 +39,6 @@ jobs:
       - name: Which LBRY full nodes accept peer connections (version handshake only)
         if: ${{ !cancelled() }}
         run: npx tsx packages/core/mainnet/p2p-probe.ts
-      - name: The built-in node finds peers by itself and syncs mainnet blocks
+      - name: The built-in node finds peers and syncs mainnet blocks
         if: ${{ !cancelled() }}
         run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" npx tsx apps/desktop/mainnet/node-sync.ts 8

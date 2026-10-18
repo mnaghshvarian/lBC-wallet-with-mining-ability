@@ -587,8 +587,12 @@ choose another pool.
 
 **"Paused (on battery)".** Plug in your laptop, or switch off *Pause on battery*.
 
-**The node finds no peers.** Check that your firewall allows LBC Wallet to connect to the
-internet. On restrictive networks (some offices, some countries) the LBRY network may be blocked.
+**The node finds no peers.** Finding the first peers can take a few minutes; if none answer, the
+app asks the node to try a list of known LBRY nodes. If it still shows 0 peers after 10 minutes,
+check that your firewall allows LBC Wallet to connect to the internet (the node uses port 9246).
+On restrictive networks (some offices, some countries) the LBRY network may be blocked: try Tor
+(**Settings → Network**), or ask the LBRY community for the address of a node and enter it on the
+Node page under *Show advanced options*.
 
 **The node says there is not enough disk space.** Choose a folder on a bigger drive with
 **Change…** on the Node page.

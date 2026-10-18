@@ -1,7 +1,8 @@
 /**
  * Mainnet check of the built-in node: starts NodeService with the bundled lbcd
- * on LBC mainnet in a temporary folder and verifies that it finds peers on its
- * own (DNS seeds) and downloads and verifies headers and blocks.
+ * on LBC mainnet in a temporary folder and verifies that it finds peers (DNS
+ * seeds, or the wallet's bootstrap peers when those fail) and downloads and
+ * verifies headers and blocks.
  *
  *   LBCD_BIN=apps/desktop/resources/bin/linux-x64/lbcd npx tsx mainnet/node-sync.ts [minutes]
  */
@@ -47,7 +48,7 @@ async function main() {
     }
     if (best.peers === 0) {
       console.log(`---- lbcd log (last 60 lines) ----\n${node.logs().slice(-60).join('\n')}\n---- end of lbcd log ----`);
-      throw new Error('the node found no peers (DNS seeds or P2P blocked?)');
+      throw new Error('the node found no peers (DNS seeds and bootstrap peers failed, or P2P is blocked)');
     }
     if (best.height <= 0 && best.headers <= 0) throw new Error('the node did not download any headers or blocks');
     console.log(`built-in node OK on mainnet: up to ${best.peers} peers, ${best.headers} headers, ${best.height} blocks verified`);

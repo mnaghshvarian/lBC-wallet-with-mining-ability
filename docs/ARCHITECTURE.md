@@ -185,6 +185,9 @@ the way the Monero GUI runs `monerod`:
   150 GB for mainnet). It starts lbcd at below-normal priority with `--txindex --addrindex`
   (needed to look up a wallet's history), RPC on `127.0.0.1` with fresh random credentials,
   outbound-only by default (`--nolisten`), and `--proxy` when SOCKS5 is on.
+* Peers come from lbcd's DNS seeds; since those currently point at dead nodes, the service
+  asks lbcd (`addnode … onetry`) to try the network's `bootstrapPeers` when it has had no peer
+  for 45 seconds. The weekly mainnet check probes the seeds and the bootstrap peers.
 * It polls the node for headers, blocks, peers and disk use to show progress and a time
   estimate. When the best block is recent, the node counts as synced and
   `WalletService.localNodeChanged()` swaps the wallet's backend from hubs to an `LbcdBackend`
