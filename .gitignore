@@ -8,3 +8,4 @@ coverage/
 .vite/
 .e2e/
 *.tsbuildinfo
+apps/desktop/e2e/screenshots/

@@ -5,21 +5,30 @@
  *   npm run build -w lbc-wallet-desktop
  *   LBCD_BIN=/path/to/lbcd xvfb-run -a npm run test:ui -w lbc-wallet-desktop
  *
+ * Screenshots go to apps/desktop/e2e/screenshots (or SCREENSHOT_DIR); THEME=light
+ * switches the theme.
+ *
  * Flow: restore a funded wallet (auto-detecting the derivation), create a
  * second wallet with backup verification, send between them, confirm, mine
  * through the pool, and visit every settings tab.
+ *
+ * Set APP_EXECUTABLE to a packaged build (e.g. release/1.0.0/linux-unpacked/lbc-wallet)
+ * to run the same flow against the fused production binary. Its Node inspector
+ * is disabled by the fuses, so the test drives the window over the Chrome
+ * DevTools protocol instead.
  */
 import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import { _electron as electron, type ElectronApplication, type Page } from 'playwright-core';
+import { _electron as electron, chromium, type Page } from 'playwright-core';
 import electronPath from 'electron';
 
 const appDir = resolve(__dirname, '..');
 const repoRoot = resolve(appDir, '../..');
-const shotsDir = process.env.SCREENSHOT_DIR ?? join(repoRoot, 'docs', 'screenshots');
+const shotsDir = process.env.SCREENSHOT_DIR ?? join(appDir, 'e2e', 'screenshots');
 const PASSWORD = 'correct horse battery staple';
 
 function log(msg: string) {
@@ -58,8 +67,73 @@ async function startNetwork() {
   };
 }
 
+interface RunningApp {
+  page: Page;
+  close(): Promise<void>;
+}
+
+/** Runs the app from the electron-vite build output with the development Electron binary. */
+async function launchDev(dataDir: string): Promise<RunningApp> {
+  const app = await electron.launch({
+    executablePath: electronPath as unknown as string,
+    args: ['--no-sandbox', appDir],
+    env: { ...process.env, LBC_WALLET_DATA_DIR: dataDir },
+  });
+  return { page: await app.firstWindow(), close: () => app.close() };
+}
+
+function freePort(): Promise<number> {
+  return new Promise((res, rej) => {
+    const srv = createServer();
+    srv.once('error', rej);
+    srv.listen(0, '127.0.0.1', () => {
+      const { port } = srv.address() as { port: number };
+      srv.close(() => res(port));
+    });
+  });
+}
+
+/** Runs a packaged build and attaches to its window over the DevTools protocol. */
+async function launchPackaged(executable: string, dataDir: string): Promise<RunningApp> {
+  const port = await freePort();
+  const args = [`--remote-debugging-port=${port}`];
+  // Chromium refuses to run as root with its sandbox; CI runs as a normal user with the sandbox on.
+  if (process.env.NO_SANDBOX === '1' || process.getuid?.() === 0) args.push('--no-sandbox');
+  const child = spawn(executable, args, { env: { ...process.env, LBC_WALLET_DATA_DIR: dataDir }, stdio: ['ignore', 'inherit', 'inherit'] });
+  const exited = new Promise<void>((res) => child.once('exit', () => res()));
+  const deadline = Date.now() + 60_000;
+  for (;;) {
+    if (child.exitCode !== null) throw new Error(`packaged app exited with code ${child.exitCode}`);
+    try {
+      const r = await fetch(`http://127.0.0.1:${port}/json/version`);
+      if (r.ok) break;
+    } catch {
+      // not listening yet
+    }
+    if (Date.now() > deadline) throw new Error('packaged app did not open a DevTools endpoint');
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+  const context = browser.contexts()[0] ?? (await browser.newContext());
+  const page = context.pages().find((p) => p.url().startsWith('file:')) ?? (await context.waitForEvent('page', { timeout: 30_000 }));
+  log(`attached to packaged app ${executable}`);
+  return {
+    page,
+    close: async () => {
+      await browser.close().catch(() => undefined);
+      child.kill('SIGTERM'); // Electron quits gracefully on SIGTERM
+      await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))]);
+      if (child.exitCode === null) child.kill('SIGKILL');
+    },
+  };
+}
+
 async function shot(page: Page, name: string) {
   await page.waitForTimeout(400);
+  // Notifications are transient (click to dismiss); keep them out of the screenshots.
+  for (let i = 0; i < 6 && (await page.locator('.toast').count()) > 0; i++) {
+    await page.locator('.toast').first().click({ timeout: 1000 }).catch(() => undefined);
+  }
   await page.screenshot({ path: join(shotsDir, `${name}.png`) });
   log(`screenshot ${name}`);
 }
@@ -83,14 +157,10 @@ async function main() {
     }),
   );
 
-  let app: ElectronApplication | null = null;
+  let app: RunningApp | null = null;
   try {
-    app = await electron.launch({
-      executablePath: electronPath as unknown as string,
-      args: ['--no-sandbox', appDir],
-      env: { ...process.env, LBC_WALLET_DATA_DIR: dataDir },
-    });
-    const page = await app.firstWindow();
+    app = process.env.APP_EXECUTABLE ? await launchPackaged(resolve(process.env.APP_EXECUTABLE), dataDir) : await launchDev(dataDir);
+    const page = app.page;
     await page.setViewportSize({ width: 1280, height: 820 });
     page.on('pageerror', (err) => console.error('[renderer error]', err));
 
@@ -185,11 +255,23 @@ async function main() {
     // ---------------------------------------------------------------- mining
     await page.locator('.nav-item', { hasText: 'Mining' }).click();
     await page.getByRole('button', { name: 'Start mining' }).click();
+    await page.getByText(/hashing threads? \(WebAssembly SIMD/).waitFor({ timeout: 30_000 });
     await page.locator('.stat', { hasText: 'Shares' }).locator('.positive').filter({ hasText: /^[1-9]/ }).waitFor({ timeout: 90_000 });
     await page.waitForTimeout(6000);
     await shot(page, '13-mining');
     await page.getByRole('button', { name: 'Stop mining' }).click();
     await page.getByRole('button', { name: 'Start mining' }).waitFor({ timeout: 15_000 });
+
+    // "Only when idle": while the computer is in use the miner waits instead of hashing.
+    await page.getByRole('switch', { name: 'Only when idle' }).click();
+    await page.getByRole('tab', { name: '30 min' }).click();
+    await page.getByRole('button', { name: 'Start mining' }).click();
+    await page.locator('.badge', { hasText: 'Waiting for idle' }).waitFor({ timeout: 15_000 });
+    await page.getByText(/resumes after 30 min idle/).waitFor();
+    await shot(page, '13b-mining-idle');
+    await page.getByRole('button', { name: 'Stop mining' }).click();
+    await page.getByRole('button', { name: 'Start mining' }).waitFor({ timeout: 15_000 });
+    await page.getByRole('switch', { name: 'Only when idle' }).click();
 
     // ---------------------------------------------------------------- settings
     await page.locator('.nav-item', { hasText: 'Settings' }).click();

@@ -56,12 +56,28 @@ jobs:
           npm run build
           LBCD_BIN="$(go env GOPATH)/bin/lbcd" SCREENSHOT_DIR="$RUNNER_TEMP/screenshots" \
             xvfb-run -a -s "-screen 0 1440x900x24" npm run test:ui -w lbc-wallet-desktop
+      - name: Package the Linux app (fused production build)
+        working-directory: apps/desktop
+        run: CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --config electron-builder.yml --linux dir --publish never
+      - name: Desktop UI end-to-end test against the packaged app (sandbox on)
+        run: |
+          # Ubuntu 24.04 restricts unprivileged user namespaces, which Chromium's sandbox uses.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          APP_EXECUTABLE="$(echo "$PWD"/apps/desktop/release/*/linux-unpacked/lbc-wallet)" \
+          LBCD_BIN="$(go env GOPATH)/bin/lbcd" SCREENSHOT_DIR="$RUNNER_TEMP/screenshots-packaged" \
+            xvfb-run -a -s "-screen 0 1440x900x24" npm run test:ui -w lbc-wallet-desktop
+      - name: Network privacy audit of the packaged app
+        run: |
+          APP_EXECUTABLE="$(echo "$PWD"/apps/desktop/release/*/linux-unpacked/lbc-wallet)" \
+            xvfb-run -a npm run test:privacy -w lbc-wallet-desktop
       - name: Upload UI screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: ui-screenshots
-          path: ${{ runner.temp }}/screenshots
+          path: |
+            ${{ runner.temp }}/screenshots
+            ${{ runner.temp }}/screenshots-packaged
           if-no-files-found: ignore
 
   wasm:
@@ -69,9 +85,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Rebuild the scanner and compare
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq clang lld >/dev/null
-          node packages/miner-wasm/build.mjs
-          npx --yes vitest@5.0.5 run --root packages/core --dir test mining
-          git diff --stat -- packages/core/src/mining/lbry-scan-wasm.generated.ts || true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install clang and lld
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang lld >/dev/null
+      - run: npm ci
+      - name: Rebuild the scanner from C
+        run: npm run build:wasm
+      - name: Committed module matches the C source
+        run: git diff --exit-code --stat -- packages/core/src/mining/
+      - name: Miner tests against the rebuilt module
+        run: npm test -w @lbcwallet/core -- mining

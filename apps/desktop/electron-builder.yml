@@ -49,11 +49,13 @@ linux:
     and mines LBC through a pool or your own node.
   maintainer: LBC Wallet contributors <m.naghshvarian@gmail.com>
   vendor: LBC Wallet contributors
-  desktop:
-    entry:
-      StartupWMClass: LBC Wallet
+  executableName: lbc-wallet
+  # Name the .desktop file after package.json "desktopName" so the window's
+  # app_id / WM_CLASS matches it and docks group the running window correctly.
+  syncDesktopName: true
 
 deb:
+  packageName: lbc-wallet
   artifactName: lbc-wallet_${version}_${arch}.${ext}
 
 win:
