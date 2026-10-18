@@ -36,6 +36,9 @@ jobs:
       - run: npm ci
       - name: Public hubs, headers with proof of work, a real transaction's merkle proof, LBRYPool login
         run: npm run test:mainnet -w @lbcwallet/core
+      - name: Which LBRY full nodes accept peer connections (version handshake only)
+        if: ${{ !cancelled() }}
+        run: npx tsx packages/core/mainnet/p2p-probe.ts
       - name: The built-in node finds peers by itself and syncs mainnet blocks
         if: ${{ !cancelled() }}
         run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" npx tsx apps/desktop/mainnet/node-sync.ts 8

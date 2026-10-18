@@ -13,7 +13,7 @@ import { totalmem, constants as osConstants, setPriority } from 'node:os';
 import { join } from 'node:path';
 import { LbcdRpc } from '@lbcwallet/core';
 import { nodeHttpPost } from '@lbcwallet/core/node';
-import { UserError, describeError, type LocalNode, type NetworkName, type NodeRequirementsView, type NodeStatusView, type NoticeView, type SettingsStore } from '@lbcwallet/services';
+import { UserError, describeError, type LocalNode, type NetworkName, type NodeRequirementsView, type NodeStatusView, type NoticeView, type Settings, type SettingsStore } from '@lbcwallet/services';
 import type { SoloNode } from './miner-service';
 import { logger } from './log';
 
@@ -48,6 +48,34 @@ export interface NodeServiceDeps {
 export function lbcdVersion(numeric: number): string {
   if (!numeric) return 'lbcd (development build)';
   return `lbcd ${Math.floor(numeric / 1e8)}.${Math.floor(numeric / 1e6) % 100}.${Math.floor(numeric / 1e3) % 1000}`;
+}
+
+/** `host:port`, with IPv6 literals in brackets as lbcd expects. */
+export function hostPort(host: string, port: number): string {
+  return host.includes(':') ? `[${host}]:${port}` : `${host}:${port}`;
+}
+
+/** Command line for the bundled lbcd. RPC is bound to loopback with per-start credentials. */
+export function lbcdArgs(o: { settings: Settings; dir: string; configFile: string; rpcPort: number; rpcUser: string; rpcPass: string }): string[] {
+  const { settings, dir } = o;
+  const network = settings.network;
+  return [
+    `--configfile=${o.configFile}`,
+    `--datadir=${join(dir, 'data')}`,
+    `--logdir=${join(dir, 'logs')}`,
+    `--rpcuser=${o.rpcUser}`,
+    `--rpcpass=${o.rpcPass}`,
+    `--rpclisten=127.0.0.1:${o.rpcPort}`,
+    '--notls',
+    '--txindex',
+    '--addrindex',
+    settings.node.listen ? `--listen=0.0.0.0:${P2P_PORT[network]}` : '--nolisten',
+    ...(settings.node.listen ? ['--upnp'] : []),
+    // With Tor/SOCKS5 on, outgoing peer connections and DNS seed lookups go through the proxy too.
+    ...(settings.socks5.enabled ? [`--proxy=${hostPort(settings.socks5.host, settings.socks5.port)}`] : []),
+    ...settings.node.peers.map((peer) => `--addpeer=${peer}`),
+    ...(network === 'testnet' ? ['--testnet'] : network === 'regtest' ? ['--regtest'] : []),
+  ];
 }
 
 function freePort(): Promise<number> {
@@ -224,21 +252,7 @@ export class NodeService {
     // An empty config file stops lbcd from writing its sample config; everything is passed as flags.
     const configFile = join(dir, 'lbcd-wallet.conf');
     if (!existsSync(configFile)) writeFileSync(configFile, '# Managed by LBC Wallet; settings are passed on the command line.\n');
-    const args = [
-      `--configfile=${configFile}`,
-      `--datadir=${join(dir, 'data')}`,
-      `--logdir=${join(dir, 'logs')}`,
-      `--rpcuser=${this.creds.user}`,
-      `--rpcpass=${this.creds.pass}`,
-      `--rpclisten=127.0.0.1:${port}`,
-      '--notls',
-      '--txindex',
-      '--addrindex',
-      settings.node.listen ? `--listen=0.0.0.0:${P2P_PORT[network]}` : '--nolisten',
-      ...(settings.node.listen ? ['--upnp'] : []),
-      ...settings.node.peers.map((peer) => `--addpeer=${peer}`),
-      ...(network === 'testnet' ? ['--testnet'] : network === 'regtest' ? ['--regtest'] : []),
-    ];
+    const args = lbcdArgs({ settings, dir, configFile, rpcPort: port, rpcUser: this.creds.user, rpcPass: this.creds.pass });
     log('info', `starting lbcd (${network}) in ${dir}`);
     const child = spawn(this.deps.binary!, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     this.child = child;
@@ -315,10 +329,12 @@ export class NodeService {
       const now = Date.now() / 1000;
       const lag = Math.max(0, now - info.mediantime);
       // lbcd reports no header count or verification progress, so estimate the
-      // network's height from the best block's age, peers and public hubs.
+      // network's height from peers and public hubs; the best block's age is a
+      // fallback only, since blocks have come slower than the 2.5-minute target.
       const byTime = info.blocks + Math.floor(lag / BLOCK_SECONDS);
       const byPeers = peers.reduce((m, p) => Math.max(m, p.startingheight ?? 0), 0);
-      const networkHeight = Math.max(info.blocks, byPeers, this.deps.hubHeight() ?? 0, this.network === 'regtest' ? 0 : byTime);
+      const reported = Math.max(byPeers, this.deps.hubHeight() ?? 0);
+      const networkHeight = Math.max(info.blocks, reported > 0 ? reported : this.network === 'regtest' ? 0 : byTime);
       const synced = lag < SYNCED_LAG_SECONDS || (this.network === 'regtest' && info.blocks >= networkHeight);
       const progress = synced ? 1 : networkHeight > 0 ? Math.min(0.999, info.blocks / networkHeight) : 0;
       this.rate.push({ at: Date.now(), height: info.blocks });

@@ -37,6 +37,11 @@ export interface NetworkParams {
   p2pPort: number;
   rpcPort: number;
   defaultHubs: HubServer[];
+  /**
+   * A hub whose newest block is older than this (seconds) is treated as stuck. Only set
+   * where blocks come steadily; test networks make blocks irregularly or on demand.
+   */
+  staleTipSeconds?: number;
   /** `{txid}` / `{address}` / `{height}` placeholders. */
   explorer?: { tx: string; address: string; block: string };
 }
@@ -55,6 +60,9 @@ export const MAINNET: NetworkParams = {
   powLimit: (1n << 240n) - 1n,
   coinbaseMaturity: 100,
   targetBlockTime: 150,
+  // 24 block intervals: with a steady hashrate, a gap this long happens by chance less than
+  // once in ten billion blocks.
+  staleTipSeconds: 60 * 60,
   p2pPort: 9246,
   rpcPort: 9245,
   defaultHubs: [
@@ -78,6 +86,7 @@ export const MAINNET: NetworkParams = {
 export const TESTNET: NetworkParams = {
   ...MAINNET,
   name: 'testnet',
+  staleTipSeconds: undefined,
   displayName: 'LBRY Credits Testnet',
   pubKeyHashPrefix: 111,
   scriptHashPrefix: 196,
@@ -95,6 +104,7 @@ export const TESTNET: NetworkParams = {
 export const REGTEST: NetworkParams = {
   ...MAINNET,
   name: 'regtest',
+  staleTipSeconds: undefined,
   displayName: 'LBRY Credits Regtest',
   pubKeyHashPrefix: 111,
   scriptHashPrefix: 196,

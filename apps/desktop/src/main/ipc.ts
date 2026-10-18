@@ -55,7 +55,10 @@ function desktopHandlers(s: Services, getWindow: () => BrowserWindow | null): Ha
     },
     'app:paste': async () => (await Promise.resolve(clipboard.readText())).trim().slice(0, 5000),
     'app:quit': () => app.quit(),
-    'app:secureScreen': () => undefined,
+    // Secret screens: Windows and macOS leave the window out of screenshots and screen sharing.
+    'app:secureScreen': (on: unknown) => {
+      getWindow()?.setContentProtection(on === true);
+    },
 
     'wallet:exportCsv': async () => {
       const csv = s.wallets.exportCsv();

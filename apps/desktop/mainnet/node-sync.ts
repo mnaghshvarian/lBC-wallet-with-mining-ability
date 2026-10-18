@@ -45,7 +45,10 @@ async function main() {
       if (s.state === 'error') throw new Error(`node stopped: ${s.error}`);
       if (best.peers > 0 && best.height > 2000) break;
     }
-    if (best.peers === 0) throw new Error('the node found no peers (DNS seeds or P2P blocked?)');
+    if (best.peers === 0) {
+      console.log(`---- lbcd log (last 60 lines) ----\n${node.logs().slice(-60).join('\n')}\n---- end of lbcd log ----`);
+      throw new Error('the node found no peers (DNS seeds or P2P blocked?)');
+    }
     if (best.height <= 0 && best.headers <= 0) throw new Error('the node did not download any headers or blocks');
     console.log(`built-in node OK on mainnet: up to ${best.peers} peers, ${best.headers} headers, ${best.height} blocks verified`);
   } finally {

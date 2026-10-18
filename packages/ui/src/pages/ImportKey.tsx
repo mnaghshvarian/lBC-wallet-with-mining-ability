@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useApp, useT, errorMessage } from '../store';
 import { Button, Callout, Field, PasswordInput, Segmented, StrengthMeter } from '../components/ui';
@@ -15,6 +15,12 @@ export function ImportKey() {
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // A private key may be typed on this screen: keep it out of screenshots and the app switcher (Android).
+  useEffect(() => {
+    void window.lbc.app.secureScreen(true);
+    return () => void window.lbc.app.secureScreen(false);
+  }, []);
 
   const prefixOk = kind === 'xprv' ? /^[xt]prv[1-9A-HJ-NP-Za-km-z]{100,}$/.test(key.trim()) : /^[xt]pub[1-9A-HJ-NP-Za-km-z]{100,}$/.test(key.trim());
 

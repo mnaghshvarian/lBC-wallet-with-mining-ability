@@ -4,7 +4,8 @@
  *
  *   npm run test:mainnet -w @lbcwallet/core       (needs internet access)
  *
- * - every default hub answers, and they agree on the chain tip;
+ * - the default hubs answer and agree on the chain tip, and the wallet skips a
+ *   hub that is stuck behind it;
  * - headers from the hubs link up and carry valid LBRY proof of work, and the
  *   genesis block is LBRY's;
  * - a real transaction's merkle proof checks out against its block header (the
@@ -23,6 +24,7 @@ import { concatBytes, fromHex, toHex } from '../src/encoding/bytes.js';
 import { verifyTransactionInclusion } from '../src/wallet/verify.js';
 import { Transaction } from '../src/tx/transaction.js';
 import { scriptToAddress } from '../src/address.js';
+import { classifyOutput } from '../src/script/script.js';
 import { parseLbryNotify } from '../src/mining/work.js';
 import { AddressDeriver, deriveAccountKey, publicOnly } from '../src/keys/hd.js';
 import type { ChainTip } from '../src/net/backend.js';
@@ -46,16 +48,35 @@ describe('LBC mainnet (read-only)', () => {
     await backend?.stop();
   });
 
-  it('reaches the default hubs, which agree on the chain tip', async () => {
+  it('reaches the default hubs and avoids any that are stuck behind the chain', async () => {
     const results = await Promise.all(MAINNET.defaultHubs.map((h) => probeHub(h, transportFactory, MAINNET, CLIENT)));
-    const ok = results.filter((r): r is Extract<typeof r, { ok: true }> => r.ok);
     for (const [i, r] of results.entries()) console.log(`${MAINNET.defaultHubs[i]!.host}:${MAINNET.defaultHubs[i]!.port} → ${r.ok ? `#${r.height} in ${r.latencyMs} ms (${r.version})` : r.error}`);
-    expect(ok.length).toBeGreaterThanOrEqual(2);
-    const heights = ok.map((r) => r.height);
-    // Servers may lag a few blocks behind each other.
-    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(12);
+    const heights = results.flatMap((r) => (r.ok ? [r.height] : []));
+    expect(heights.length).toBeGreaterThanOrEqual(2);
+    const best = Math.max(...heights);
+    // Most servers agree within a few blocks (they may lag each other briefly).
+    expect(heights.filter((h) => best - h <= 12).length).toBeGreaterThanOrEqual(2);
     expect(tip.height).toBeGreaterThan(1_900_000);
-  }, 60_000);
+    expect(best - tip.height, 'the wallet picked a hub that is behind').toBeLessThanOrEqual(12);
+
+    // A hub whose newest block is over an hour old is stuck: starting there, the wallet must move on.
+    for (const [i, r] of results.entries()) {
+      if (!r.ok || best - r.height <= 12) continue;
+      const hub = MAINNET.defaultHubs[i]!;
+      const [h] = await backend.getHeaders(r.height, 1);
+      const ageMinutes = Math.round((Date.now() / 1000 - parseHeader(fromHex(h!)).timestamp) / 60);
+      console.warn(`${hub.host} is ${best - r.height} blocks behind (its newest block is ${ageMinutes} min old)`);
+      if (ageMinutes * 60 <= MAINNET.staleTipSeconds!) continue;
+      const b = new HubBackend({ servers: [hub, ...MAINNET.defaultHubs.filter((x) => x !== hub)], transportFactory, network: MAINNET, clientName: CLIENT });
+      try {
+        await b.start();
+        expect(b.getStatus().server, `skips ${hub.host}`).not.toBe(`${hub.host}:${hub.port}`);
+        expect(best - (await b.getTip()).height).toBeLessThanOrEqual(12);
+      } finally {
+        await b.stop();
+      }
+    }
+  }, 120_000);
 
   it('serves LBRY genesis and a chain of recent headers with valid proof of work', async () => {
     const [genesis] = await backend.getHeaders(0, 1);
@@ -85,9 +106,14 @@ describe('LBC mainnet (read-only)', () => {
       const tx = Transaction.fromHex(fetched!.hex);
       expect(tx.txid).toBe(txid);
       if (fetched!.merkle) expect(verifyTransactionInclusion(txid, fetched!.merkle, headerHex!, height, MAINNET, tip)).toMatchObject({ ok: true });
-      const address = tx.outputs.map((o) => scriptToAddress(o.script, MAINNET)).find((a): a is string => !!a);
-      expect(address, `payout address of block ${height}`).toBeTruthy();
-      expect((await backend.getHistory(address!)).some((h) => h.txid === txid)).toBe(true);
+      // The address index is keyed by output script: early blocks paid to a bare public key
+      // (pay-to-pubkey), which is not indexed under the matching "b…" address, so only
+      // standard outputs are looked up. Recent transactions are covered by the last test.
+      for (const o of tx.outputs) {
+        if (classifyOutput(o.script).type !== 'p2pkh') continue;
+        const address = scriptToAddress(o.script, MAINNET)!;
+        expect((await backend.getHistory(address)).some((h) => h.txid === txid), `history of ${address}`).toBe(true);
+      }
     }
   }, 120_000);
 

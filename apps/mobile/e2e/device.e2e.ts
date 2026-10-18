@@ -104,6 +104,31 @@ async function attach(): Promise<Page> {
   return webview.page();
 }
 
+/** What CI needs to explain a failure: the screen, whether the app still runs, and the device log. */
+function saveDiagnostics(): void {
+  try {
+    writeFileSync(join(shotsDir, 'failure.png'), execFileSync(ADB, ['exec-out', 'screencap', '-p'], { maxBuffer: 64 * 1024 * 1024 }));
+  } catch (err) {
+    log(`no failure screenshot: ${(err as Error).message}`);
+  }
+  try {
+    const pid = execFileSync(ADB, ['shell', 'pidof', PKG], { encoding: 'utf8' }).trim();
+    log(`app process: ${pid || 'not running'}`);
+  } catch {
+    log('app process: not running');
+  }
+  try {
+    const logcat = execFileSync(ADB, ['logcat', '-d', '-v', 'time'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    writeFileSync(join(shotsDir, 'logcat.txt'), logcat);
+    const interesting = logcat
+      .split('\n')
+      .filter((l) => /AndroidRuntime|FATAL|ANR in|lbcwallet|Capacitor|chromium|WebView|cr_|Console|am_crash|am_kill|lowmemorykiller|Process .* has died/i.test(l));
+    console.log(`---- logcat (${interesting.length} relevant lines, last 150) ----\n${interesting.slice(-150).join('\n')}\n---- end of logcat ----`);
+  } catch (err) {
+    log(`no logcat: ${(err as Error).message}`);
+  }
+}
+
 async function main() {
   mkdirSync(shotsDir, { recursive: true });
   const net = await startNetwork();
@@ -114,9 +139,12 @@ async function main() {
     // Start on the test network with the host's hub (10.0.2.2 is the host as seen from the emulator).
     const settings = { network: 'regtest', developerMode: true, useDefaultHubs: false, customHubs: [{ host: '10.0.2.2', port: net.info.hubPort }], showFiat: false, autoLockMinutes: 30 };
     execFileSync(ADB, ['shell', `run-as ${PKG} sh -c 'mkdir -p files/lbcwallet && cat > files/lbcwallet/settings.json'`], { input: JSON.stringify(settings) });
+    adb('logcat', '-c');
     adb('shell', 'am', 'start', '-W', '-n', `${PKG}/.MainActivity`);
     const page = await attach();
     page.on('pageerror', (err) => console.error('[webview error]', err));
+    page.on('console', (msg) => console.log(`[webview ${msg.type()}] ${msg.text()}`));
+    page.on('close', () => log('the WebView page closed'));
     log(`attached to ${page.url()}`);
 
     // ---------------------------------------------------------------- disclaimer and restore
@@ -188,6 +216,9 @@ async function main() {
     await page.locator('.bottom-nav button').first().click();
     await shot(page, 'android-10-overview-fa');
     log('Android end-to-end flow passed');
+  } catch (err) {
+    saveDiagnostics();
+    throw err;
   } finally {
     await device?.close().catch(() => undefined);
     await net.stop();

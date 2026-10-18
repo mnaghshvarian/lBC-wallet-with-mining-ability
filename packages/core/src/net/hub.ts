@@ -17,6 +17,15 @@ export interface HubBackendOptions {
   log?: (level: 'info' | 'warn' | 'error', message: string) => void;
 }
 
+/** A connected, handshaken hub that is not (yet) the current server. */
+interface HubSession {
+  endpoint: SocketEndpoint;
+  client: LineRpcClient;
+  tip: ChainTip;
+  latencyMs: number;
+  serverVersion: string;
+}
+
 const SUBSCRIBE_BATCH = 100;
 const TX_BATCH = 100;
 
@@ -44,6 +53,8 @@ export class HubBackend extends Emitter<BackendEvents> implements ChainBackend {
   private serverIndex = 0;
   private batchSupported = true;
   private hadConnection = false;
+  /** Local time the current hub last announced a block (or we connected). */
+  private lastTipAt = 0;
 
   constructor(private readonly options: HubBackendOptions) {
     super();
@@ -87,66 +98,116 @@ export class HubBackend extends Emitter<BackendEvents> implements ChainBackend {
     return this.connecting;
   }
 
-  /** Tries servers round-robin with backoff until one works (or the backend is stopped). */
+  /**
+   * Tries servers round-robin with backoff until one works (or the backend is stopped).
+   * On networks with a steady block rate, a hub whose newest block is old is probably stuck
+   * and would show a stale wallet, so an up-to-date hub is preferred. After a full round
+   * without one, the most advanced of the stale hubs is used: the chain may really be slow,
+   * or the device clock may be wrong.
+   */
   private async connectLoop(): Promise<void> {
     let attempt = 0;
-    while (!this.stopped) {
-      const servers = this.options.servers;
-      const endpoint = servers[this.serverIndex % servers.length]!;
-      try {
-        await this.connectTo(endpoint);
-        return;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.log('warn', `hub ${endpoint.host}:${endpoint.port} failed: ${msg}`);
-        this.setStatus({ connected: false, error: `${endpoint.host}: ${msg}` });
+    let fallback: HubSession | null = null;
+    try {
+      while (!this.stopped) {
+        const servers = this.options.servers;
+        const endpoint = servers[this.serverIndex % servers.length]!;
+        try {
+          const session = await this.open(endpoint);
+          if (this.stopped) {
+            session.client.close();
+            break;
+          }
+          const age = this.staleAge(session.tip);
+          if (age === null || servers.length === 1) {
+            this.adopt(session);
+            return;
+          }
+          this.log('warn', `hub ${endpoint.host}:${endpoint.port} is behind: its newest block #${session.tip.height} is ${Math.round(age / 60)} min old; trying another hub`);
+          if (!fallback || session.tip.height > fallback.tip.height) {
+            fallback?.client.close();
+            fallback = session;
+          } else {
+            session.client.close();
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.log('warn', `hub ${endpoint.host}:${endpoint.port} failed: ${msg}`);
+          this.setStatus({ connected: false, error: `${endpoint.host}: ${msg}` });
+        }
         this.serverIndex++;
         attempt++;
         if (attempt % servers.length === 0) {
+          const best: HubSession | null = fallback;
+          fallback = null;
+          if (best && !best.client.isClosed && !this.stopped) {
+            this.log('warn', `no up-to-date hub found; using ${best.endpoint.host}:${best.endpoint.port} at height ${best.tip.height}`);
+            this.adopt(best);
+            return;
+          }
+          best?.client.close();
           const delay = Math.min(30_000, 2_000 * 2 ** Math.min(4, Math.floor(attempt / servers.length) - 1));
           await sleep(delay);
         }
       }
+    } finally {
+      fallback?.client.close();
     }
     throw new Error('hub backend stopped');
   }
 
-  private async connectTo(endpoint: SocketEndpoint): Promise<void> {
+  /** Connects and handshakes, without making the server the current one yet. */
+  private async open(endpoint: SocketEndpoint): Promise<HubSession> {
     const transport = this.options.transportFactory(endpoint);
     const client = new LineRpcClient(transport, { jsonrpc2: true, defaultTimeoutMs: this.options.requestTimeoutMs ?? 30_000 });
     const started = Date.now();
-    await withTimeout(client.connect(), this.options.connectTimeoutMs ?? 8_000, 'connect timeout');
     try {
+      await withTimeout(client.connect(), this.options.connectTimeoutMs ?? 8_000, 'connect timeout');
       const version = await client.request<[string, string]>('server.version', [this.options.clientName, this.options.protocolVersion ?? '0.113.0'], 8_000);
       const latencyMs = Date.now() - started;
       const tipRaw = await client.request<{ hex: string; height: number }>('blockchain.headers.subscribe', [true], 10_000);
       const tip = normalizeTip(tipRaw);
       this.checkNetwork(tip);
-      client.onNotification((method, params) => this.handleNotification(method, params));
-      client.onClose(() => this.handleClose(client));
-      this.client = client;
-      this.current = endpoint;
-      this.tip = tip;
-      this.batchSupported = true;
-      const wasReconnect = this.hadConnection;
-      this.hadConnection = true;
-      this.subscribed.clear();
-      this.setStatus({
-        connected: true,
-        server: `${endpoint.host}:${endpoint.port}`,
-        serverVersion: Array.isArray(version) ? String(version[0]) : String(version),
-        latencyMs,
-        height: tip.height,
-        error: undefined,
-      });
-      this.startKeepalive(client);
-      this.log('info', `connected to hub ${endpoint.host}:${endpoint.port} at height ${tip.height}`);
-      this.emit('tip', tip);
-      if (wasReconnect) this.emit('reconnected', undefined);
+      return { endpoint, client, tip, latencyMs, serverVersion: Array.isArray(version) ? String(version[0]) : String(version) };
     } catch (err) {
       client.close();
       throw err;
     }
+  }
+
+  /** Makes an opened session the current connection. */
+  private adopt(session: HubSession): void {
+    const { endpoint, client, tip } = session;
+    client.onNotification((method, params) => this.handleNotification(method, params));
+    client.onClose(() => this.handleClose(client));
+    this.client = client;
+    this.current = endpoint;
+    this.tip = tip;
+    this.lastTipAt = Date.now();
+    this.batchSupported = true;
+    const wasReconnect = this.hadConnection;
+    this.hadConnection = true;
+    this.subscribed.clear();
+    this.setStatus({
+      connected: true,
+      server: `${endpoint.host}:${endpoint.port}`,
+      serverVersion: session.serverVersion,
+      latencyMs: session.latencyMs,
+      height: tip.height,
+      error: undefined,
+    });
+    this.startKeepalive(client);
+    this.log('info', `connected to hub ${endpoint.host}:${endpoint.port} at height ${tip.height}`);
+    this.emit('tip', tip);
+    if (wasReconnect) this.emit('reconnected', undefined);
+  }
+
+  /** Seconds since the tip's block was made, if that is suspiciously long ago; otherwise null. */
+  private staleAge(tip: ChainTip): number | null {
+    const limit = this.options.network.staleTipSeconds;
+    if (!limit) return null;
+    const age = Date.now() / 1000 - parseHeader(hexToBytesSafe(tip.header)).timestamp;
+    return age > limit ? age : null;
   }
 
   private checkNetwork(tip: ChainTip) {
@@ -159,6 +220,12 @@ export class HubBackend extends Emitter<BackendEvents> implements ChainBackend {
       if (client.isClosed) return;
       if (Date.now() - Math.max(client.lastReceived, client.lastSent) > 50_000) {
         client.request('server.ping', [], 10_000).catch(() => client.close());
+      }
+      // A hub that stops announcing blocks is probably stuck: move on to another one.
+      const limit = this.options.network.staleTipSeconds;
+      if (limit && this.options.servers.length > 1 && Date.now() - this.lastTipAt > limit * 1000) {
+        this.log('warn', `no new block from ${this.current?.host} for ${Math.round(limit / 60)} min; trying another hub`);
+        client.close();
       }
     }, 10_000);
   }
@@ -179,6 +246,7 @@ export class HubBackend extends Emitter<BackendEvents> implements ChainBackend {
     if (method === 'blockchain.headers.subscribe' && Array.isArray(params) && params[0]) {
       const tip = normalizeTip(params[0] as { hex: string; height: number });
       this.tip = tip;
+      this.lastTipAt = Date.now();
       this.setStatus({ height: tip.height });
       this.emit('tip', tip);
     } else if ((method === 'blockchain.address.subscribe' || method === 'blockchain.scripthash.subscribe') && Array.isArray(params)) {
