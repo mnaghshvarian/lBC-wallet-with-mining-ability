@@ -1,4 +1,5 @@
 import { UserError, text, type AppInfo, type Handlers, type MinerStatsView, type MiningInfo, type NodeStatusView, type SettingsStore, type WalletService } from '@lbcwallet/services';
+import type { PhoneMinerService } from './miner-service';
 import type { DeviceInfo, LbcNativePlugin } from './native';
 
 export interface AndroidServices {
@@ -7,9 +8,11 @@ export interface AndroidServices {
   settings: SettingsStore;
   wallets: WalletService;
   miningInfo: MiningInfo;
+  /** The phone's own miner; null where the WebView cannot run it (no Web Workers or WebAssembly). */
+  miner: PhoneMinerService | null;
 }
 
-export function androidAppInfo(info: DeviceInfo): AppInfo {
+export function androidAppInfo(info: DeviceInfo, canMine: boolean): AppInfo {
   return {
     name: 'LBC Wallet',
     version: info.versionName,
@@ -20,8 +23,8 @@ export function androidAppInfo(info: DeviceInfo): AppInfo {
     dataDir: info.dataDir,
     cpuCount: Math.max(1, navigator.hardwareConcurrency || 1),
     isPackaged: !info.debug,
-    // Phones don't mine or run a full node; the UI hides those features.
-    capabilities: { mining: false, node: false, ownNode: false, proxy: false },
+    // Phones mine through a pool; they don't run a full node, so no solo mining.
+    capabilities: { mining: canMine, soloMining: false, idleMining: false, node: false, ownNode: false, proxy: false },
   };
 }
 
@@ -67,7 +70,7 @@ function nodeOff(s: AndroidServices): NodeStatusView {
 /** Handlers that differ from the desktop app. */
 export function createAndroidHandlers(s: AndroidServices): Handlers {
   return {
-    'app:info': () => androidAppInfo(s.info),
+    'app:info': () => androidAppInfo(s.info, !!s.miner),
     'app:openExternal': async (url: unknown) => {
       const u = text(url, 'url', 2000);
       if (!/^https:\/\//i.test(u)) throw new UserError('onlyHttps');
@@ -88,14 +91,15 @@ export function createAndroidHandlers(s: AndroidServices): Handlers {
       return { saved: false };
     },
 
-    'miner:status': () => idleMiner(s.settings.get().mining.threads),
+    'miner:status': () => s.miner?.status() ?? idleMiner(s.settings.get().mining.threads),
     'miner:start': () => {
-      throw new UserError('miningUnsupported');
+      if (!s.miner) throw new UserError('miningUnsupported');
+      return s.miner.start();
     },
-    'miner:stop': () => idleMiner(s.settings.get().mining.threads),
-    'miner:logs': () => [],
-    'miner:estimate': () => s.miningInfo.estimate({ hashrate: 0, mode: s.settings.get().mining.mode, networkBits: null, height: null }),
-    'miner:poolBalance': () => s.miningInfo.poolBalance(),
+    'miner:stop': () => s.miner?.stop() ?? idleMiner(s.settings.get().mining.threads),
+    'miner:logs': () => s.miner?.getLogs() ?? [],
+    'miner:estimate': () => s.miner?.estimate() ?? s.miningInfo.estimate({ hashrate: 0, mode: 'pool', networkBits: null, height: null }),
+    'miner:poolBalance': () => s.miningInfo.poolBalance(s.miner?.payoutInUse()),
 
     'node:status': () => nodeOff(s),
     'node:requirements': () => ({ diskGb: 0, ramGb: 0, systemRamGb: 0, defaultDataDir: '' }),

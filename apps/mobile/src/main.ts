@@ -5,6 +5,8 @@ import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore,
 import { goBack, mountApp } from '@lbcwallet/ui';
 import { durableFiles } from './files';
 import { createAndroidHandlers } from './handlers';
+import { PhoneMinerService } from './miner-service';
+import { WebWorkerThreads } from './mining/web-threads';
 import { LbcNative } from './native';
 import { androidPlatform } from './platform';
 import { NativeSockets } from './sockets';
@@ -29,22 +31,40 @@ async function main(): Promise<void> {
     chainTip: () => wallets.tipBits(),
     price: () => price.get()?.price ?? null,
   });
+  // The miner hashes in Web Workers with the WebAssembly scanner; very old WebViews lack them.
+  const canMine = typeof Worker !== 'undefined' && typeof WebAssembly !== 'undefined' && typeof MessageChannel !== 'undefined';
+  const miner = canMine
+    ? new PhoneMinerService({
+        settings,
+        miningInfo,
+        clientName: platform.clientName,
+        transport: (endpoint) => platform.lineTransport(endpoint, { connectTimeoutMs: 15_000 }),
+        createThreads: (count, onError) => WebWorkerThreads.create(count, onError),
+        power: () => LbcNative.powerState(),
+        keepScreenOn: (on) => LbcNative.keepScreenOn({ on }),
+        onStats: (st) => bus.emit('miner:stats', st),
+        onLog: (e) => bus.emit('miner:log', e),
+      })
+    : null;
   const handlers = {
     ...createCoreHandlers({ platform, settings, wallets, price, miningInfo }),
-    ...createAndroidHandlers({ info, native: LbcNative, settings, wallets, miningInfo }),
+    ...createAndroidHandlers({ info, native: LbcNative, settings, wallets, miningInfo, miner }),
   };
   window.lbc = createApi(inAppTransport(handlers, bus, { flush: files.flush, activity: () => wallets.touch(), log: (m) => platform.log('error', 'api', m) }));
   price.start();
 
   // Timers don't run reliably while the app is in the background, so the
   // auto-lock is also checked when the user comes back.
+  // Mining runs only while the app is on screen.
   let pausedAt = Date.now();
   void CapApp.addListener('pause', () => {
     pausedAt = Date.now();
+    void miner?.setForeground(false);
   });
   void CapApp.addListener('resume', () => {
     const minutes = settings.get().autoLockMinutes;
     if (wallets.isOpen && minutes > 0 && Date.now() - pausedAt >= minutes * 60_000) void wallets.lock('timeout');
+    void miner?.setForeground(true);
   });
   void CapApp.addListener('backButton', () => {
     if (!goBack()) void CapApp.minimizeApp();

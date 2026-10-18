@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   base: './',
   plugins: [react()],
+  // The miner's hashing threads are module workers (src/mining/hash-worker.ts).
+  worker: { format: 'es' },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

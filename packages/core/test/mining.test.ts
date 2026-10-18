@@ -3,7 +3,7 @@ import { LbryScanner, simdSupported } from '../src/mining/scanner.js';
 import { bitsToTarget, hashToBigInt, lbryPowHash } from '../src/crypto/pow.js';
 import { ByteWriter, fromHex, hashFromHex, toHex, concatBytes } from '../src/encoding/bytes.js';
 import { sha256d } from '../src/crypto/hash.js';
-import { blockSubsidy, estimateEarnings, formatHashrate, networkHashrateFromBits } from '../src/mining/economics.js';
+import { blockSubsidy, estimateEarnings, formatHashrate, issuedSupply, LAST_REWARD_HEIGHT, networkHashrateFromBits, nextRewardChange, supplyFacts, TOTAL_SUPPLY } from '../src/mining/economics.js';
 import {
   assembleHeader,
   checkNonce,
@@ -239,6 +239,48 @@ describe('economics', () => {
     expect(blockSubsidy(55001 + 32)).toBe(499n * 100_000_000n);
     // height seen on the live network in October 2026
     expect(blockSubsidy(2_198_096)).toBe(135n * 100_000_000n);
+  });
+
+  it('adds up the supply: closed form equals the sum of every block reward', () => {
+    const checkpoints = new Set([0, 1, 5100, 5101, 5200, 5201, 54_999, 55_000, 55_001, 55_032, 55_033, 1_000_000, 2_198_420, LAST_REWARD_HEIGHT, LAST_REWARD_HEIGHT + 1]);
+    let sum = 0n;
+    for (let h = 0; h <= LAST_REWARD_HEIGHT + 1; h++) {
+      sum += blockSubsidy(h);
+      if (checkpoints.has(h) || h % 100_003 === 0) expect(issuedSupply(h), `height ${h}`).toBe(sum);
+    }
+    expect(TOTAL_SUPPLY).toBe(sum);
+    expect(TOTAL_SUPPLY).toBe(1_083_202_000n * 100_000_000n);
+    expect(LAST_REWARD_HEIGHT).toBe(4_063_000);
+    expect(blockSubsidy(LAST_REWARD_HEIGHT)).toBe(100_000_000n);
+    expect(blockSubsidy(LAST_REWARD_HEIGHT + 1)).toBe(0n);
+    expect(issuedSupply(-1)).toBe(0n);
+  }, 30_000);
+
+  it('finds the next change of the block reward', () => {
+    expect(nextRewardChange(0)).toEqual({ height: 1, reward: 100_000_000n });
+    expect(nextRewardChange(5000)).toEqual({ height: 5101, reward: 200_000_000n });
+    // 500 LBC from block 54901 through the first reduction step
+    expect(nextRewardChange(54_950)).toEqual({ height: 55_033, reward: 499n * 100_000_000n });
+    expect(nextRewardChange(LAST_REWARD_HEIGHT)).toEqual({ height: LAST_REWARD_HEIGHT + 1, reward: 0n });
+    expect(nextRewardChange(LAST_REWARD_HEIGHT + 1)).toBeNull();
+    for (const h of [5101, 60_000, 777_777, 2_198_420, 3_999_999]) {
+      const next = nextRewardChange(h)!;
+      expect(blockSubsidy(next.height - 1)).toBe(blockSubsidy(h));
+      expect(next.reward).not.toBe(blockSubsidy(h));
+    }
+  });
+
+  it('reports the supply figures for the live network', () => {
+    // newest block in October 2026
+    const f = supplyFacts(2_198_420);
+    expect(f.reward).toBe(135n * 100_000_000n);
+    expect(f.issued).toBe(963_371_860n * 100_000_000n);
+    expect(f.remaining).toBe(119_830_140n * 100_000_000n);
+    expect(f.nextChange).toMatchObject({ height: 2_204_153, reward: 134n * 100_000_000n });
+    expect(f.nextChange!.days).toBeCloseTo(9.95, 2);
+    expect(f.daysToLastReward / 365.25).toBeCloseTo(8.86, 2);
+    const end = supplyFacts(LAST_REWARD_HEIGHT);
+    expect(end).toMatchObject({ reward: 0n, remaining: 0n, nextChange: null, daysToLastReward: 0 });
   });
 
   it('estimates earnings and formats hashrates', () => {

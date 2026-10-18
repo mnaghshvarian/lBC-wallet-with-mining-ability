@@ -1,4 +1,4 @@
-import { UserError } from '@lbcwallet/services';
+import { UserError } from './errors.js';
 
 /** Parses stratum+tcp://host:port (or stratum+ssl:// for TLS); the scheme is optional. */
 export function parsePoolUrl(url: string): { host: string; port: number; tls: boolean } {

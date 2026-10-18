@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BatteryCharging, Cpu, Gauge, HardDrive, Laptop, Moon, Pickaxe, Play, Server, Square, Trophy, Wallet } from 'lucide-react';
+import { BatteryCharging, Coins, Cpu, Gauge, HardDrive, Laptop, Moon, Pickaxe, Play, Server, Square, Trophy, Wallet } from 'lucide-react';
+import { supplyFacts } from '@lbcwallet/core/ui';
 import { useApp, useT, errorMessage, viewError } from '../store';
 import { Badge, Button, Callout, Field, Segmented, Toggle } from '../components/ui';
 import { AddressText, Sparkline } from '../components/display';
-import { compact, daysText, duration, formatFiat, formatHashrate, number, percent, relativeTime } from '../lib/format';
-import type { MinerEstimateView, MiningSettings, PoolBalanceView } from '@lbcwallet/services/api';
+import { celsius, compact, daysText, duration, formatFiat, formatHashrate, number, percent, relativeTime } from '../lib/format';
+import { PHONE_MINING, type MinerEstimateView, type MinerPauseReason, type MiningSettings, type PoolBalanceView } from '@lbcwallet/services/api';
 import type { Translate } from '../i18n';
 
 const POOLS = [{ id: 'lbrypool', name: 'LBRYPool (lbrypool.net)', fee: '0.5%', url: 'stratum+tcp://lbrypool.net:3334', api: 'https://lbrypool.net' }];
@@ -34,6 +35,7 @@ function PoolSelect({ m, setMining }: { m: MiningSettings; setMining: (patch: Pa
       <Field label={t('mining.pool')}>
         <select
           className="select"
+          aria-label={t('mining.pool')}
           value={poolPreset}
           onChange={(e) => {
             const p = POOLS.find((x) => x.id === e.target.value);
@@ -126,7 +128,56 @@ function PoolBalanceCard({ balance, m }: { balance: PoolBalanceView | null; m: M
   );
 }
 
-/** Phones don't mine (heat, battery, store rules); they follow the pool balance instead. */
+const wholeLbc = (dewies: bigint) => number(Number(dewies / 100_000_000n));
+
+/** How much LBC exists and how much is left to mine, from the reward schedule every node enforces. */
+function SupplyCard() {
+  const t = useT();
+  const network = useApp((s) => s.settings!.network);
+  const height = useApp((s) => s.overview?.tipHeight);
+  const facts = useMemo(() => (height ? supplyFacts(height) : null), [height]);
+  if (network !== 'mainnet' || !facts) return null;
+  const mined = Number((facts.issued * 10_000n) / facts.total) / 10_000;
+  const endYear = new Date(Date.now() + facts.daysToLastReward * 86_400_000).getFullYear();
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="row">
+          <Coins size={16} /> {t('supply.title')}
+        </h3>
+      </div>
+      <div className="stack tight">
+        <div className="progress" role="progressbar" aria-label={t('supply.minedShare', { percent: percent(mined, 1) })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(mined * 100)}>
+          <div className="bar" style={{ width: `${mined * 100}%` }} />
+        </div>
+        <div className="small text-2">{t('supply.minedShare', { percent: percent(mined, 1) })}</div>
+      </div>
+      <div className="kv" style={{ marginTop: 10 }}>
+        <div className="k">{t('supply.left')}</div>
+        <div className="strong">{wholeLbc(facts.remaining)} LBC</div>
+        <div className="k">{t('supply.reward')}</div>
+        <div>{wholeLbc(facts.reward)} LBC</div>
+        {facts.nextChange && (
+          <>
+            <div className="k">{t('supply.nextDrop')}</div>
+            <div>{t('supply.nextDropValue', { reward: wholeLbc(facts.nextChange.reward), block: number(facts.nextChange.height), when: daysText(facts.nextChange.days) })}</div>
+          </>
+        )}
+        <div className="k">{t('supply.lastReward')}</div>
+        <div>{t('supply.lastRewardValue', { block: number(facts.lastRewardHeight), year: String(endYear) })}</div>
+        <div className="k">{t('supply.issued')}</div>
+        <div>{wholeLbc(facts.issued)} LBC</div>
+        <div className="k">{t('supply.total')}</div>
+        <div>{wholeLbc(facts.total)} LBC</div>
+      </div>
+      <div className="hint" style={{ marginTop: 10 }}>
+        {t('supply.hint')}
+      </div>
+    </div>
+  );
+}
+
+/** Where this device cannot run the miner (an old Android WebView): follow the pool balance instead. */
 function MiningMonitor() {
   const t = useT();
   const settings = useApp((s) => s.settings)!;
@@ -156,14 +207,25 @@ function MiningMonitor() {
           <PayoutField m={m} setMining={setMining} />
         </div>
       </div>
+      <div style={{ marginTop: 16 }}>
+        <SupplyCard />
+      </div>
     </>
   );
 }
 
+const PAUSE_STATE: Record<MinerPauseReason, string> = {
+  battery: 'mining.state.battery',
+  'in-use': 'mining.state.inUse',
+  'battery-low': 'mining.state.batteryLow',
+  hot: 'mining.state.hot',
+  'power-save': 'mining.state.powerSave',
+  background: 'mining.state.background',
+};
+
 function stateText(t: Translate, miner: ReturnType<typeof useApp.getState>['miner'], mode: MiningSettings['mode']): string {
   if (!miner) return t('mining.state.stopped');
-  if (miner.paused === 'battery') return t('mining.state.battery');
-  if (miner.paused === 'in-use') return t('mining.state.inUse');
+  if (miner.paused) return t(PAUSE_STATE[miner.paused]);
   switch (miner.state) {
     case 'starting':
       return t('mining.state.starting');
@@ -177,6 +239,24 @@ function stateText(t: Translate, miner: ReturnType<typeof useApp.getState>['mine
       return t('mining.state.error');
     default:
       return t('mining.state.stopped');
+  }
+}
+
+/** The line under the hashrate while mining is switched on but paused. */
+function pausedText(t: Translate, paused: MinerPauseReason, m: MiningSettings, phone: boolean): string {
+  switch (paused) {
+    case 'in-use':
+      return t('mining.pausedInUse', { count: m.idleMinutes });
+    case 'battery':
+      return phone ? t('mining.pausedCharger') : t('mining.pausedBattery');
+    case 'battery-low':
+      return t('mining.pausedBatteryLow', { level: percent(PHONE_MINING.lowBattery, 0) });
+    case 'hot':
+      return t('mining.pausedHot', { temperature: celsius(PHONE_MINING.resumeC) });
+    case 'power-save':
+      return t('mining.pausedPowerSave');
+    case 'background':
+      return t('mining.pausedBackground');
   }
 }
 
@@ -246,10 +326,13 @@ function Miner() {
   const [now, setNow] = useState(Date.now());
   const logRef = useRef<HTMLDivElement>(null);
   const m = settings.mining;
+  const phone = info.kind === 'android';
+  /** Phones mine through a pool only (solo mining needs a full node). */
+  const mode = info.capabilities.soloMining ? m.mode : 'pool';
   const active = !!miner && miner.state !== 'stopped' && miner.state !== 'error';
   /** Switched on: running, or paused until power/idle conditions allow it. */
   const switchedOn = active || !!miner?.paused;
-  const poolBalance = usePoolBalance([m.poolUrl, m.poolApi, m.payoutAddress, m.mode, overview?.receiveAddress]);
+  const poolBalance = usePoolBalance([m.poolUrl, m.poolApi, m.payoutAddress, mode, overview?.receiveAddress]);
 
   useEffect(() => {
     let alive = true;
@@ -285,7 +368,7 @@ function Miner() {
 
   const payout = m.payoutAddress || overview?.receiveAddress || '';
   const uptime = miner?.startedAt && active ? now - miner.startedAt : 0;
-  const stateLabel = useMemo(() => stateText(t, miner, m.mode), [t, miner, m.mode]);
+  const stateLabel = useMemo(() => stateText(t, miner, mode), [t, miner, mode]);
   const minerError = viewError(miner);
 
   return (
@@ -293,7 +376,7 @@ function Miner() {
       <div className="page-header">
         <div>
           <h1>{t('nav.mining')}</h1>
-          <div className="sub">{t('mining.sub')}</div>
+          <div className="sub">{phone ? t('mining.subPhone') : t('mining.sub')}</div>
         </div>
         <div className="actions">{active ? <Badge tone="violet">{stateLabel}</Badge> : <Badge>{stateLabel}</Badge>}</div>
       </div>
@@ -305,20 +388,12 @@ function Miner() {
               <Pickaxe size={46} />
             </div>
             <div className="stack tight" style={{ flex: 1, minWidth: 0 }}>
-              <div className="muted small">
-                {active
-                  ? t('mining.current')
-                  : miner?.paused === 'in-use'
-                    ? t('mining.pausedInUse', { count: m.idleMinutes })
-                    : miner?.paused === 'battery'
-                      ? t('mining.pausedBattery')
-                      : t('mining.idle')}
-              </div>
+              <div className="muted small">{active ? t('mining.current') : miner?.paused ? pausedText(t, miner.paused, m, phone) : t('mining.idle')}</div>
               <div className="hashrate-big">{formatHashrate(miner?.hashrate ?? 0)}</div>
               <div className="small text-2">
                 {active
                   ? t('mining.activeLine', { threads: t('overview.threads', { count: miner!.threads }), uptime: duration(uptime), avg: formatHashrate(miner!.hashrateAvg) })
-                  : t('mining.idleLine', { mode: m.mode === 'pool' ? t('mining.poolMining') : t('mining.soloMining'), threads: m.threads, cpus: info.cpuCount })}
+                  : t('mining.idleLine', { mode: mode === 'pool' ? t('mining.poolMining') : t('mining.soloMining'), threads: m.threads, cpus: info.cpuCount })}
               </div>
               {minerError && <div className="error-text">{minerError}</div>}
               <div className="row" style={{ marginTop: 8 }}>
@@ -351,8 +426,12 @@ function Miner() {
                 <div>{formatHashrate(estimate.networkHashrate)}</div>
                 <div className="k">{t('mining.blockReward')}</div>
                 <div>{number(estimate.blockReward)} LBC</div>
-                <div className="k">{t('mining.soloEvery')}</div>
-                <div>{daysText(estimate.daysPerBlock)}</div>
+                {info.capabilities.soloMining && (
+                  <>
+                    <div className="k">{t('mining.soloEvery')}</div>
+                    <div>{daysText(estimate.daysPerBlock)}</div>
+                  </>
+                )}
               </div>
               {estimate.lbcPerDay === 0 && <div className="hint">{t('mining.measureFirst')}</div>}
             </div>
@@ -364,6 +443,11 @@ function Miner() {
               {t('mining.expectationsText')}
             </Callout>
           </div>
+          {phone && (
+            <div style={{ marginTop: 10 }}>
+              <Callout title={t('mining.phoneTitle')}>{t('mining.phoneText', { temperature: celsius(PHONE_MINING.hotC) })}</Callout>
+            </div>
+          )}
         </div>
       </div>
 
@@ -375,7 +459,7 @@ function Miner() {
           <div className="v">{formatHashrate(miner?.hashrateAvg ?? 0)}</div>
           <div className="s">{miner?.totalHashes ? t('mining.totalHashes', { n: compact(miner.totalHashes) }) : t('mining.noHashes')}</div>
         </div>
-        {m.mode === 'pool' ? (
+        {mode === 'pool' ? (
           <div className="stat">
             <div className="k">
               <Trophy size={14} /> {t('mining.shares')}
@@ -400,17 +484,17 @@ function Miner() {
         )}
         <div className="stat">
           <div className="k">
-            <Cpu size={14} /> {m.mode === 'pool' ? t('mining.shareDifficulty') : t('mining.threads')}
+            <Cpu size={14} /> {mode === 'pool' ? t('mining.shareDifficulty') : t('mining.threads')}
           </div>
-          <div className="v">{m.mode === 'pool' ? (miner?.difficulty ? number(miner.difficulty, miner.difficulty < 10 ? 4 : 0) : '—') : (miner?.threads ?? m.threads)}</div>
-          <div className="s">{m.mode === 'pool' ? t('mining.vardiff') : t('mining.cpusAvailable', { count: info.cpuCount })}</div>
+          <div className="v">{mode === 'pool' ? (miner?.difficulty ? number(miner.difficulty, miner.difficulty < 10 ? 4 : 0) : '—') : (miner?.threads ?? m.threads)}</div>
+          <div className="s">{mode === 'pool' ? t('mining.vardiff') : t('mining.cpusAvailable', { count: info.cpuCount })}</div>
         </div>
         <div className="stat">
           <div className="k">
             <Server size={14} /> {t('overview.height')}
           </div>
           <div className="v">{miner?.height ? number(miner.height) : overview?.tipHeight ? number(overview.tipHeight) : '—'}</div>
-          <div className="s ellipsis">{miner?.server ?? (m.mode === 'pool' ? m.poolUrl.replace(/^stratum\+\w+:\/\//, '') : t('net.yourNode'))}</div>
+          <div className="s ellipsis">{miner?.server ?? (mode === 'pool' ? m.poolUrl.replace(/^stratum\+\w+:\/\//, '') : t('net.yourNode'))}</div>
         </div>
       </div>
 
@@ -422,18 +506,20 @@ function Miner() {
             {active && <span className="small muted">{t('mining.stopToChange')}</span>}
           </div>
           <fieldset disabled={active} style={{ border: 'none', padding: 0, margin: 0 }} className="stack">
-            <Field label={t('mining.mode')}>
-              <Segmented
-                value={m.mode}
-                options={[
-                  { value: 'pool', label: t('mining.modePool') },
-                  { value: 'solo', label: t('mining.modeSolo') },
-                ]}
-                onChange={(v) => setMining({ mode: v })}
-              />
-            </Field>
+            {info.capabilities.soloMining && (
+              <Field label={t('mining.mode')}>
+                <Segmented
+                  value={m.mode}
+                  options={[
+                    { value: 'pool', label: t('mining.modePool') },
+                    { value: 'solo', label: t('mining.modeSolo') },
+                  ]}
+                  onChange={(v) => setMining({ mode: v })}
+                />
+              </Field>
+            )}
 
-            {m.mode === 'pool' ? (
+            {mode === 'pool' ? (
               <>
                 <PoolSelect m={m} setMining={setMining} />
                 <div className="grid grid-2">
@@ -452,35 +538,39 @@ function Miner() {
 
             <PayoutField m={m} setMining={setMining} />
 
-            <Field label={t('mining.threadsLabel', { threads: m.threads, cpus: info.cpuCount })} hint={t('mining.threadsHint')}>
+            <Field label={t('mining.threadsLabel', { threads: m.threads, cpus: info.cpuCount })} hint={phone ? t('mining.threadsHintPhone') : t('mining.threadsHint')}>
               <input type="range" className="slider" min={1} max={info.cpuCount} value={m.threads} onChange={(e) => setMining({ threads: Number(e.target.value) })} aria-label={t('mining.threads')} />
             </Field>
-            <div className="setting-row">
-              <div className="text">
-                <div className="title">{t('mining.lowPriority')}</div>
-                <div className="desc">{t('mining.lowPriorityHint')}</div>
+            {info.capabilities.idleMining && (
+              <div className="setting-row">
+                <div className="text">
+                  <div className="title">{t('mining.lowPriority')}</div>
+                  <div className="desc">{t('mining.lowPriorityHint')}</div>
+                </div>
+                <Toggle checked={m.lowPriority} onChange={(v) => setMining({ lowPriority: v })} label={t('mining.lowPriority')} />
               </div>
-              <Toggle checked={m.lowPriority} onChange={(v) => setMining({ lowPriority: v })} label={t('mining.lowPriority')} />
-            </div>
+            )}
             <div className="setting-row">
               <div className="text">
                 <div className="title row">
-                  <BatteryCharging size={15} /> {t('mining.pauseOnBattery')}
+                  <BatteryCharging size={15} /> {phone ? t('mining.onlyCharging') : t('mining.pauseOnBattery')}
                 </div>
-                <div className="desc">{t('mining.pauseOnBatteryHint')}</div>
+                <div className="desc">{phone ? t('mining.onlyChargingHint', { level: percent(PHONE_MINING.lowBattery, 0) }) : t('mining.pauseOnBatteryHint')}</div>
               </div>
-              <Toggle checked={m.pauseOnBattery} onChange={(v) => setMining({ pauseOnBattery: v })} label={t('mining.pauseOnBattery')} />
+              <Toggle checked={m.pauseOnBattery} onChange={(v) => setMining({ pauseOnBattery: v })} label={phone ? t('mining.onlyCharging') : t('mining.pauseOnBattery')} />
             </div>
-            <div className="setting-row">
-              <div className="text">
-                <div className="title row">
-                  <Moon size={15} /> {t('mining.onlyIdle')}
+            {info.capabilities.idleMining && (
+              <div className="setting-row">
+                <div className="text">
+                  <div className="title row">
+                    <Moon size={15} /> {t('mining.onlyIdle')}
+                  </div>
+                  <div className="desc">{t('mining.onlyIdleHint', { count: m.idleMinutes })}</div>
                 </div>
-                <div className="desc">{t('mining.onlyIdleHint', { count: m.idleMinutes })}</div>
+                <Toggle checked={m.onlyWhenIdle} onChange={(v) => setMining({ onlyWhenIdle: v })} label={t('mining.onlyIdle')} />
               </div>
-              <Toggle checked={m.onlyWhenIdle} onChange={(v) => setMining({ onlyWhenIdle: v })} label={t('mining.onlyIdle')} />
-            </div>
-            {m.onlyWhenIdle && (
+            )}
+            {info.capabilities.idleMining && m.onlyWhenIdle && (
               <Field label={t('mining.startAfter')}>
                 <Segmented
                   value={String(m.idleMinutes)}
@@ -493,7 +583,8 @@ function Miner() {
         </div>
 
         <div className="stack">
-          {m.mode === 'pool' && <PoolBalanceCard balance={poolBalance} m={m} />}
+          {mode === 'pool' && <PoolBalanceCard balance={poolBalance} m={m} />}
+          <SupplyCard />
           <div className="card">
             <div className="card-header">
               <h3>{t('mining.log')}</h3>

@@ -2,11 +2,10 @@ import { join, sep } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { powerMonitor, utilityProcess, type UtilityProcess } from 'electron';
 import { addressToScript, getNetwork, toHex } from '@lbcwallet/core';
-import { UserError, describeError, type MinerEstimateView, type MinerLogEntry, type MinerStatsView, type MiningInfo, type Settings, type SettingsStore } from '@lbcwallet/services';
+import { UserError, describeError, parsePoolUrl, type MinerEstimateView, type MinerLogEntry, type MinerStatsView, type MiningInfo, type Settings, type SettingsStore } from '@lbcwallet/services';
 import type { MinerStartMessage } from './mining/miner-process';
 import { logger } from './log';
 import { pauseReason, type PauseReason } from './mining/pause';
-import { parsePoolUrl } from './mining/pool-url';
 
 const log = logger('miner');
 

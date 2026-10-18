@@ -26,7 +26,7 @@ export function appInfo(s: Services): AppInfo {
     dataDir: app.getPath('userData'),
     cpuCount: cpus().length,
     isPackaged: app.isPackaged,
-    capabilities: { mining: true, node: s.node.available, ownNode: true, proxy: true },
+    capabilities: { mining: true, soloMining: true, idleMining: true, node: s.node.available, ownNode: true, proxy: true },
   };
 }
 

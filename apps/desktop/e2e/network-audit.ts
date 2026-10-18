@@ -31,13 +31,23 @@ async function requestedUrls(settings: Record<string, unknown>): Promise<string[
   try {
     await new Promise((r) => setTimeout(r, 12_000));
     const exited = new Promise((r) => child.once('exit', r));
-    child.kill('SIGTERM'); // graceful quit, so the net-log is finalised
-    await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))]);
-    if (child.exitCode === null) child.kill('SIGKILL');
+    // A graceful quit, so the net-log is finalised: SIGTERM on Linux and macOS; on Windows closing
+    // the window (taskkill without /F) quits the app.
+    if (process.platform === 'win32') spawn('taskkill', ['/PID', String(child.pid)], { stdio: 'ignore' });
+    else child.kill('SIGTERM');
+    await Promise.race([exited, new Promise((r) => setTimeout(r, 15_000))]);
+    if (child.exitCode === null) {
+      if (process.platform === 'win32') spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+      else child.kill('SIGKILL');
+    }
     const log = readFileSync(netLog, 'utf8');
     return [...new Set([...log.matchAll(/"url":"(https?:[^"]+)"/g)].map((m) => m[1]!))];
   } finally {
-    rmSync(dataDir, { recursive: true, force: true });
+    try {
+      rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+    } catch {
+      // a leftover temporary folder is harmless
+    }
   }
 }
 

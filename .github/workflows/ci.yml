@@ -77,6 +77,100 @@ jobs:
             ${{ runner.temp }}/screenshots-packaged
           if-no-files-found: ignore
 
+  installed:
+    name: Installed app on ${{ matrix.name }} (installer, UI test, uninstall)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            lbcd: win-x64
+          - os: macos-latest
+            name: macOS
+            lbcd: mac-arm64
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.24'
+      - name: Build lbcd (bundled in the app, and the local test network)
+        run: bash scripts/build-lbcd.sh ${{ matrix.lbcd }}
+      - run: npm ci
+      - run: npm run build
+      - name: Build the installer (unsigned, like the release builds without signing keys)
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            npx electron-builder --config electron-builder.yml --win nsis --x64 --publish never
+          else
+            npx electron-builder --config electron-builder.yml --mac dmg --arm64 --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false
+          fi
+      - name: Install silently with the default options (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem apps/desktop/release/*/LBC-Wallet-Setup-x64.exe | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\LBC Wallet'
+          foreach ($f in 'LBC Wallet.exe', 'Uninstall LBC Wallet.exe', 'resources\bin\lbcd.exe', 'resources\DISCLAIMER.md', 'resources\LICENSE.txt') {
+            if (-not (Test-Path (Join-Path $dir $f))) { throw "missing after install: $f" }
+          }
+          if (-not (Test-Path (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\LBC Wallet.lnk'))) { throw 'no Start menu shortcut' }
+          "APP_EXECUTABLE=$dir\LBC Wallet.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "LBCD_TEST_BIN=$dir\resources\bin\lbcd.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install from the disk image (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          dmg="$(ls apps/desktop/release/*/LBC-Wallet-mac-arm64.dmg | head -1)"
+          mkdir -p "$RUNNER_TEMP/dmg"
+          # The image shows the license first: skip the pager and answer "agree"
+          # (`|| true`: yes ends with SIGPIPE, and steps run with pipefail).
+          { yes || true; } | PAGER=true hdiutil attach -nobrowse -noautoopen -mountpoint "$RUNNER_TEMP/dmg" "$dmg" > /dev/null
+          ditto "$RUNNER_TEMP/dmg/LBC Wallet.app" "/Applications/LBC Wallet.app"
+          hdiutil detach "$RUNNER_TEMP/dmg"
+          codesign --verify --deep --strict "/Applications/LBC Wallet.app"
+          test -x "/Applications/LBC Wallet.app/Contents/Resources/bin/lbcd"
+          test -f "/Applications/LBC Wallet.app/Contents/Resources/DISCLAIMER.md"
+          echo "APP_EXECUTABLE=/Applications/LBC Wallet.app/Contents/MacOS/LBC Wallet" >> "$GITHUB_ENV"
+          echo "LBCD_TEST_BIN=/Applications/LBC Wallet.app/Contents/Resources/bin/lbcd" >> "$GITHUB_ENV"
+      - name: UI end-to-end test against the installed app and a local test network
+        # The test network runs the lbcd the installer put on disk.
+        run: LBCD_BIN="$LBCD_TEST_BIN" SCREENSHOT_DIR="$RUNNER_TEMP/screenshots-installed" npm run test:ui -w lbc-wallet-desktop
+      - name: Network privacy audit of the installed app
+        run: npm run test:privacy -w lbc-wallet-desktop
+      - name: Uninstall; wallet files stay (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\LBC Wallet'
+          $wallets = Join-Path $env:APPDATA 'LBC Wallet\wallets'
+          New-Item -ItemType Directory -Force -Path $wallets | Out-Null
+          Set-Content -Path (Join-Path $wallets 'keep.lbcwallet.json') -Value '{}'
+          Start-Process -FilePath (Join-Path $dir 'Uninstall LBC Wallet.exe') -ArgumentList '/S' -Wait
+          # The uninstaller continues from a copy of itself; wait for it to finish.
+          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'LBC Wallet.exe')); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path (Join-Path $dir 'LBC Wallet.exe')) { throw 'the uninstaller left the app behind' }
+          if (Test-Path (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\LBC Wallet.lnk')) { throw 'the uninstaller left the Start menu shortcut' }
+          if (-not (Test-Path (Join-Path $wallets 'keep.lbcwallet.json'))) { throw 'the uninstaller deleted wallet files' }
+      - name: Upload UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots-${{ matrix.name }}
+          path: ${{ runner.temp }}/screenshots-installed
+          if-no-files-found: ignore
+
   android:
     name: Android app (regtest stack test, APK, emulator)
     runs-on: ubuntu-latest

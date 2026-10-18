@@ -37,7 +37,7 @@ async function startNetwork() {
     stdio: ['pipe', 'pipe', 'inherit'],
   });
   const rl = createInterface({ input: child.stdout! });
-  const info = await new Promise<{ hubPort: number; fundedPhrase: string }>((resolveInfo, reject) => {
+  const info = await new Promise<{ hubPort: number; poolPort: number; fundedPhrase: string }>((resolveInfo, reject) => {
     const t = setTimeout(() => reject(new Error('regtest network did not start')), 90_000);
     rl.on('line', (line) => {
       try {
@@ -265,11 +265,28 @@ async function main() {
     adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
     await page.getByText('Total balance').waitFor({ timeout: 10_000 });
 
-    // ---------------------------------------------------------------- mining monitor and settings
+    // ---------------------------------------------------------------- mining on the phone
     await page.locator('.bottom-nav button').last().click();
     await page.locator('.sheet').getByText('Mining').click();
-    await page.getByText('Mining runs on your computer').waitFor();
+    await page.getByText('Mining on a phone').waitFor();
+    // The test pool on this computer (it pays the funded wallet).
+    await page.getByRole('combobox', { name: 'Pool' }).selectOption('custom');
+    await page.getByPlaceholder('stratum+tcp://pool.example.com:3334').fill(`stratum+tcp://10.0.2.2:${net.info.poolPort}`);
+    await page.getByRole('button', { name: 'Start mining' }).click();
+    // Real hashing in Web Workers, shares over the native sockets.
+    await page.waitForFunction(() => Number(document.querySelector('.stat .v .positive')?.textContent?.replace(/\D/g, '') || 0) >= 3, undefined, { timeout: 120_000 });
+    await page.getByText(/hashing thread/).first().waitFor();
+    log('the phone mined shares that the pool accepted');
     await shot(page, 'android-09-mining');
+    // Unplugged: mining waits for a charger, and starts again by itself.
+    adb('shell', 'dumpsys', 'battery', 'unplug');
+    await page.getByText(/Waiting for a charger/).waitFor({ timeout: 30_000 });
+    log('mining paused on battery');
+    adb('shell', 'dumpsys', 'battery', 'reset');
+    await page.getByText('Current hashrate').waitFor({ timeout: 60_000 });
+    log('mining resumed on the charger');
+    await page.getByRole('button', { name: 'Stop mining' }).click();
+    await page.getByText('Miner is idle').waitFor({ timeout: 30_000 });
     await page.locator('.bottom-nav button').last().click();
     await page.locator('.sheet').getByText('Settings').click();
     await page.locator('.tab', { hasText: 'About' }).click();

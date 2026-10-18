@@ -128,8 +128,8 @@
     "noPoolApi": "此矿池未配置余额 API。",
     "payoutRule": "当你的余额超过矿池的最低支付额（LBRYPool 为 10 LBC）后，矿池会自动付款。",
     "monitorSub": "查看你的矿机在矿池中的收益。",
-    "monitorTitle": "挖矿需在电脑上进行",
-    "monitorText": "手机挖矿会过热并快速耗电，因此本应用不会在手机上挖矿。请在电脑上安装 LBC Wallet，使用同一个收益地址挖矿，然后在这里查看矿池余额。",
+    "monitorTitle": "无法在这部手机上挖矿",
+    "monitorText": "这部手机的网页引擎无法运行挖矿程序。通常在 Google Play 上更新“Android System WebView”即可解决。在此之前，你可以在电脑上使用同一个收益地址挖矿，并在这里查看矿池余额。",
     "state": {
       "stopped": "已停止",
       "battery": "已暂停（使用电池）",
@@ -139,7 +139,11 @@
       "connectingNode": "正在连接节点…",
       "mining": "挖矿中",
       "waiting": "等待任务",
-      "error": "出错"
+      "error": "出错",
+      "batteryLow": "已暂停（电量低）",
+      "hot": "已暂停（手机发热）",
+      "powerSave": "已暂停（省电模式）",
+      "background": "已暂停（应用在后台）"
     },
     "soloTitle": "独立挖矿需要全节点",
     "soloText": "钱包会向 LBRY 全节点获取区块模板，挖到区块时可独得全部区块奖励。",
@@ -211,7 +215,18 @@
       "other": "{count} 分钟"
     },
     "log": "日志",
-    "logEmpty": "挖矿程序的输出将显示在这里。"
+    "logEmpty": "挖矿程序的输出将显示在这里。",
+    "subPhone": "用这部手机挖 LBRY Credits，奖励直接进入你的钱包。",
+    "pausedCharger": "等待连接充电器，手机插上电源后即开始挖矿",
+    "pausedBatteryLow": "已暂停：电量低于 {level}，请连接充电器",
+    "pausedHot": "手机发热时已暂停，电池温度降至 {temperature} 以下后恢复",
+    "pausedPowerSave": "省电模式开启时已暂停",
+    "pausedBackground": "LBC Wallet 未显示在屏幕上时已暂停",
+    "onlyCharging": "仅在充电时挖矿",
+    "onlyChargingHint": "挖矿会快速消耗手机电量。关闭此项后，电量低于 {level} 时仍会停止挖矿。",
+    "threadsHintPhone": "线程越多挖得越快，但手机也会越热。建议先设为一半。",
+    "phoneTitle": "在手机上挖矿",
+    "phoneText": "只有当 LBC Wallet 在屏幕上打开时才会挖矿，期间屏幕会保持常亮。电池温度达到 {temperature} 或开启省电模式时，挖矿会暂停；除非你更改设置，否则手机未充电时也会暂停。手机只能挖到极少量的 LBC，而且长时间挖矿会损耗电池。请保持手机连接充电器、避免阳光直射，并取下手机壳。"
   },
   "badge": {
     "pending": "待确认",
@@ -283,7 +298,7 @@
   },
   "welcome": {
     "lead": "一款非托管的 LBRY Credits 钱包，内置挖矿功能。你的密钥永远不会离开这台电脑。",
-    "leadMobile": "一款非托管的 LBRY Credits 钱包。你的密钥永远不会离开这台设备。",
+    "leadMobile": "一款非托管的 LBRY Credits 钱包，内置挖矿功能。你的密钥永远不会离开这部手机。",
     "yourWallets": "你的钱包",
     "walletMeta": "{kind} · 创建于 {date}",
     "kindLbry": "兼容 LBRY Desktop / Odysee",
@@ -462,7 +477,9 @@
     "nodeAlreadyRunning": "另一个程序正在使用此节点文件夹。",
     "exportUnsupported": "此设备不支持导出文件。",
     "operationFailed": "{detail}",
-    "minerCrashed": "挖矿程序意外停止。详情请查看下方日志。"
+    "minerCrashed": "挖矿程序意外停止。详情请查看下方日志。",
+    "soloUnsupported": "独立挖矿需要全节点，但此设备不支持运行全节点。请选择矿池挖矿。",
+    "minerEngineFailed": "挖矿程序无法在此设备上启动（{detail}）。在 Google Play 上更新“Android System WebView”可能会解决此问题。"
   },
   "notice": {
     "received": {
@@ -832,5 +849,18 @@
     "peersLabel": "同时连接到这些节点（可选）",
     "peersHint": "每行填写 1 个地址，格式为 host:port，例如你在另一台电脑上运行的节点。在节点启动时生效。",
     "peersInvalid": "不是 host:port 格式的地址：{peers}"
+  },
+  "supply": {
+    "title": "LBC 供应量",
+    "minedShare": "已产出 LBC 总量的 {percent}",
+    "left": "尚未挖出",
+    "reward": "当前区块奖励",
+    "nextDrop": "下次奖励下调",
+    "nextDropValue": "在区块 {block} 降至 {reward} LBC（还有约 {when}）",
+    "lastReward": "最后一笔区块奖励",
+    "lastRewardValue": "区块 {block}，约 {year} 年",
+    "issued": "目前已产出",
+    "total": "最终总供应量",
+    "hint": "以上数据依据 LBRY 的奖励规则计算得出，每个节点都会校验这套规则：区块奖励会逐级下调，每级减少 1 LBC，每一级持续的时间越来越长，直到奖励降为零。之后，矿工只能赚取交易手续费。区块 0 产出了 400,000,000 LBC（LBRY 的预挖），其余的 LBC 全部支付给矿工。"
   }
 }

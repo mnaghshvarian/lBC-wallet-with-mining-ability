@@ -11,12 +11,16 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi, createCoreHandlers, MiningInfo, PriceService, SettingsStore, WalletService, type LbcApi, type Platform } from '@lbcwallet/services';
 import { lbcdAvailable, startRegtest, waitFor, type RegtestNode } from '../../../packages/core/e2e/harness';
 import { startRegtestHub, type RegtestHub } from '../../../packages/core/e2e/regtest-hub';
+import { startTestPool, type TestPool } from '../../../packages/core/e2e/test-pool';
 import { REGTEST } from '../../../packages/core/src/networks';
+import { addressToScript } from '../../../packages/core/src/address';
+import { InProcessThreads } from '../../../packages/core/src/mining/coordinator';
 import { AddressDeriver, deriveAccountKey, publicOnly } from '../../../packages/core/src/keys/hd';
 import { durableFiles } from '../src/files';
 import { NativeSockets } from '../src/sockets';
 import { EventBus, inAppTransport } from '../src/transport';
 import { createAndroidHandlers } from '../src/handlers';
+import { PhoneMinerService } from '../src/miner-service';
 import type { LbcNativePlugin, SocketEvent } from '../src/native';
 
 const PHRASE = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -73,6 +77,9 @@ describe.skipIf(!lbcdAvailable())('Android wallet stack against lbcd regtest', (
   let hub: RegtestHub;
   let api: LbcApi;
   let wallets: WalletService;
+  let pool: TestPool;
+  let miner: PhoneMinerService;
+  let settings: SettingsStore;
 
   beforeAll(async () => {
     const account = deriveAccountKey(PHRASE, 'bip44', REGTEST);
@@ -99,7 +106,7 @@ describe.skipIf(!lbcdAvailable())('Android wallet stack against lbcd regtest', (
       fetchJson: async () => null,
       cpuCount: 4,
     };
-    const settings = new SettingsStore(files, 4);
+    settings = new SettingsStore(files, 4);
     settings.update({ network: 'regtest', useDefaultHubs: false, customHubs: [{ host: '127.0.0.1', port: hub.port }], requirePasswordToSend: true });
     const bus = new EventBus();
     const price = new PriceService(platform, settings, () => undefined);
@@ -111,11 +118,25 @@ describe.skipIf(!lbcdAvailable())('Android wallet stack against lbcd regtest', (
     });
     const miningInfo = new MiningInfo(platform, settings, { walletAddress: () => wallets.miningAddress(), chainTip: () => wallets.tipBits(), price: () => null });
     const info = { sdkInt: 35, release: '15', webView: '140', versionName: '1.0.0', dataDir: '/data', debug: true };
-    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo }), ...createAndroidHandlers({ info, native: {} as LbcNativePlugin, settings, wallets, miningInfo }) };
+    // The phone's miner with the app's socket bridge; threads hash in-process here (the app uses Web Workers).
+    miner = new PhoneMinerService({
+      settings,
+      miningInfo,
+      clientName: platform.clientName,
+      transport: (endpoint) => platform.lineTransport(endpoint, { connectTimeoutMs: 10_000 }),
+      createThreads: (count) => InProcessThreads.create(count),
+      power: async () => ({ pluggedIn: true, level: 1, temperature: 30, thermal: 0, powerSave: false }),
+      keepScreenOn: async () => undefined,
+      onStats: (st) => bus.emit('miner:stats', st),
+      onLog: (e) => bus.emit('miner:log', e),
+    });
+    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo }), ...createAndroidHandlers({ info, native: {} as LbcNativePlugin, settings, wallets, miningInfo, miner }) };
     api = createApi(inAppTransport(handlers, bus, { flush: files.flush, activity: () => wallets.touch(), log: (m) => console.error(m) }));
   }, 90_000);
 
   afterAll(async () => {
+    await miner?.shutdown();
+    await pool?.close();
     await wallets?.shutdown();
     await hub?.close();
     await node?.stop();
@@ -141,5 +162,26 @@ describe.skipIf(!lbcdAvailable())('Android wallet stack against lbcd regtest', (
     expect(confirmed!.label).toBe('From the phone');
     expect(confirmed!.amount.startsWith('-')).toBe(true);
     expect(restored.id).toBeTruthy();
+  }, 120_000);
+
+  it('mines on the phone through a pool: shares are accepted and blocks pay the wallet', async () => {
+    const overview = await api.wallet.overview();
+    const payout = overview!.receiveAddress;
+    pool = await startTestPool(node.rpc, addressToScript(payout, REGTEST), 0.005);
+    settings.update({ mining: { ...settings.get().mining, mode: 'pool', poolUrl: `stratum+tcp://127.0.0.1:${pool.port}`, threads: 1, pauseOnBattery: true } });
+    const started = await api.miner.start();
+    expect(started.paused).toBeUndefined();
+    const mining = await waitFor(() => api.miner.status(), (st) => st.accepted >= 3 && st.hashrate > 0, 90_000, 'accepted shares');
+    expect(mining.mode).toBe('pool');
+    expect(mining.hashrate).toBeGreaterThan(0);
+    expect(pool.accepted).toBeGreaterThanOrEqual(3);
+    expect(pool.rejected).toBe(0);
+    // Regtest blocks are easy: some of those shares were whole blocks, paying the wallet's address.
+    expect(pool.blocks.length).toBeGreaterThan(0);
+    const before = (await api.wallet.transactions()).filter((t) => t.type === 'mining').length;
+    await waitFor(() => api.wallet.transactions(), (list) => list.filter((t) => t.type === 'mining').length > before, 30_000, 'mining reward in the wallet');
+    expect((await api.miner.logs()).some((l) => /hashing thread/.test(l.message))).toBe(true);
+    const stopped = await api.miner.stop();
+    expect(stopped.state).toBe('stopped');
   }, 120_000);
 });

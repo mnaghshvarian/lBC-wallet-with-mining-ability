@@ -88,6 +88,15 @@ export function number(n: number, digits = 0): string {
   return n.toLocaleString(locale, { maximumFractionDigits: digits, minimumFractionDigits: digits });
 }
 
+/**
+ * A temperature in the UI language (e.g. "40°C", Arabic "40°م"), isolated so a
+ * right-to-left sentence cannot reorder it into "C° 40".
+ */
+export function celsius(value: number): string {
+  const text = new Intl.NumberFormat(locale, { style: 'unit', unit: 'celsius', maximumFractionDigits: 0 }).format(value);
+  return `\u2068${text}\u2069`;
+}
+
 export function compact(n: number): string {
   return new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 2 }).format(n);
 }

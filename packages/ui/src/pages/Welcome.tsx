@@ -22,7 +22,7 @@ export function Welcome() {
         <h1>
           LBC Wallet {settings && settings.network !== 'mainnet' && <Badge tone="amber">{settings.network}</Badge>}
         </h1>
-        <p className="lead">{info?.capabilities.mining ? t('welcome.lead') : t('welcome.leadMobile')}</p>
+        <p className="lead">{info?.kind === 'android' ? t('welcome.leadMobile') : t('welcome.lead')}</p>
 
         {wallets.length > 0 && (
           <div className="stack" style={{ marginBottom: 22 }}>

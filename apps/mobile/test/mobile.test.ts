@@ -175,14 +175,15 @@ describe('android handlers', () => {
     const settings = new SettingsStore(files, 4);
     const wallets = { exportCsv: () => 'date,amount\n' } as unknown as WalletService;
     const miningInfo = { estimate: vi.fn(() => ({ networkHashrate: 0, blockReward: 0, lbcPerDay: 0, daysPerBlock: Infinity, fiatPerDay: null, basis: 'none' })), poolBalance: vi.fn(async () => null) } as unknown as MiningInfo;
-    return createAndroidHandlers({ info: INFO, native, settings, wallets, miningInfo });
+    return createAndroidHandlers({ info: INFO, native, settings, wallets, miningInfo, miner: null });
   }
 
-  it('describes an Android device without mining or a full node', () => {
-    const info = androidAppInfo(INFO);
+  it('describes an Android device that pool-mines but runs no full node', () => {
+    const info = androidAppInfo(INFO, true);
     expect(info.kind).toBe('android');
-    expect(info.capabilities).toEqual({ mining: false, node: false, ownNode: false, proxy: false });
+    expect(info.capabilities).toEqual({ mining: true, soloMining: false, idleMining: false, node: false, ownNode: false, proxy: false });
     expect(info.runtime).toContain('Android 15');
+    expect(androidAppInfo(INFO, false).capabilities.mining).toBe(false);
   });
 
   it('opens only https links and passes the sensitive flag to the clipboard', async () => {
@@ -196,7 +197,7 @@ describe('android handlers', () => {
     expect(native.setSecure).toHaveBeenCalledWith({ on: true });
   });
 
-  it('refuses to mine and shares exports instead of saving them', async () => {
+  it('refuses to mine without a miner (old WebView) and shares exports instead of saving them', async () => {
     const h = await handlers();
     expect(() => h['miner:start']!()).toThrow(expect.objectContaining({ code: 'miningUnsupported' }));
     expect(await h['wallet:exportCsv']!()).toEqual({ saved: false });
@@ -232,7 +233,7 @@ describe('services over the Android adapters', () => {
       notice: (n) => bus.emit('notice', n),
     });
     const miningInfo = new MiningInfo(platform, settings, { walletAddress: () => wallets.miningAddress(), chainTip: () => wallets.tipBits(), price: () => null });
-    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo }), ...createAndroidHandlers({ info: INFO, native: {} as LbcNativePlugin, settings, wallets, miningInfo }) };
+    const handlers = { ...createCoreHandlers({ platform, settings, wallets, price, miningInfo }), ...createAndroidHandlers({ info: INFO, native: {} as LbcNativePlugin, settings, wallets, miningInfo, miner: null }) };
     const api = createApi(inAppTransport(handlers, bus, { flush: files.flush, activity: () => wallets.touch(), log: () => undefined }));
 
     const mnemonic = await api.wallets.generateMnemonic(12);

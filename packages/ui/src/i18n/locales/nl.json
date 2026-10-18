@@ -128,8 +128,8 @@
     "noPoolApi": "Voor deze pool is geen saldo-API ingesteld.",
     "payoutRule": "Pools betalen automatisch uit zodra je saldo hun minimum overschrijdt (10 LBC bij LBRYPool).",
     "monitorSub": "Volg wat je miners bij de pool verdienen.",
-    "monitorTitle": "Minen gebeurt op je computer",
-    "monitorText": "Telefoons raken oververhit en hun batterij loopt leeg als ze minen, daarom doet deze app zelf niet aan mining. Installeer LBC Wallet op een computer, gebruik daar bij het minen hetzelfde uitbetalingsadres en volg het poolsaldo hier.",
+    "monitorTitle": "Minen is niet beschikbaar op deze telefoon",
+    "monitorText": "De webengine van deze telefoon kan de miner niet uitvoeren. Meestal los je dit op door “Android System WebView” bij te werken via de Play Store. In de tussentijd kun je op een computer minen met hetzelfde uitbetalingsadres en het poolsaldo hier volgen.",
     "state": {
       "stopped": "Gestopt",
       "battery": "Gepauzeerd (op batterij)",
@@ -139,7 +139,11 @@
       "connectingNode": "Verbinden met node…",
       "mining": "Aan het minen",
       "waiting": "Wacht op werk",
-      "error": "Fout"
+      "error": "Fout",
+      "batteryLow": "Gepauzeerd (batterij bijna leeg)",
+      "hot": "Gepauzeerd (telefoon te warm)",
+      "powerSave": "Gepauzeerd (batterijbesparing)",
+      "background": "Gepauzeerd (app op de achtergrond)"
     },
     "soloTitle": "Voor solo minen is een full node nodig",
     "soloText": "De wallet vraagt bloksjablonen op bij een full node van LBRY en houdt de volledige blokbeloning als er een blok wordt gevonden.",
@@ -215,7 +219,18 @@
       "other": "{count} min"
     },
     "log": "Logboek",
-    "logEmpty": "De uitvoer van de miner verschijnt hier."
+    "logEmpty": "De uitvoer van de miner verschijnt hier.",
+    "subPhone": "Met deze telefoon LBRY Credits minen – beloningen gaan direct naar je wallet.",
+    "pausedCharger": "Wacht op een oplader – het minen begint zodra de telefoon is aangesloten",
+    "pausedBatteryLow": "Gepauzeerd: de batterij is lager dan {level} – sluit een oplader aan",
+    "pausedHot": "Gepauzeerd zolang de telefoon te warm is – gaat verder zodra de batterij koeler is dan {temperature}",
+    "pausedPowerSave": "Gepauzeerd zolang batterijbesparing aanstaat",
+    "pausedBackground": "Gepauzeerd zolang LBC Wallet niet op het scherm staat",
+    "onlyCharging": "Alleen tijdens het opladen",
+    "onlyChargingHint": "Minen trekt de batterij van een telefoon snel leeg. Als je dit uitzet, stopt het minen toch zodra de batterij onder {level} zakt.",
+    "threadsHintPhone": "Meer threads minen sneller, maar maken de telefoon warmer. Begin met de helft.",
+    "phoneTitle": "Minen op een telefoon",
+    "phoneText": "Het minen draait alleen zolang LBC Wallet open op het scherm staat, en het scherm blijft al die tijd aan. Het minen pauzeert als de batterij {temperature} bereikt, zolang batterijbesparing aanstaat en – tenzij je dat aanpast – zolang de telefoon niet aan het opladen is. Een telefoon verdient maar heel weinig, en lang minen verslijt de batterij: houd hem aan de oplader, uit de zon en uit zijn hoesje."
   },
   "badge": {
     "pending": "In behandeling",
@@ -290,7 +305,7 @@
   },
   "welcome": {
     "lead": "Een wallet in eigen beheer voor LBRY Credits – met ingebouwde miningfunctie. Je sleutels verlaten deze computer nooit.",
-    "leadMobile": "Een wallet in eigen beheer voor LBRY Credits. Je sleutels verlaten dit apparaat nooit.",
+    "leadMobile": "Een wallet in eigen beheer voor LBRY Credits – met ingebouwde miningfunctie. Je sleutels verlaten deze telefoon nooit.",
     "yourWallets": "Je wallets",
     "walletMeta": "{kind} · aangemaakt op {date}",
     "kindLbry": "Compatibel met LBRY Desktop / Odysee",
@@ -471,7 +486,9 @@
     "nodeAlreadyRunning": "Een ander programma gebruikt deze map van de node al.",
     "exportUnsupported": "Bestanden exporteren is niet beschikbaar op dit apparaat.",
     "operationFailed": "{detail}",
-    "minerCrashed": "De miner is onverwacht gestopt. Zie het logboek hieronder voor details."
+    "minerCrashed": "De miner is onverwacht gestopt. Zie het logboek hieronder voor details.",
+    "soloUnsupported": "Voor solo minen is een full node nodig, maar op dit apparaat draait er geen. Kies voor minen in een pool.",
+    "minerEngineFailed": "De miner kon niet starten op dit apparaat ({detail}). Het kan helpen om “Android System WebView” bij te werken via de Play Store."
   },
   "notice": {
     "received": {
@@ -859,5 +876,18 @@
     "peersLabel": "Ook verbinden met deze nodes (optioneel)",
     "peersHint": "Eén adres per regel, als host:port – bijvoorbeeld je eigen node op een andere computer. Wordt actief wanneer de node start.",
     "peersInvalid": "Geen host:port-adres: {peers}"
+  },
+  "supply": {
+    "title": "Hoeveelheid LBC",
+    "minedShare": "{percent} van alle LBC is al aangemaakt",
+    "left": "Nog te minen",
+    "reward": "Huidige blokbeloning",
+    "nextDrop": "Volgende verlaging",
+    "nextDropValue": "naar {reward} LBC bij blok {block} (over ongeveer {when})",
+    "lastReward": "Laatste blokbeloning",
+    "lastRewardValue": "blok {block}, rond {year}",
+    "issued": "Tot nu toe aangemaakt",
+    "total": "Maximale hoeveelheid",
+    "hint": "Berekend volgens de beloningsregels van LBRY, die elke node controleert: de beloning daalt telkens met 1 LBC, in stappen die steeds langer duren, tot ze nul is. Daarna verdienen miners alleen nog transactiekosten. In blok 0 is 400.000.000 LBC aangemaakt (de pre-mine van LBRY); alle overige LBC wordt aan miners uitbetaald."
   }
 }

@@ -5,13 +5,16 @@ import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PersistableBundle;
+import android.os.PowerManager;
 import android.view.WindowManager;
 
 import androidx.core.content.FileProvider;
@@ -103,6 +106,43 @@ public class LbcNativePlugin extends Plugin {
         getActivity().runOnUiThread(() -> {
             if (on) getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
             else getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+            call.resolve();
+        });
+    }
+
+    // ------------------------------------------------------------------ mining
+
+    /** Battery, temperature and battery saver, so mining can pause when the phone is unplugged, warm or saving power. */
+    @PluginMethod
+    public void powerState(PluginCall call) {
+        Context ctx = getContext();
+        // The battery broadcast is sticky: registering without a receiver returns the latest one.
+        Intent battery = ctx.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        JSObject r = new JSObject();
+        if (battery != null) {
+            r.put("pluggedIn", battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0);
+            int level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            if (level >= 0 && scale > 0) r.put("level", (double) level / scale);
+            // Tenths of a degree Celsius.
+            int temperature = battery.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Integer.MIN_VALUE);
+            if (temperature != Integer.MIN_VALUE) r.put("temperature", temperature / 10.0);
+        } else {
+            r.put("pluggedIn", false);
+        }
+        PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+        r.put("powerSave", pm != null && pm.isPowerSaveMode());
+        r.put("thermal", pm != null && Build.VERSION.SDK_INT >= 29 ? pm.getCurrentThermalStatus() : 0);
+        call.resolve(r);
+    }
+
+    /** Keeps the screen on while the phone mines (mining runs only while the app is on screen). */
+    @PluginMethod
+    public void keepScreenOn(PluginCall call) {
+        final boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        getActivity().runOnUiThread(() -> {
+            if (on) getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             call.resolve();
         });
     }

@@ -128,8 +128,8 @@
     "noPoolApi": "Este pool não tem uma API de saldo configurada.",
     "payoutRule": "Os pools pagam automaticamente quando o seu saldo passa do mínimo deles (10 LBC no LBRYPool).",
     "monitorSub": "Acompanhe quanto seus mineradores ganham no pool.",
-    "monitorTitle": "A mineração acontece no seu computador",
-    "monitorText": "Smartphones aquecem demais e gastam muita bateria ao minerar, por isso este app não minera. Instale o LBC Wallet em um computador, minere para o mesmo endereço de pagamento e acompanhe aqui o saldo do pool.",
+    "monitorTitle": "A mineração não está disponível neste celular",
+    "monitorText": "O mecanismo web deste celular não consegue executar o minerador. Atualizar o “Android System WebView” na Play Store costuma resolver o problema. Enquanto isso, você pode minerar em um computador para o mesmo endereço de pagamento e acompanhar aqui o saldo do pool.",
     "state": {
       "stopped": "Parado",
       "battery": "Pausado (na bateria)",
@@ -139,7 +139,11 @@
       "connectingNode": "Conectando ao nó…",
       "mining": "Minerando",
       "waiting": "Aguardando trabalho",
-      "error": "Erro"
+      "error": "Erro",
+      "batteryLow": "Pausado (bateria fraca)",
+      "hot": "Pausado (celular quente)",
+      "powerSave": "Pausado (economia de bateria)",
+      "background": "Pausado (app em segundo plano)"
     },
     "soloTitle": "A mineração solo precisa de um nó completo",
     "soloText": "A carteira pede modelos de bloco a um nó completo LBRY e fica com a recompensa inteira do bloco quando encontra um.",
@@ -219,7 +223,18 @@
       "other": "{count} min"
     },
     "log": "Log",
-    "logEmpty": "A saída do minerador aparecerá aqui."
+    "logEmpty": "A saída do minerador aparecerá aqui.",
+    "subPhone": "Minere LBRY Credits com este celular — as recompensas vão direto para sua carteira.",
+    "pausedCharger": "Aguardando um carregador — a mineração começa quando o celular for ligado à tomada",
+    "pausedBatteryLow": "Pausado: a bateria está abaixo de {level} — conecte um carregador",
+    "pausedHot": "Pausado enquanto o celular estiver quente — volta a minerar quando a bateria ficar abaixo de {temperature}",
+    "pausedPowerSave": "Pausado enquanto a economia de bateria estiver ativada",
+    "pausedBackground": "Pausado enquanto o LBC Wallet não estiver na tela",
+    "onlyCharging": "Apenas enquanto carrega",
+    "onlyChargingHint": "Minerar gasta a bateria do celular rapidamente. Se você desativar esta opção, a mineração ainda vai parar quando a bateria ficar abaixo de {level}.",
+    "threadsHintPhone": "Mais threads mineram mais rápido, mas deixam o celular mais quente. Comece com a metade.",
+    "phoneTitle": "Minerar no celular",
+    "phoneText": "A mineração só funciona enquanto o LBC Wallet estiver aberto na tela, e a tela fica acesa durante esse tempo. Ela pausa quando a bateria chega a {temperature}, quando a economia de bateria está ativada e, a menos que você mude essa opção, quando o celular não está carregando. Um celular ganha muito pouco, e minerar por muito tempo desgasta a bateria: deixe-o no carregador, longe do sol e sem a capa."
   },
   "badge": {
     "pending": "Pendente",
@@ -297,7 +312,7 @@
   },
   "welcome": {
     "lead": "Uma carteira não custodial para LBRY Credits — com mineração integrada. Suas chaves nunca saem deste computador.",
-    "leadMobile": "Uma carteira não custodial para LBRY Credits. Suas chaves nunca saem deste dispositivo.",
+    "leadMobile": "Uma carteira não custodial para LBRY Credits — com mineração integrada. Suas chaves nunca saem deste celular.",
     "yourWallets": "Suas carteiras",
     "walletMeta": "{kind} · criada em {date}",
     "kindLbry": "Compatível com LBRY Desktop / Odysee",
@@ -480,7 +495,9 @@
     "nodeAlreadyRunning": "Outro programa já está usando esta pasta do nó.",
     "exportUnsupported": "A exportação de arquivos não está disponível neste dispositivo.",
     "operationFailed": "{detail}",
-    "minerCrashed": "O minerador parou inesperadamente. Veja o log abaixo para mais detalhes."
+    "minerCrashed": "O minerador parou inesperadamente. Veja o log abaixo para mais detalhes.",
+    "soloUnsupported": "A mineração solo precisa de um nó completo, que este dispositivo não executa. Escolha a mineração em pool.",
+    "minerEngineFailed": "O minerador não conseguiu iniciar neste dispositivo ({detail}). Atualizar o “Android System WebView” na Play Store pode ajudar."
   },
   "notice": {
     "received": {
@@ -886,5 +903,18 @@
     "peersLabel": "Conectar também a estes nós (opcional)",
     "peersHint": "Um endereço por linha, no formato host:port — por exemplo, seu próprio nó em outro computador. Entra em vigor quando o nó é iniciado.",
     "peersInvalid": "Fora do formato host:port: {peers}"
+  },
+  "supply": {
+    "title": "Oferta de LBC",
+    "minedShare": "{percent} de todos os LBC já foram criados",
+    "left": "Falta minerar",
+    "reward": "Recompensa atual por bloco",
+    "nextDrop": "Próxima redução da recompensa",
+    "nextDropValue": "para {reward} LBC no bloco {block} (daqui a cerca de {when})",
+    "lastReward": "Última recompensa de bloco",
+    "lastRewardValue": "bloco {block}, por volta de {year}",
+    "issued": "Criados até agora",
+    "total": "Oferta máxima",
+    "hint": "De acordo com as regras de recompensa do LBRY, que todos os nós verificam: a recompensa cai 1 LBC a cada etapa, com etapas cada vez mais longas, até chegar a zero. Depois disso, os mineradores ganham apenas as taxas das transações. O bloco 0 criou 400.000.000 LBC (a pré-mineração do LBRY); todos os outros LBC são pagos aos mineradores."
   }
 }

@@ -19,7 +19,7 @@
  * is disabled by the fuses, so the test drives the window over the Chrome
  * DevTools protocol instead.
  */
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -61,12 +61,20 @@ async function startNetwork() {
   return {
     info,
     mine: (n: number) => child.stdin!.write(`mine ${n}\n`),
-    stop: () =>
-      new Promise<void>((res) => {
-        child.once('exit', () => res());
-        child.kill('SIGTERM');
-      }),
+    stop: async () => {
+      if (child.exitCode !== null) return;
+      const exited = new Promise<void>((res) => child.once('exit', () => res()));
+      child.stdin!.write('stop\n');
+      await Promise.race([exited, new Promise((r) => setTimeout(r, 20_000))]);
+      if (child.exitCode === null) forceKill(child);
+    },
   };
+}
+
+/** Ends a process and its children (on Windows, kill() only ends the process itself). */
+function forceKill(child: ChildProcess): void {
+  if (process.platform === 'win32' && child.pid) spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+  else child.kill('SIGKILL');
 }
 
 interface RunningApp {
@@ -122,10 +130,15 @@ async function launchPackaged(executable: string, dataDir: string): Promise<Runn
   return {
     page,
     close: async () => {
+      // Quit the way the app's own menu does, so it shuts its services down cleanly (Windows has no SIGTERM).
+      await page.evaluate(() => void (window as unknown as { lbc: { app: { quit(): Promise<void> } } }).lbc.app.quit()).catch(() => undefined);
+      await Promise.race([exited, new Promise((r) => setTimeout(r, 15_000))]);
       await browser.close().catch(() => undefined);
-      child.kill('SIGTERM'); // Electron quits gracefully on SIGTERM
-      await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))]);
-      if (child.exitCode === null) child.kill('SIGKILL');
+      if (child.exitCode === null) {
+        child.kill('SIGTERM'); // Electron quits gracefully on SIGTERM (Linux, macOS)
+        await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))]);
+      }
+      if (child.exitCode === null) forceKill(child);
     },
   };
 }
@@ -280,15 +293,19 @@ async function main() {
     await page.getByRole('button', { name: 'Start mining' }).waitFor({ timeout: 15_000 });
 
     // "Only when idle": while the computer is in use the miner waits instead of hashing.
-    await page.getByRole('switch', { name: 'Only when idle' }).click();
-    await page.getByRole('tab', { name: '30 min' }).click();
-    await page.getByRole('button', { name: 'Start mining' }).click();
-    await page.locator('.badge', { hasText: 'Waiting for idle' }).waitFor({ timeout: 15_000 });
-    await page.getByText(/resumes after 30 minutes idle/).waitFor();
-    await shot(page, '13b-mining-idle');
-    await page.getByRole('button', { name: 'Stop mining' }).click();
-    await page.getByRole('button', { name: 'Start mining' }).waitFor({ timeout: 15_000 });
-    await page.getByRole('switch', { name: 'Only when idle' }).click();
+    // Checked where the test starts a fresh display (xvfb), so the system idle time is short;
+    // a Windows or macOS CI machine may have had no input for hours.
+    if (process.platform === 'linux') {
+      await page.getByRole('switch', { name: 'Only when idle' }).click();
+      await page.getByRole('tab', { name: '30 min' }).click();
+      await page.getByRole('button', { name: 'Start mining' }).click();
+      await page.locator('.badge', { hasText: 'Waiting for idle' }).waitFor({ timeout: 15_000 });
+      await page.getByText(/resumes after 30 minutes idle/).waitFor();
+      await shot(page, '13b-mining-idle');
+      await page.getByRole('button', { name: 'Stop mining' }).click();
+      await page.getByRole('button', { name: 'Start mining' }).waitFor({ timeout: 15_000 });
+      await page.getByRole('switch', { name: 'Only when idle' }).click();
+    }
 
     // ---------------------------------------------------------------- built-in node
     await page.locator('.nav-item', { hasText: 'Node' }).click();
@@ -387,7 +404,11 @@ async function main() {
   } finally {
     await app?.close().catch(() => undefined);
     await net.stop();
-    rmSync(dataDir, { recursive: true, force: true });
+    try {
+      rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+    } catch (err) {
+      log(`could not remove ${dataDir}: ${(err as Error).message}`);
+    }
   }
 }
 

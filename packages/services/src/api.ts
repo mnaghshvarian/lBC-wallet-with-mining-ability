@@ -89,6 +89,10 @@ export interface AppInfo {
   capabilities: {
     /** CPU mining on this device. */
     mining: boolean;
+    /** Solo mining (needs the built-in node or the user's own). */
+    soloMining: boolean;
+    /** Mining at low priority and "only when idle" (keyboard and mouse input). */
+    idleMining: boolean;
     /** The built-in full node. */
     node: boolean;
     /** Connecting to the user's own lbcd over RPC. */
@@ -254,9 +258,19 @@ export interface MinerStatsView {
   errorParams?: Record<string, string | number>;
   server?: string;
   payoutAddress?: string;
-  /** Mining is switched on but paused: laptop on battery, or the computer is in use ("only when idle"). */
-  paused?: 'battery' | 'in-use';
+  /** Mining is switched on but paused until the reason goes away. */
+  paused?: MinerPauseReason;
 }
+
+/** Limits of mining on a phone: it pauses at `hotC` battery temperature and resumes below `resumeC`; with mining on battery allowed it stops below `lowBattery`. */
+export const PHONE_MINING = { hotC: 40, resumeC: 37, lowBattery: 0.3 } as const;
+
+/**
+ * Why switched-on mining is paused: on battery power, the computer is in use
+ * ("only when idle"); on a phone also a low battery, a hot phone, battery
+ * saver, or the app not being on screen.
+ */
+export type MinerPauseReason = 'battery' | 'in-use' | 'battery-low' | 'hot' | 'power-save' | 'background';
 
 export interface MinerEstimateView {
   networkHashrate: number;

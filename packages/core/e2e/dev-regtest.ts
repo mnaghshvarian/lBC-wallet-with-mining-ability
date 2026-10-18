@@ -27,11 +27,6 @@ async function main() {
   console.log(JSON.stringify(info));
   let timer: ReturnType<typeof setInterval> | undefined;
   if (process.env.AUTOMINE) timer = setInterval(() => void node.generate(1).catch(() => undefined), Number(process.env.AUTOMINE) * 1000);
-  process.stdin.on('data', (d) => {
-    const cmd = d.toString().trim();
-    const m = /^mine (\d+)$/.exec(cmd);
-    if (m) void node.generate(Number(m[1])).then((h) => console.log(JSON.stringify({ mined: h.length })));
-  });
   const stop = async () => {
     if (timer) clearInterval(timer);
     await pool.close();
@@ -39,6 +34,13 @@ async function main() {
     await node.stop();
     process.exit(0);
   };
+  process.stdin.on('data', (d) => {
+    const cmd = d.toString().trim();
+    const m = /^mine (\d+)$/.exec(cmd);
+    if (m) void node.generate(Number(m[1])).then((h) => console.log(JSON.stringify({ mined: h.length })));
+    // Windows has no SIGTERM handler; tests ask over stdin instead.
+    if (cmd === 'stop') void stop();
+  });
   process.on('SIGINT', () => void stop());
   process.on('SIGTERM', () => void stop());
 }

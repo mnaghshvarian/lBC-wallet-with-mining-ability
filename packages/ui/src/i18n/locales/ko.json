@@ -128,8 +128,8 @@
     "noPoolApi": "이 풀에는 잔액 API가 설정되어 있지 않아요.",
     "payoutRule": "잔액이 풀의 최소 지급액(LBRYPool은 10 LBC)을 넘으면 풀이 자동으로 지급해요.",
     "monitorSub": "채굴기가 풀에서 얼마나 벌고 있는지 확인하세요.",
-    "monitorTitle": "채굴은 컴퓨터에서 실행돼요",
-    "monitorText": "휴대폰은 채굴하면 과열되고 배터리가 빨리 닳아서 이 앱에서는 채굴하지 않아요. 컴퓨터에 LBC Wallet을 설치해 같은 지급 주소로 채굴하고, 여기에서 풀 잔액을 확인하세요.",
+    "monitorTitle": "이 휴대폰에서는 채굴을 사용할 수 없어요",
+    "monitorText": "이 휴대폰의 웹 엔진으로는 채굴기를 실행할 수 없어요. Play 스토어에서 “Android System WebView”를 업데이트하면 대부분 해결돼요. 그동안에는 컴퓨터에서 같은 지급 주소로 채굴하고, 여기에서 풀 잔액을 확인할 수 있어요.",
     "state": {
       "stopped": "중지됨",
       "battery": "일시 중지됨 (배터리 사용 중)",
@@ -139,7 +139,11 @@
       "connectingNode": "노드에 연결하는 중…",
       "mining": "채굴 중",
       "waiting": "작업 대기 중",
-      "error": "오류"
+      "error": "오류",
+      "batteryLow": "일시 중지됨 (배터리 부족)",
+      "hot": "일시 중지됨 (휴대폰 온도 높음)",
+      "powerSave": "일시 중지됨 (절전 모드)",
+      "background": "일시 중지됨 (백그라운드 상태)"
     },
     "soloTitle": "솔로 채굴에는 풀 노드가 필요해요",
     "soloText": "지갑이 LBRY 풀 노드에 블록 템플릿을 요청하고, 블록을 찾으면 블록 보상 전체를 가져요.",
@@ -211,7 +215,18 @@
       "other": "{count}분"
     },
     "log": "로그",
-    "logEmpty": "채굴기 출력이 여기에 표시돼요."
+    "logEmpty": "채굴기 출력이 여기에 표시돼요.",
+    "subPhone": "이 휴대폰으로 LBRY Credits를 채굴하세요. 보상은 바로 지갑으로 들어와요.",
+    "pausedCharger": "충전을 기다리는 중이에요 — 휴대폰을 충전기에 연결하면 채굴을 시작해요",
+    "pausedBatteryLow": "배터리가 {level} 미만이라 일시 중지됐어요 — 충전기를 연결하세요",
+    "pausedHot": "휴대폰 온도가 높은 동안 일시 중지돼요 — 배터리 온도가 {temperature} 아래로 내려가면 다시 시작해요",
+    "pausedPowerSave": "절전 모드가 켜져 있는 동안 일시 중지돼요",
+    "pausedBackground": "LBC Wallet이 화면에 표시되지 않는 동안 일시 중지돼요",
+    "onlyCharging": "충전 중에만",
+    "onlyChargingHint": "채굴하면 휴대폰 배터리가 빨리 닳아요. 이 옵션을 꺼도 배터리가 {level} 미만이 되면 채굴이 멈춰요.",
+    "threadsHintPhone": "스레드가 많을수록 채굴이 빨라지지만 휴대폰이 더 뜨거워져요. 처음에는 절반으로 시작해 보세요.",
+    "phoneTitle": "휴대폰에서 채굴하기",
+    "phoneText": "채굴은 LBC Wallet이 화면에 열려 있을 때만 실행되고, 그동안 화면이 계속 켜져 있어요. 배터리 온도가 {temperature}에 도달했을 때, 절전 모드가 켜져 있을 때, 그리고 설정을 바꾸지 않았다면 충전 중이 아닐 때는 일시 중지돼요. 휴대폰으로는 아주 적은 양만 벌 수 있고, 오래 채굴하면 배터리 수명이 줄어들어요. 충전기에 연결해 두고, 직사광선을 피하고, 케이스는 벗겨 두세요."
   },
   "badge": {
     "pending": "대기 중",
@@ -283,7 +298,7 @@
   },
   "welcome": {
     "lead": "채굴 기능이 내장된 LBRY Credits용 비수탁형 지갑이에요. 키는 절대 이 컴퓨터 밖으로 나가지 않아요.",
-    "leadMobile": "LBRY Credits용 비수탁형 지갑이에요. 키는 절대 이 기기 밖으로 나가지 않아요.",
+    "leadMobile": "채굴 기능이 내장된 LBRY Credits용 비수탁형 지갑이에요. 키는 절대 이 휴대폰 밖으로 나가지 않아요.",
     "yourWallets": "내 지갑",
     "walletMeta": "{kind} · {date} 생성",
     "kindLbry": "LBRY Desktop / Odysee 호환",
@@ -462,7 +477,9 @@
     "nodeAlreadyRunning": "다른 프로그램이 이미 이 노드 폴더를 사용하고 있어요.",
     "exportUnsupported": "이 기기에서는 파일을 내보낼 수 없어요.",
     "operationFailed": "{detail}",
-    "minerCrashed": "채굴기가 예기치 않게 멈췄어요. 자세한 내용은 아래 로그를 확인하세요."
+    "minerCrashed": "채굴기가 예기치 않게 멈췄어요. 자세한 내용은 아래 로그를 확인하세요.",
+    "soloUnsupported": "솔로 채굴에는 풀 노드가 필요한데, 이 기기에서는 풀 노드를 실행하지 않아요. 채굴 풀을 선택하세요.",
+    "minerEngineFailed": "이 기기에서 채굴기를 시작하지 못했어요({detail}). Play 스토어에서 “Android System WebView”를 업데이트하면 해결될 수 있어요."
   },
   "notice": {
     "received": {
@@ -832,5 +849,18 @@
     "peersLabel": "다음 노드에도 연결 (선택 사항)",
     "peersHint": "한 줄에 하나씩 host:port 형식으로 입력하세요(예: 다른 컴퓨터에서 실행 중인 내 노드). 노드가 시작될 때 적용돼요.",
     "peersInvalid": "host:port 형식이 아닌 주소: {peers}"
+  },
+  "supply": {
+    "title": "LBC 공급량",
+    "minedShare": "전체 LBC 중 {percent}가 발행됐어요",
+    "left": "남은 채굴량",
+    "reward": "현재 블록 보상",
+    "nextDrop": "다음 보상 감소",
+    "nextDropValue": "블록 {block}에서 {reward} LBC로 (약 {when} 후)",
+    "lastReward": "마지막 블록 보상",
+    "lastRewardValue": "블록 {block} ({year}년경)",
+    "issued": "현재까지 발행량",
+    "total": "최대 공급량",
+    "hint": "모든 노드가 검증하는 LBRY의 보상 규칙에 따른 수치예요. 블록 보상은 1 LBC씩 단계적으로 줄어들다가 결국 0이 되며, 각 단계의 기간은 갈수록 길어져요. 그 후에는 채굴자가 거래 수수료만 받아요. 블록 0에서 400,000,000 LBC가 발행됐고(LBRY의 사전 채굴), 그 밖의 LBC는 모두 채굴자에게 지급돼요."
   }
 }

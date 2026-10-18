@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pauseReason } from '../src/main/mining/pause';
-import { parsePoolUrl } from '../src/main/mining/pool-url';
+import { parsePoolUrl } from '@lbcwallet/services';
 
 describe('pauseReason', () => {
   const idle = { pauseOnBattery: true, onlyWhenIdle: true, idleMinutes: 5 };

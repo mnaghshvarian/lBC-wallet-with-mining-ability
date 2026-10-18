@@ -92,7 +92,12 @@ export async function startRegtest(miningAddress: string): Promise<RegtestNode> 
           resolve();
         });
       });
-      rmSync(dir, { recursive: true, force: true });
+      // Windows may hold the files for a moment after the process ends.
+      try {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+      } catch {
+        // a leftover temporary folder is harmless
+      }
     },
   };
 }

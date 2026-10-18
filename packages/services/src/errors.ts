@@ -47,6 +47,8 @@ export const ERROR_MESSAGES = {
   poolUrlInvalid: 'The pool address must look like stratum+tcp://host:port',
   poolPortInvalid: 'Invalid pool port',
   miningUnsupported: 'Mining is not available on this device.',
+  soloUnsupported: 'Solo mining needs a full node, which this device does not run. Choose pool mining.',
+  minerEngineFailed: 'The miner could not start on this device ({detail}). Updating "Android System WebView" from the Play Store may help.',
   minerCrashed: 'The miner stopped unexpectedly. See the log below for details.',
   nodeBinaryMissing: 'The built-in node is not included in this build.',
   nodeDirNotWritable: 'The folder {path} cannot be written to.',

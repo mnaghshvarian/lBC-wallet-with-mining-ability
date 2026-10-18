@@ -128,8 +128,8 @@
     "noPoolApi": "This pool has no balance API configured.",
     "payoutRule": "Pools pay out automatically once your balance passes their minimum (10 LBC at LBRYPool).",
     "monitorSub": "Follow what your miners earn at the pool.",
-    "monitorTitle": "Mining runs on your computer",
-    "monitorText": "Phones overheat and drain their battery when mining, so this app doesn't mine. Install LBC Wallet on a computer, mine to the same payout address, and watch the pool balance here.",
+    "monitorTitle": "Mining is not available on this phone",
+    "monitorText": "This phone's web engine cannot run the miner. Updating \"Android System WebView\" from the Play Store usually fixes this. Meanwhile you can mine on a computer to the same payout address and follow the pool balance here.",
     "state": {
       "stopped": "Stopped",
       "battery": "Paused (on battery)",
@@ -139,7 +139,11 @@
       "connectingNode": "Connecting to node…",
       "mining": "Mining",
       "waiting": "Waiting for work",
-      "error": "Error"
+      "error": "Error",
+      "batteryLow": "Paused (battery low)",
+      "hot": "Paused (phone warm)",
+      "powerSave": "Paused (battery saver)",
+      "background": "Paused (app in background)"
     },
     "soloTitle": "Solo mining needs a full node",
     "soloText": "The wallet asks a full LBRY node for block templates and keeps the whole block reward when it finds a block.",
@@ -215,7 +219,18 @@
       "other": "{count} min"
     },
     "log": "Log",
-    "logEmpty": "Miner output will appear here."
+    "logEmpty": "Miner output will appear here.",
+    "subPhone": "Mine LBRY Credits with this phone — rewards go straight to your wallet.",
+    "pausedCharger": "Waiting for a charger — mining starts when the phone is plugged in",
+    "pausedBatteryLow": "Paused: the battery is below {level} — connect a charger",
+    "pausedHot": "Paused while the phone is warm — resumes when the battery is below {temperature}",
+    "pausedPowerSave": "Paused while battery saver is on",
+    "pausedBackground": "Paused while LBC Wallet is not on the screen",
+    "onlyCharging": "Only while charging",
+    "onlyChargingHint": "Mining drains a phone's battery fast. If you switch this off, mining still stops when the battery is below {level}.",
+    "threadsHintPhone": "More threads mine faster but make the phone warmer. Start with half.",
+    "phoneTitle": "Mining on a phone",
+    "phoneText": "Mining runs only while LBC Wallet is open on the screen, and the screen stays on meanwhile. It pauses when the battery reaches {temperature}, while battery saver is on and, unless you change it, while the phone is not charging. A phone earns very little and long mining wears the battery: keep it on a charger, out of the sun and out of its case."
   },
   "badge": {
     "pending": "Pending",
@@ -290,7 +305,7 @@
   },
   "welcome": {
     "lead": "A non-custodial wallet for LBRY Credits — with mining built in. Your keys never leave this computer.",
-    "leadMobile": "A non-custodial wallet for LBRY Credits. Your keys never leave this device.",
+    "leadMobile": "A non-custodial wallet for LBRY Credits — with mining built in. Your keys never leave this phone.",
     "yourWallets": "Your wallets",
     "walletMeta": "{kind} · created {date}",
     "kindLbry": "LBRY Desktop / Odysee compatible",
@@ -471,7 +486,9 @@
     "nodeAlreadyRunning": "Another program is already using this node folder.",
     "exportUnsupported": "Exporting files is not available on this device.",
     "operationFailed": "{detail}",
-    "minerCrashed": "The miner stopped unexpectedly. See the log below for details."
+    "minerCrashed": "The miner stopped unexpectedly. See the log below for details.",
+    "soloUnsupported": "Solo mining needs a full node, which this device does not run. Choose pool mining.",
+    "minerEngineFailed": "The miner could not start on this device ({detail}). Updating \"Android System WebView\" from the Play Store may help."
   },
   "notice": {
     "received": {
@@ -859,5 +876,18 @@
     "peersLabel": "Also connect to these nodes (optional)",
     "peersHint": "One address per line, as host:port — for example your own node on another computer. Takes effect when the node starts.",
     "peersInvalid": "Not a host:port address: {peers}"
+  },
+  "supply": {
+    "title": "LBC supply",
+    "minedShare": "{percent} of all LBC has been created",
+    "left": "Left to mine",
+    "reward": "Block reward now",
+    "nextDrop": "Next reward drop",
+    "nextDropValue": "to {reward} LBC at block {block} (in about {when})",
+    "lastReward": "Last block reward",
+    "lastRewardValue": "block {block}, around {year}",
+    "issued": "Created so far",
+    "total": "Total supply, ever",
+    "hint": "From LBRY's reward rules, which every node checks: the reward goes down by 1 LBC in steps that get longer over time, until it reaches zero. After that, miners earn transaction fees only. Block 0 created 400,000,000 LBC (LBRY's pre-mine); all other LBC is paid to miners."
   }
 }

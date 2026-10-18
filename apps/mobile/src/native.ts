@@ -1,4 +1,5 @@
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
+import type { PowerState } from './miner-service';
 
 /** One line received on a socket, or the socket closing. */
 export interface SocketEvent {
@@ -34,6 +35,10 @@ export interface LbcNativePlugin {
   socketClose(options: { id: string }): Promise<void>;
   /** Blocks screenshots and hides the app preview while sensitive data is shown. */
   setSecure(options: { on: boolean }): Promise<void>;
+  /** Battery level, charger, temperature and battery saver, for pausing mining. */
+  powerState(): Promise<PowerState>;
+  /** Keeps the screen on while the phone mines. */
+  keepScreenOn(options: { on: boolean }): Promise<void>;
   /** Opens an https link in the user's browser. */
   openUrl(options: { url: string }): Promise<void>;
   /** Copies text; sensitive text is hidden from clipboard previews and cleared after 30 seconds. */
