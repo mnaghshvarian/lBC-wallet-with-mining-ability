@@ -41,7 +41,7 @@ ANIMATIONS = {
     'send': (['09-send', '10-send-review', '11-send-done', '12-tx-detail'], 1800),
     'mining': ([f'anim-mining-{i}' for i in range(6)], 700),
     'node': (['14-node', '15-node-running', '15b-solo-mining'], 2200),
-    'languages': (['20-overview-after', '21-overview-fa'], 1800),
+    'languages': (['20-overview-after', '21-overview-fa', '30-overview-hi'], 1800),
 }
 
 

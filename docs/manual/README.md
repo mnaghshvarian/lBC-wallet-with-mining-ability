@@ -67,7 +67,7 @@ itself is available in all of these 15 languages.
   else's servers;
 * see and **unlock tips and supports** you received on LBRY / Odysee.
 
-It works on **Windows, Mac, Linux** and **Android** phones, in **14 languages**.
+It works on **Windows, Mac, Linux** and **Android** phones, in **15 languages**.
 
 **"Non-custodial"** means *you* hold your money, not a company. That is good: nobody can freeze
 or take your coins. It also means **nobody can help you if you lose your recovery phrase**
@@ -284,11 +284,11 @@ the risks in plain words. Read it, tick the **three boxes** to confirm you under
 
 ### Choosing your language
 
-The app starts in your computer's language if it is one of the 14 supported languages.
+The app starts in your computer's language if it is one of the 15 supported languages.
 To change it, use the **globe** menu at the top right of the first screens, or later
 **Settings → General → Language**.
 
-![Switching between English and Persian](images/languages.gif)
+![Switching between English, Persian and Hindi](images/languages.gif)
 
 ---
 
@@ -308,6 +308,9 @@ Use this if you are **new to LBC** or want a separate wallet.
    words **in order**, with their numbers. Check every word twice.
 
    ![Your recovery phrase](images/create-phrase.png)
+
+   *The words in this picture come from a test. Never use a phrase you did not create yourself:
+   anyone who knows it can take the coins.*
 
 4. Tick **"I have written down my recovery phrase…"** and click **Continue**.
 5. The app asks for **three of your words** (for example word #3, #7 and #11) to make sure your
@@ -852,6 +855,13 @@ tick both boxes and click **I understand — open the board**.
 * **Market price** (right) shows what LBC trades for on the exchanges — the LBC/USDT market on
   MEXC (or CoinPaprika's average when MEXC cannot be reached) — in US dollars, sats and Monero, and
   converts any amount for you. It is only for comparison: offers set their own prices.
+
+On a phone, open **More → Market**. Each offer is a block, with its **Buy** or **Sell** button on
+the right:
+
+| More → Market | The board on a phone |
+| --- | --- |
+| ![The More menu on a phone](images/phone-more.png) | ![The board on a phone](images/phone-market.png) |
 
 ### Buy LBC (take a sell offer)
 

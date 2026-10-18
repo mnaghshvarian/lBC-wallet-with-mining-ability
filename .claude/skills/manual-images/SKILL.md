@@ -15,6 +15,11 @@ description: Refresh the beginner's manual's screenshots, animated GIFs and PDF 
    Android pictures come from the emulator test (`SCREENSHOT_DIR=… npm run test:device -w
    lbc-wallet-mobile`).
 
+   The test answers the Market's price requests itself (`MEXC_PRICES` in
+   `apps/desktop/e2e/ui.e2e.ts`, development build only), so the price card shows even where
+   MEXC cannot be reached. Put in the day's prices and date
+   (`curl "https://api.mexc.com/api/v3/ticker/price?symbol=LBCUSDT"`, `BTCUSDT`, `XMRUSDT`).
+
 2. Turn them into the manual's images (needs Pillow; quantised PNGs and GIFs):
 
    ```bash
