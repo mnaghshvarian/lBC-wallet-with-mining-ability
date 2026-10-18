@@ -149,6 +149,7 @@ export class MinerCoordinator extends Emitter<MinerEvents> {
     const client = new StratumClient({ ...options, log: (level, message) => this.log(level, message) });
     this.stratum = client;
     client.on('state', ({ state, error }) => this.onStratumState(state, error));
+    client.on('endpoint', ({ host, port }) => this.publish({ server: `${host}:${port}` }));
     client.on('job', ({ job, difficulty, shareTarget, blockTarget }) => {
       this.stratumJob = { job, shareTarget, blockTarget };
       this.publish({ difficulty, networkBits: job.bits, lastJobAt: Date.now(), state: 'mining', error: undefined });

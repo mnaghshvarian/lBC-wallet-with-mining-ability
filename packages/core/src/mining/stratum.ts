@@ -16,18 +16,32 @@ export interface StratumOptions {
 
 export type StratumState = 'idle' | 'connecting' | 'subscribing' | 'authorizing' | 'ready' | 'reconnecting' | 'stopped' | 'error';
 
+/**
+ * Share difficulties a pool may set. The regtest test pool uses 0.004; LBRY pools
+ * rarely go above a few thousand. Outside this range the previous difficulty is kept:
+ * `1e400` parses as Infinity (every hash would be a share) and a huge finite value
+ * makes the target conversion throw on every later job.
+ */
+export const MIN_SHARE_DIFFICULTY = 1e-6;
+export const MAX_SHARE_DIFFICULTY = 2 ** 40;
+/** Shares waiting for the pool's answer before further hits are dropped instead of queued. */
+export const MAX_PENDING_SUBMITS = 64;
+
 export type StratumEvents = {
   state: { state: StratumState; error?: string };
   job: { job: StratumJob; difficulty: number; shareTarget: bigint; blockTarget: bigint };
   difficulty: number;
   share: { accepted: boolean; reason?: string; jobId: string; latencyMs: number };
   message: string;
+  /** The pool moved us to another port (an accepted client.reconnect). */
+  endpoint: SocketEndpoint;
 };
 
 /**
  * Stratum v1 mining client for LBRY pools (yiimp / NOMP style).
  * Handles subscribe → authorize → notify, vardiff, extranonce changes,
- * client.reconnect and automatic reconnection with backoff.
+ * client.reconnect (to another port of the same pool only) and automatic
+ * reconnection with backoff.
  */
 export class StratumClient extends Emitter<StratumEvents> {
   private client: LineRpcClient | null = null;
@@ -40,6 +54,10 @@ export class StratumClient extends Emitter<StratumEvents> {
   currentJob: StratumJob | null = null;
   state: StratumState = 'idle';
   private loop: Promise<void> | null = null;
+  /** Shares sent and not yet answered by the pool. */
+  private pendingSubmits = 0;
+  private droppedHits = 0;
+  private droppedHitsLoggedAt = 0;
 
   constructor(private readonly options: StratumOptions) {
     super();
@@ -92,7 +110,7 @@ export class StratumClient extends Emitter<StratumEvents> {
   /** One connection lifetime; resolves when the connection closes. */
   private async session(): Promise<void> {
     this.setState('connecting');
-    const client = new LineRpcClient(this.options.transportFactory(this.endpoint), { defaultTimeoutMs: 30_000 });
+    const client = new LineRpcClient(this.options.transportFactory(this.endpoint), { defaultTimeoutMs: 30_000, warn: (message) => this.log('warn', message) });
     this.client = client;
     const closed = new Promise<void>((resolve) => client.onClose(() => resolve()));
     client.onNotification((method, params) => this.handleNotification(method, params));
@@ -136,15 +154,18 @@ export class StratumClient extends Emitter<StratumEvents> {
       switch (method) {
         case 'mining.set_difficulty': {
           const d = Number(p[0]);
-          if (d > 0) {
-            this.pendingDifficulty = d;
-            this.emit('difficulty', d);
-            // A new difficulty officially applies from the next job. Raising it early is
-            // always safe (we just submit fewer shares); lowering waits for mining.notify.
-            if (this.currentJob && d > this.difficulty) {
-              this.difficulty = d;
-              this.publishJob(this.currentJob);
-            }
+          // Rejects NaN and ±Infinity too (the comparisons are false for them).
+          if (!(d >= MIN_SHARE_DIFFICULTY && d <= MAX_SHARE_DIFFICULTY)) {
+            this.log('warn', `pool sent an unusable share difficulty (${String(p[0])}); keeping ${this.pendingDifficulty ?? this.difficulty}`);
+            break;
+          }
+          this.pendingDifficulty = d;
+          this.emit('difficulty', d);
+          // A new difficulty officially applies from the next job. Raising it early is
+          // always safe (we just submit fewer shares); lowering waits for mining.notify.
+          if (this.currentJob && d > this.difficulty) {
+            this.difficulty = d;
+            this.publishJob(this.currentJob);
           }
           break;
         }
@@ -159,10 +180,23 @@ export class StratumClient extends Emitter<StratumEvents> {
           this.setExtranonce(String(p[0]), Number(p[1]));
           break;
         case 'client.reconnect': {
-          const host = typeof p[0] === 'string' && p[0] ? p[0] : this.endpoint.host;
+          // Pools use this to move a miner to another port of the same host. Following it
+          // to a different host would hand our login (payout address and password) to
+          // whoever the message names while the UI keeps showing the configured pool.
+          const configured = this.options.endpoint.host;
+          const host = typeof p[0] === 'string' && p[0] ? p[0] : configured;
           const port = Number(p[1]) || this.endpoint.port;
-          this.log('info', `pool requested reconnect to ${host}:${port}`);
-          this.endpoint = { ...this.endpoint, host, port };
+          if (host.trim().toLowerCase() !== configured.trim().toLowerCase()) {
+            this.log('warn', `pool asked to reconnect to ${host}:${port}, which is not the configured pool host (${configured}); ignored`);
+            break;
+          }
+          if (!Number.isInteger(port) || port < 1 || port > 65535) {
+            this.log('warn', `pool asked to reconnect to an invalid port (${String(p[1])}); ignored`);
+            break;
+          }
+          this.log('info', `pool requested reconnect to ${configured}:${port}`);
+          this.endpoint = { ...this.endpoint, port };
+          this.emit('endpoint', { ...this.endpoint });
           this.client?.close();
           break;
         }
@@ -181,11 +215,25 @@ export class StratumClient extends Emitter<StratumEvents> {
     this.emit('job', { job, difficulty: this.difficulty, shareTarget: shareTargetForDifficulty(this.difficulty), blockTarget: bitsToTarget(job.bits) });
   }
 
-  /** Submits a share. Resolves true when the pool accepts it. */
+  /**
+   * Submits a share. Resolves true when the pool accepts it. Hits are dropped (false)
+   * while MAX_PENDING_SUBMITS shares await an answer, so a pool that stops answering
+   * or sets a very low difficulty cannot make us queue submissions without bound.
+   */
   async submit(work: WorkUnit, nonce: number): Promise<boolean> {
     const client = this.client;
     if (!client || this.state !== 'ready') return false;
+    if (this.pendingSubmits >= MAX_PENDING_SUBMITS) {
+      this.droppedHits++;
+      const now = Date.now();
+      if (now - this.droppedHitsLoggedAt >= 10_000) {
+        this.droppedHitsLoggedAt = now;
+        this.log('warn', `${this.pendingSubmits} shares are waiting for the pool's answer; dropping further hits (${this.droppedHits} so far)`);
+      }
+      return false;
+    }
     const started = Date.now();
+    this.pendingSubmits++;
     try {
       const ok = await client.request<boolean>('mining.submit', submitParams(this.options.username, work, nonce), 30_000);
       this.emit('share', { accepted: ok === true, jobId: work.jobId, latencyMs: Date.now() - started, reason: ok === true ? undefined : 'rejected' });
@@ -194,6 +242,8 @@ export class StratumClient extends Emitter<StratumEvents> {
       const reason = err instanceof RpcError ? err.message : (err as Error).message;
       this.emit('share', { accepted: false, jobId: work.jobId, latencyMs: Date.now() - started, reason });
       return false;
+    } finally {
+      this.pendingSubmits--;
     }
   }
 }

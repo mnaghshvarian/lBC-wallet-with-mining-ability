@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LbryScanner, simdSupported } from '../src/mining/scanner.js';
 import { bitsToTarget, hashToBigInt, lbryPowHash } from '../src/crypto/pow.js';
 import { ByteWriter, fromHex, hashFromHex, toHex, concatBytes } from '../src/encoding/bytes.js';
@@ -17,6 +17,10 @@ import {
   swapWords,
 } from '../src/mining/work.js';
 import { coinbaseMerkleBranch, merkleRoot, merkleRootFromBranch } from '../src/wallet/verify.js';
+import { MAX_PENDING_SUBMITS, MAX_SHARE_DIFFICULTY, MIN_SHARE_DIFFICULTY, StratumClient } from '../src/mining/stratum.js';
+import { MinerCoordinator, type HashThreads } from '../src/mining/coordinator.js';
+import { LineRpcClient } from '../src/net/line-rpc.js';
+import type { LineTransport, LineTransportFactory, SocketEndpoint } from '../src/net/transport.js';
 
 const genesis = new ByteWriter(112)
   .i32LE(1)
@@ -302,5 +306,231 @@ describe('economics', () => {
     expect(header[100]).toBe(5);
     expect(header[104]).toBe(6);
     expect(header[108]).toBe(7);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stratum client against an in-memory pool
+// ---------------------------------------------------------------------------
+
+interface FakePool {
+  /** Endpoint of every connection attempt, in order. */
+  connections: SocketEndpoint[];
+  /** Whether the latest connection is open. */
+  open: boolean;
+  /** Params of every mining.submit received. */
+  submits: unknown[];
+  /** When false, submits stay unanswered until `answerSubmits` is called. */
+  autoAnswer: boolean;
+  /** Answers every submit still waiting. */
+  answerSubmits(accepted: boolean): void;
+  /** Sends a notification on the open connection. */
+  notify(method: string, params: unknown): void;
+  /** Sends a raw line on the open connection. */
+  push(line: string): void;
+  factory: LineTransportFactory;
+}
+
+/** A Stratum pool that answers subscribe / authorize / submit and lets a test push server messages. */
+function fakePool(): FakePool {
+  let onLine: (line: string) => void = () => {};
+  let onClose: () => void = () => {};
+  const waiting: number[] = [];
+  const pool: FakePool = {
+    connections: [],
+    open: false,
+    submits: [],
+    autoAnswer: true,
+    answerSubmits: (accepted) => {
+      for (const id of waiting.splice(0)) pool.push(JSON.stringify({ id, result: accepted, error: null }));
+    },
+    notify: (method, params) => pool.push(JSON.stringify({ id: null, method, params })),
+    push: (line) => {
+      if (pool.open) onLine(line);
+    },
+    factory: (ep) => ({
+      connect: async () => {
+        pool.connections.push({ ...ep });
+        pool.open = true;
+      },
+      send: (line) => {
+        const { id, method, params } = JSON.parse(line) as { id: number; method: string; params: unknown };
+        let result: unknown = true;
+        if (method === 'mining.subscribe') result = [[['mining.set_difficulty', 'x'], ['mining.notify', 'x']], 'f000000f', 4];
+        if (method === 'mining.submit') {
+          pool.submits.push(params);
+          if (!pool.autoAnswer) {
+            waiting.push(id);
+            return;
+          }
+        }
+        queueMicrotask(() => pool.push(JSON.stringify({ id, result, error: null })));
+      },
+      close: () => {
+        if (!pool.open) return;
+        pool.open = false;
+        onClose();
+      },
+      onLine: (h) => (onLine = h),
+      onClose: (h) => (onClose = h),
+    }),
+  };
+  return pool;
+}
+
+/** A valid LBRY mining.notify (an all-zero job is enough to build work from). */
+const fakeNotify = ['j1', '00'.repeat(32), '00'.repeat(32), 'aa', 'bb', [], '20000000', '207fffff', '6ad2c9cc', true];
+
+describe('Stratum client', () => {
+  type LogLine = { level: string; message: string };
+  const warnings = (log: LogLine[]) => log.filter((l) => l.level === 'warn').map((l) => l.message);
+  const fakeTimers = () => vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'] });
+
+  const running: { stop(): Promise<void> }[] = [];
+  afterEach(async () => {
+    for (const r of running.splice(0)) {
+      const stopping = r.stop();
+      if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(60_000); // it may be sleeping out a reconnect delay
+      await stopping;
+    }
+    vi.useRealTimers();
+  });
+
+  async function readyClient(pool: FakePool, endpoint: SocketEndpoint, log: LogLine[]): Promise<StratumClient> {
+    const client = new StratumClient({ endpoint, username: 'bAddr.worker', password: 'x', agent: 'test/1.0', transportFactory: pool.factory, log: (level, message) => log.push({ level, message }) });
+    running.push(client);
+    const ready = new Promise<void>((resolve) => client.on('state', ({ state }) => state === 'ready' && resolve()));
+    client.start();
+    await ready;
+    return client;
+  }
+
+  it('refuses client.reconnect to another host and follows a port change on the same host', async () => {
+    fakeTimers();
+    const pool = fakePool();
+    const log: LogLine[] = [];
+    const client = await readyClient(pool, { host: 'Pool.Example', port: 3333 }, log);
+    const moves: SocketEndpoint[] = [];
+    client.on('endpoint', (ep) => moves.push(ep));
+
+    pool.notify('client.reconnect', ['evil.example', 4444, 0]);
+    expect(pool.open).toBe(true);
+    expect(client.state).toBe('ready');
+    expect(moves).toEqual([]);
+    expect(warnings(log)).toEqual([expect.stringContaining('evil.example')]);
+
+    // the same host spelled differently, another port: accepted
+    pool.notify('client.reconnect', ['pool.example', 4444, 0]);
+    expect(pool.open).toBe(false);
+    expect(moves).toEqual([{ host: 'Pool.Example', port: 4444 }]);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(client.state).toBe('ready');
+    expect(pool.connections).toEqual([{ host: 'Pool.Example', port: 3333 }, { host: 'Pool.Example', port: 4444 }]);
+
+    // no host means this host
+    pool.notify('client.reconnect', ['', 5555]);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(client.state).toBe('ready');
+    expect(pool.connections.at(-1)).toEqual({ host: 'Pool.Example', port: 5555 });
+  });
+
+  it('shows the pool port the miner moved to', async () => {
+    fakeTimers();
+    const pool = fakePool();
+    const threads: HashThreads = { size: 1, assign() {}, idle() {}, destroy: async () => undefined, onHit() {}, onExhausted() {}, onHashes() {} };
+    const miner = new MinerCoordinator(threads);
+    running.push(miner);
+    miner.startPool({ endpoint: { host: 'pool.example', port: 3333 }, username: 'bAddr', password: 'x', agent: 'test/1.0', transportFactory: pool.factory });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(miner.stats.server).toBe('pool.example:3333');
+    pool.notify('client.reconnect', ['evil.example', 4444]);
+    expect(miner.stats.server).toBe('pool.example:3333');
+    pool.notify('client.reconnect', [null, 4444]);
+    expect(miner.stats.server).toBe('pool.example:4444');
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(pool.connections.at(-1)).toEqual({ host: 'pool.example', port: 4444 });
+  });
+
+  it('keeps the previous difficulty when mining.set_difficulty is unusable', async () => {
+    const pool = fakePool();
+    const log: LogLine[] = [];
+    const client = await readyClient(pool, { host: 'pool.example', port: 3333 }, log);
+    const jobs: { difficulty: number; shareTarget: bigint }[] = [];
+    client.on('job', ({ difficulty, shareTarget }) => jobs.push({ difficulty, shareTarget }));
+    const announced: number[] = [];
+    client.on('difficulty', (d) => announced.push(d));
+
+    pool.notify('mining.set_difficulty', [0.004]); // what the regtest pool uses
+    pool.notify('mining.notify', fakeNotify);
+    expect(jobs.map((j) => j.difficulty)).toEqual([0.004]);
+
+    // JSON 1e400 parses as Infinity; 1e308 would make BigInt() throw on every later job
+    const unusable = ['1e400', '-1e400', '0', '-1', '1e308', '1e-9', String(2 ** 41), 'null', '"x"', '[]', '{}'];
+    for (const value of unusable) {
+      pool.push(`{"id":null,"method":"mining.set_difficulty","params":[${value}]}`);
+      pool.notify('mining.notify', fakeNotify);
+    }
+    expect(announced).toEqual([0.004]);
+    expect(jobs.map((j) => j.difficulty)).toEqual(new Array(1 + unusable.length).fill(0.004));
+    expect(client.difficulty).toBe(0.004);
+    expect(warnings(log)).toHaveLength(unusable.length);
+    expect(warnings(log)[0]).toMatch(/difficulty \(Infinity\); keeping 0.004/);
+
+    // sane values, the bounds included, are applied (raising takes effect at once)
+    pool.notify('mining.set_difficulty', [1]);
+    expect(jobs.at(-1)!.difficulty).toBe(1);
+    pool.notify('mining.set_difficulty', [MAX_SHARE_DIFFICULTY]);
+    expect(jobs.at(-1)!.difficulty).toBe(MAX_SHARE_DIFFICULTY);
+    pool.notify('mining.set_difficulty', [MIN_SHARE_DIFFICULTY]);
+    pool.notify('mining.notify', fakeNotify);
+    expect(jobs.at(-1)!.difficulty).toBe(MIN_SHARE_DIFFICULTY);
+    expect(announced).toEqual([0.004, 1, MAX_SHARE_DIFFICULTY, MIN_SHARE_DIFFICULTY]);
+    expect(warnings(log)).toHaveLength(unusable.length);
+    for (const j of jobs) expect(j.shareTarget).toBe(shareTargetForDifficulty(j.difficulty));
+  });
+
+  it('drops hits while too many shares are waiting for the pool', async () => {
+    const pool = fakePool();
+    pool.autoAnswer = false;
+    const log: LogLine[] = [];
+    const client = await readyClient(pool, { host: 'pool.example', port: 3333 }, log);
+    pool.notify('mining.notify', fakeNotify);
+    const job = parseLbryNotify(fakeNotify);
+    const work = stratumWork(job, client.extranonce1, extranonce2For(1n, 4), shareTargetForDifficulty(1), bitsToTarget(job.bits));
+    const shares: boolean[] = [];
+    client.on('share', ({ accepted }) => shares.push(accepted));
+
+    const results = Array.from({ length: MAX_PENDING_SUBMITS + 10 }, (_, nonce) => client.submit(work, nonce));
+    expect(pool.submits).toHaveLength(MAX_PENDING_SUBMITS);
+    expect(warnings(log)).toEqual([expect.stringMatching(/waiting for the pool's answer; dropping further hits \(1 so far\)/)]);
+    expect(await Promise.all(results.slice(MAX_PENDING_SUBMITS))).toEqual(new Array(10).fill(false));
+    expect(shares).toEqual([]);
+
+    // once the pool answers, submissions flow again
+    pool.answerSubmits(true);
+    expect(await Promise.all(results.slice(0, MAX_PENDING_SUBMITS))).toEqual(new Array(MAX_PENDING_SUBMITS).fill(true));
+    expect(shares).toEqual(new Array(MAX_PENDING_SUBMITS).fill(true));
+    pool.autoAnswer = true;
+    expect(await client.submit(work, 999)).toBe(true);
+    expect(pool.submits).toHaveLength(MAX_PENDING_SUBMITS + 1);
+  });
+});
+
+describe('line RPC', () => {
+  it('ignores JSON lines that are not messages instead of crashing the connection', async () => {
+    let onLine: (line: string) => void = () => {};
+    const transport: LineTransport = { connect: async () => undefined, send: () => undefined, close: () => undefined, onLine: (h) => (onLine = h), onClose: () => undefined };
+    const warned: string[] = [];
+    const client = new LineRpcClient(transport, { warn: (m) => warned.push(m) });
+    const notifications: string[] = [];
+    client.onNotification((method) => notifications.push(method));
+    const reply = client.request('server.ping', [], 5_000);
+    for (const line of ['null', '[null]', '42', '"hello"', 'true', '[]', '[[1]]', 'not json']) expect(() => onLine(line)).not.toThrow();
+    expect(warned).toHaveLength(6); // [] carries no message, and garbage was always dropped silently
+    expect(warned[0]).toContain('null');
+    onLine(JSON.stringify({ id: null, method: 'note', params: [] }));
+    onLine(JSON.stringify({ id: 1, result: 'pong' }));
+    expect(notifications).toEqual(['note']);
+    await expect(reply).resolves.toBe('pong');
   });
 });

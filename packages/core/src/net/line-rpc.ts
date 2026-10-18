@@ -48,7 +48,12 @@ export class LineRpcClient {
 
   constructor(
     private readonly transport: LineTransport,
-    private readonly options: { jsonrpc2?: boolean; defaultTimeoutMs?: number } = {},
+    private readonly options: {
+      jsonrpc2?: boolean;
+      defaultTimeoutMs?: number;
+      /** Receives a note about every well-formed JSON line that is not a message. */
+      warn?: (message: string) => void;
+    } = {},
   ) {
     transport.onLine((line) => this.handleLine(line));
     transport.onClose((err) => this.handleClose(err));
@@ -105,7 +110,14 @@ export class LineRpcClient {
       return; // ignore garbage lines
     }
     const messages = Array.isArray(msg) ? msg : [msg];
-    for (const m of messages) this.handleMessage(m as Record<string, unknown>);
+    for (const m of messages) {
+      // `null`, numbers, strings, booleans and nested arrays are valid JSON but not messages.
+      if (m === null || typeof m !== 'object' || Array.isArray(m)) {
+        this.options.warn?.(`ignoring a line that is not a JSON-RPC message: ${line.length > 100 ? `${line.slice(0, 100)}…` : line}`);
+        continue;
+      }
+      this.handleMessage(m as Record<string, unknown>);
+    }
   }
 
   private handleMessage(m: Record<string, unknown>): void {
