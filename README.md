@@ -18,7 +18,8 @@ and run your own LBRY node. For **Windows, Mac, Linux and Android**, in **15 lan
 
 **New to all this? Read the [step-by-step beginner's manual](docs/manual/README.md)** — it
 explains, with pictures, how to install, create a wallet, receive, send and mine. No GitHub
-knowledge needed ([PDF version](https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/raw/HEAD/docs/manual/LBC-Wallet-Manual.pdf)). Short guides: [فارسی](docs/manual/quickstart/fa.md) ·
+knowledge needed ([PDF version](https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/raw/HEAD/docs/manual/LBC-Wallet-Manual.pdf),
+[video manual](docs/manual/videos.md)). Short guides: [فارسی](docs/manual/quickstart/fa.md) ·
 [العربية](docs/manual/quickstart/ar.md) · [اردو](docs/manual/quickstart/ur.md) ·
 [Français](docs/manual/quickstart/fr.md) · [Deutsch](docs/manual/quickstart/de.md) ·
 [Español](docs/manual/quickstart/es.md) · [Português](docs/manual/quickstart/pt.md) ·

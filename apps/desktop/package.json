@@ -23,6 +23,8 @@
     "dist:win": "npm run build && electron-builder --config electron-builder.yml --win",
     "dist:mac": "npm run build && electron-builder --config electron-builder.yml --mac",
     "test:ui": "tsx e2e/ui.e2e.ts",
+    "videos": "tsx e2e/manual-videos.ts",
+    "videos:captions": "tsx e2e/manual-videos.ts --captions",
     "test:privacy": "tsx e2e/network-audit.ts",
     "test": "vitest run --dir test"
   },

@@ -52,6 +52,11 @@ Check your download against the `SHA256SUMS-*.txt` files below.
 * **Hindi.** The app and a quick-start guide are now available in Hindi: 15 languages in all.
 * **Manual:** new chapters on the Market and on paying with other coins; *Do I need to download
   the blockchain?* (no; it is about 100 GB, not 2 TB) and *Which servers does the wallet use?*
+* **Video manual.** Six short narrated videos, recorded from the real app on a test network
+  (installing, the first wallet, restore/receive/send, mining and the node, the Market, settings),
+  each with subtitles. `docs/manual/videos.md` says where to find them and how they are made.
+* **Fixed:** a dialog (take or post an offer, send) no longer moves the cursor back to its first
+  field while you are typing in another one when the page refreshes in the background.
 * **Prices:** CoinGecko is no longer used (its LBC price was far from where LBC trades); MEXC's
   LBC/USDT market is the fallback for US dollar prices.
 * **Questions about LBC's future** (fork, rename, privacy, RandomX): see the new document
