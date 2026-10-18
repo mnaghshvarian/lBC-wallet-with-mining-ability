@@ -163,12 +163,30 @@ recommended path is:
 * Message signing and verification, coin control, sweeping a private key (WIF) from an old
   `lbrycrd`/`lbcd` wallet.
 * In-app update notifications with signature-verified downloads.
+* Swaps, from the October 2026 review (`docs/REVIEW-2026-10.md`): refund a second payment into a
+  contract instead of only the first; fee-bump a claim that is stuck under the mempool floor;
+  recognise the wallet's own claim or refund by its key when the record of it was lost.
+
+## 5a. A validated header chain
+
+The light client's biggest remaining weakness: for ordinary payments the confirmation count still
+comes from the hub, checked only against the block's own proof of work. The plan is a header
+chain validated since an embedded checkpoint (LBRY's per-block difficulty rule is already ported
+in `core/src/wallet/headers.ts`, and swaps already require a linked run of headers plus a second
+hub's agreement): every confirmation would then come from the wallet's own view of the chain,
+with checkpoints maintained in the repository and only the headers since the checkpoint
+downloaded (about 1 MB a week; a phone can afford it).
 
 ## 6. Trust: audit, signing, reproducibility
 
 * **An external security audit** of the core (key derivation, encryption, signing, SPV checks),
   the Android plugin and the release pipeline. Until then the app warns everyone, on first
-  start and in Settings → About, that it is unaudited.
+  start and in Settings → About, that it is unaudited. A line-by-line review by a second AI
+  model was done before 1.3.0 (`docs/REVIEW-2026-10.md`); it found and fixed real bugs and is
+  the natural starting point for the audit, but it is not one.
+* Defence in depth on the desktop, from the same review: serve the interface from an app scheme
+  instead of `file://`, keep the main-process code inside the integrity-checked archive, take
+  the node's data folder only from the folder dialog, retry a node's stop call before killing it.
 * Code signing: Apple notarization and Windows code signing (the release workflow already
   supports both once certificates are added as secrets), and a stable Android signing key.
 * Reproducible builds: the miner's WebAssembly and the bundled `lbcd` are already built
