@@ -1798,4 +1798,48 @@ button.list-row {
   .overlay {
     padding: 12px;
   }
+  /* The order board's rows become blocks, so the Buy/Sell button stays on screen. */
+  .offer-table,
+  .offer-table tbody {
+    display: block;
+  }
+  .offer-table thead {
+    display: none;
+  }
+  .offer-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: 'price action' 'left total';
+    gap: 10px 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .offer-table tr:last-child {
+    border-bottom: none;
+  }
+  .offer-table td {
+    padding: 0;
+    border-bottom: none;
+  }
+  .offer-table td:nth-child(1) {
+    grid-area: price;
+  }
+  .offer-table td:nth-child(2) {
+    grid-area: left;
+  }
+  .offer-table td:nth-child(3) {
+    grid-area: total;
+  }
+  .offer-table td:nth-child(4) {
+    grid-area: action;
+    justify-self: end;
+  }
+  .offer-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-3);
+  }
 }

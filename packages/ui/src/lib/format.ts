@@ -74,7 +74,8 @@ function unit(value: number, u: 'day' | 'hour' | 'minute' | 'second'): string {
 }
 
 export function duration(ms: number): string {
-  const s = Math.floor(ms / 1000);
+  // A start time set a moment ago can be ahead of a clock that ticks once a second.
+  const s = Math.max(0, Math.floor(ms / 1000));
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);

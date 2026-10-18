@@ -195,7 +195,7 @@ function Board({ view, side, onTake }: { view: MarketView; side: 'buy' | 'sell';
         <div className="muted small">{!view.loaded ? t('market.loading') : side === 'buy' ? t('market.noSellers') : t('market.noBuyers')}</div>
       ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table offer-table">
             <thead>
               <tr>
                 <th>{t('market.col.price')}</th>
@@ -207,19 +207,19 @@ function Board({ view, side, onTake }: { view: MarketView; side: 'buy' | 'sell';
             <tbody>
               {offers.map((o) => (
                 <tr key={o.key}>
-                  <td>
+                  <td data-label={t('market.col.price')}>
                     <div className="stack tight">
                       <span className="strong">{t('market.sats', { n: significant(o.price, 4) })}</span>
                       {premiumBadge(t, o.premium, side)}
                     </div>
                   </td>
-                  <td>
+                  <td data-label={t('market.col.available')}>
                     <div className="stack tight">
                       <span>{coin(o.left, 'LBC')}</span>
                       <span className="small text-2">{t('market.from', { min: coin(o.min, 'LBC') })}</span>
                     </div>
                   </td>
-                  <td>
+                  <td data-label={t('market.col.total')}>
                     <div className="stack tight">
                       <span>{coin(btcForLbc(offerTerms(o), BigInt(o.left)), 'BTC')}</span>
                       <span className="small text-2">{relativeTime(o.createdAt)}</span>

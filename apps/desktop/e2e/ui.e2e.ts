@@ -34,6 +34,7 @@ const appDir = resolve(__dirname, '..');
 const repoRoot = resolve(appDir, '../..');
 const shotsDir = process.env.SCREENSHOT_DIR ?? join(appDir, 'e2e', 'screenshots');
 const PASSWORD = 'correct horse battery staple';
+const MEXC_PRICES = { LBCUSDT: '0.001647', BTCUSDT: '82134.06', XMRUSDT: '582.56' };
 
 function log(msg: string) {
   console.log(`[ui-e2e] ${msg}`);
@@ -124,6 +125,16 @@ async function main() {
   let app: RunningApp | null = null;
   try {
     app = await launchApp(dataDir, log);
+    // The Market's price card with MEXC's prices of 18 October 2026, also where the exchanges
+    // cannot be reached (only the development build gives access to the main process).
+    await app.electron?.evaluate(({ protocol, net }, prices: Record<string, string>) => {
+      protocol.handle('https', (request) => {
+        const url = new URL(request.url);
+        const symbol = url.searchParams.get('symbol') ?? '';
+        if (url.hostname === 'api.mexc.com' && symbol in prices) return Response.json({ symbol, price: prices[symbol] });
+        return net.fetch(request, { bypassCustomProtocolHandlers: true });
+      });
+    }, MEXC_PRICES);
     const page = app.page;
     await page.setViewportSize({ width: 1280, height: 820 });
     page.on('pageerror', (err) => console.error('[renderer error]', err));
@@ -280,6 +291,7 @@ async function main() {
     await page.getByText('Connected to 1 of 1 relays').waitFor({ timeout: 30_000 });
     const row = page.locator('tr', { hasText: '200,000.00 LBC' });
     await row.waitFor({ timeout: 30_000 });
+    if (app.electron) await page.getByText(/^MEXC · /).waitFor({ timeout: 30_000 });
     await shot(page, '14c-market-board');
     await row.getByRole('button', { name: 'Buy' }).click();
     const take = page.locator('.modal');
@@ -376,6 +388,9 @@ async function main() {
     await page.locator('.sheet .nav-item', { hasText: 'Market' }).click();
     await page.getByText('Connected to 1 of 1 relays').waitFor({ timeout: 30_000 });
     await page.locator('.page').evaluate((el) => el.scrollTo(0, 0));
+    // The offer's button must be on screen, not behind a sideways scroll.
+    const buy = await page.locator('tr', { hasText: '200,000.00 LBC' }).getByRole('button', { name: 'Buy' }).boundingBox();
+    if (!buy || buy.x < 0 || buy.x + buy.width > page.viewportSize()!.width) throw new Error(`phone Market: the Buy button is off screen (${JSON.stringify(buy)})`);
     await shot(page, '29-phone-market');
     await page.setViewportSize({ width: 1280, height: 820 });
 

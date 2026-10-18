@@ -6,13 +6,15 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
-import { _electron as electron, chromium, type Page } from 'playwright-core';
+import { _electron as electron, chromium, type ElectronApplication, type Page } from 'playwright-core';
 import electronPath from 'electron';
 
 const appDir = resolve(__dirname, '..');
 
 export interface RunningApp {
   page: Page;
+  /** The main process, for the development build only (a packaged build's fuses disable the inspector). */
+  electron?: ElectronApplication;
   close(): Promise<void>;
 }
 
@@ -29,7 +31,7 @@ export async function launchDev(dataDir: string): Promise<RunningApp> {
     args: ['--no-sandbox', appDir],
     env: { ...process.env, LBC_WALLET_DATA_DIR: dataDir, ...(process.env.LBCD_BIN ? { LBC_WALLET_LBCD_BIN: process.env.LBCD_BIN } : {}) },
   });
-  return { page: await app.firstWindow(), close: () => app.close() };
+  return { page: await app.firstWindow(), electron: app, close: () => app.close() };
 }
 
 function freePort(): Promise<number> {
