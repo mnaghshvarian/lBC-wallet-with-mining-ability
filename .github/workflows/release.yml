@@ -52,14 +52,24 @@ jobs:
             exit 1
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-      - name: Create the draft release with its notes (once)
+      - name: Create the draft release (or refresh its notes)
         if: steps.tag.outputs.tag != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.tag.outputs.tag }}
+          ANDROID_KEY_SET: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         run: |
-          gh release view "$TAG" >/dev/null 2>&1 || \
-            gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "LBC Wallet ${TAG#v}" --notes-file docs/release-notes.md
+          notes="$RUNNER_TEMP/notes.md"
+          cp docs/release-notes.md "$notes"
+          if [ "$ANDROID_KEY_SET" != "true" ]; then
+            # The Android job signs with a throwaway key without the secret; say so on the release page.
+            printf '\n> ⚠️ **The Android APK of this release is signed with a temporary signing key.** It installs and works, but a later version signed with the project'"'"'s permanent key will not install over it: you would have to uninstall this one first (write down your recovery phrase before you do).\n' >> "$notes"
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$notes"
+          else
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "LBC Wallet ${TAG#v}" --notes-file "$notes"
+          fi
           gh release upload "$TAG" docs/manual/LBC-Wallet-Manual.pdf DISCLAIMER.md --clobber
 
   build:
@@ -181,7 +191,6 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
       - name: Build and sign the APK
-        id: apk
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -197,14 +206,13 @@ jobs:
             export LBC_ANDROID_KEY_ALIAS="$ANDROID_KEY_ALIAS"
             export LBC_ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
           else
-            # No release key configured: sign with a throwaway key so the APK installs, and say so
-            # in the release notes. An APK signed with a different key can't update this one in place.
+            # No release key configured: sign with a throwaway key so the APK installs (the draft job
+            # notes it on the release page). An APK signed with a different key can't update this one.
             pass="$(openssl rand -hex 24)"
             echo "::add-mask::$pass"
             keytool -genkeypair -keystore "$LBC_ANDROID_KEYSTORE" -storetype PKCS12 -alias test -keyalg RSA -keysize 4096 \
               -validity 10000 -storepass "$pass" -keypass "$pass" -dname "CN=LBC Wallet test build" > /dev/null
             export LBC_ANDROID_KEYSTORE_PASSWORD="$pass" LBC_ANDROID_KEY_ALIAS=test LBC_ANDROID_KEY_PASSWORD="$pass"
-            echo "test_key=true" >> "$GITHUB_OUTPUT"
             echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: the APK is signed with a throwaway key (see docs/BUILDING.md)."
           fi
           npm run build:android:release -w lbc-wallet-mobile
@@ -218,16 +226,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.draft.outputs.tag }}
-          TEST_KEY: ${{ steps.apk.outputs.test_key }}
-        run: |
-          gh release upload "$TAG" apps/mobile/release/*.apk apps/mobile/release/SHA256SUMS-Android.txt --clobber
-          if [ "$TEST_KEY" = "true" ]; then
-            gh release view "$TAG" --json body -q .body > "$RUNNER_TEMP/notes.md"
-            if ! grep -q "temporary signing key" "$RUNNER_TEMP/notes.md"; then
-              printf '\n> ⚠️ **The Android APK of this release is signed with a temporary signing key.** It installs and works, but a later version signed with the project'"'"'s permanent key will not install over it: you would have to uninstall this one first (write down your recovery phrase before you do).\n' >> "$RUNNER_TEMP/notes.md"
-              gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
-            fi
-          fi
+        run: gh release upload "$TAG" apps/mobile/release/*.apk apps/mobile/release/SHA256SUMS-Android.txt --clobber
       - uses: actions/upload-artifact@v7
         with:
           name: lbc-wallet-Android
