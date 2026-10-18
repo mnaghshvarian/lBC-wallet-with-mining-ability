@@ -17,6 +17,7 @@ These run on every push and every Monday (*Actions → Mainnet check*). They don
 | A real payment's proof | A real transaction's merkle proof checks out against its block header, the same check the wallet runs for every confirmation. |
 | LBRYPool | The pool accepts a login and sends work for the current block. No hashing. |
 | Bitcoin explorers for swaps | blockstream.info and mempool.space answer and agree. The cross-check that guards a swap accepts a real Bitcoin payment and rejects one that doesn't match. |
+| The Market's Nostr relays | Most of the five default relays accept the wallet's own WebSocket client and answer the order board's query; every event they send passes the signature check. Read-only: nothing is published. |
 | Built-in node | The bundled `lbcd` finds peers and downloads and verifies mainnet blocks. |
 | **The installed Windows app** | The installer is built and installed silently. A robot then uses the app like a person: it accepts the disclaimer and creates a wallet. It waits until the wallet has synced with the public servers, checks the LBC supply figures, tests the servers in Settings and reads the Bitcoin fee on the Swap page. |
 
@@ -163,7 +164,27 @@ Keep both wallets **open and unlocked** until both say Completed. If anything st
 each side gets its coins back automatically after its lock time (24 or 48 hours) while the
 wallet is open.
 
-### 6. Report
+### 6. The Market (optional, about 1 to 2 hours)
+
+The same two wallets and a little Bitcoin as in step 5.
+
+1. **Wallet A: Market**, read the warning, tick both boxes, open the board.
+   * ✅ "Connected to … relays" shows at least 3 of 5, and the market price card shows MEXC's
+     price in US dollars, sats and Monero.
+2. **Wallet A: Post an offer** → *Sell LBC*, 20 LBC (or more), your price, your Bitcoin address.
+   * ✅ The offer appears under *Your offers* with "On … relays", and on the board marked *Yours*.
+3. **Wallet B: Market → Buy LBC**, find wallet A's offer, **Buy**, 10 LBC (or the offer's
+   smallest part), wallet B's Bitcoin address for a refund.
+   * ✅ Within seconds the trade becomes *Swapping* and shows a Bitcoin address, the exact
+     amount and a deadline. Wallet A shows "Your offer was taken".
+4. Pay exactly that amount from your Bitcoin wallet in a single payment, before the deadline.
+   * ✅ No codes to copy: wallet A gets wallet B's lock code by itself and, after 2 Bitcoin
+     confirmations, asks for its password to lock the LBC.
+   * ✅ After 12 LBC confirmations wallet B collects the LBC, and wallet A collects the Bitcoin.
+     Both trades show **Done**, and wallet A's offer shows the rest left.
+5. Wallet A: **Take down** the offer. ✅ It disappears from wallet B's board.
+
+### 7. Report
 
 Please open an issue titled "Mainnet test: <your system>" with:
 

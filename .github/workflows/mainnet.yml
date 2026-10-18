@@ -38,7 +38,7 @@ jobs:
       - name: Build the bundled full node (lbcd)
         run: bash scripts/build-lbcd.sh linux-x64
       - run: npm ci
-      - name: Public hubs, headers with proof of work, a real transaction's merkle proof, LBRYPool login, Bitcoin explorers for swaps
+      - name: Public hubs, headers with proof of work, a real transaction's merkle proof, LBRYPool login, Bitcoin explorers for swaps, the Market's Nostr relays (read-only)
         run: npm run test:mainnet -w @lbcwallet/core
       - name: Which LBRY full nodes accept peer connections (version handshake only)
         if: ${{ !cancelled() }}
