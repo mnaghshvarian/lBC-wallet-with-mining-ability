@@ -254,6 +254,7 @@ export function PasswordPrompt({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const submit = async () => {
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
@@ -281,7 +282,7 @@ export function PasswordPrompt({
       <div className="stack">
         {description && <div className="text-2">{description}</div>}
         <Field label={t('common.walletPassword')} error={error}>
-          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && password && void submit()} invalid={!!error} autoFocus />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && password && void submit()} invalid={!!error} disabled={busy} autoFocus />
         </Field>
       </div>
     </Modal>

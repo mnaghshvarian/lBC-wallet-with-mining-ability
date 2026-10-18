@@ -19,6 +19,7 @@ import {
   validateWalletFile,
   walletInfo,
   InsufficientFundsError,
+  TooManyInputsError,
   WrongPasswordError,
   type ChainBackend,
   type PaymentDraft,
@@ -58,6 +59,8 @@ export interface WalletServiceEvents {
 
 const WALLET_DIR = 'wallets';
 const WALLET_SUFFIX = '.lbcwallet.json';
+/** While a running swap keeps an idle wallet open, how often the auto-lock looks again. */
+const ACTIVE_WORK_RECHECK_MS = 60_000;
 
 /**
  * Creates, opens and operates wallets: keys stay inside the session (and
@@ -75,6 +78,17 @@ export class WalletService {
   private changedTimer: ReturnType<typeof setTimeout> | null = null;
   private receivedBatch: { amount: bigint; kind: 'payment' | 'mining' | 'tip' }[] = [];
   private receivedTimer: ReturnType<typeof setTimeout> | null = null;
+  /** open() and lock() run one after the other (see `serial`). */
+  private chain: Promise<unknown> = Promise.resolve();
+  /** Work that needs the wallet open, which the inactivity lock waits for; by default the wallet's running atomic swaps (their claims and refunds happen only while it is open). */
+  private hasActiveWork: () => boolean = () => (this.engine?.state.swaps ?? []).some((r) => r.status === 'active');
+
+  /** True while the open wallet has work that must not be interrupted by an inactivity lock (a running swap). */
+  activeWork(): boolean {
+    return this.isOpen && this.hasActiveWork();
+  }
+  /** The idle time has passed but active work keeps the wallet open (logged once). */
+  private lockDeferred = false;
 
   constructor(
     private readonly platform: Platform,
@@ -97,6 +111,22 @@ export class WalletService {
   /** The desktop app reports the built-in node here; the wallet switches to it once it is synced. */
   setLocalNode(provider: () => LocalNode | null): void {
     this.localNode = provider;
+  }
+
+  /** Replaces what counts as work the inactivity lock must wait for (by default: the open wallet's running swaps). */
+  setActiveWork(provider: () => boolean): void {
+    this.hasActiveWork = provider;
+  }
+
+  /**
+   * Runs `task` once every earlier open() and lock() has finished. Unlocking
+   * costs a 128 MB scrypt and starts a sync engine, so two unlocks must never
+   * run at once (a second one would orphan the first engine with its keys).
+   */
+  private serial<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.chain.then(task);
+    this.chain = run.catch(() => undefined);
+    return run;
   }
 
   private backendFor(settings = this.settings.get()): ChainBackend {
@@ -173,9 +203,20 @@ export class WalletService {
   }
 
   async open(id: string, password: string): Promise<WalletOverview> {
+    return this.serial(async () => {
+      // The wallet that just opened, asked for again (an unlock submitted twice): nothing to redo.
+      if (this.session?.file.id === id && this.engine) {
+        this.touch();
+        return this.overview()!;
+      }
+      return this.openNow(id, password);
+    });
+  }
+
+  private async openNow(id: string, password: string): Promise<WalletOverview> {
     const file = this.readFile(id);
     if (file.network !== this.settings.get().network) throw new UserError('wrongNetwork');
-    await this.lock('manual', false);
+    await this.lockNow('manual', false);
     const s = this.settings.get();
     const session = await WalletSession.unlock(file, password, { keepKeys: !s.requirePasswordToSend }).catch((err) => {
       throw err instanceof WrongPasswordError ? new UserError('incorrectPassword') : err;
@@ -224,20 +265,26 @@ export class WalletService {
   }
 
   async lock(reason: 'manual' | 'timeout' | 'system' = 'manual', notify = true): Promise<void> {
+    return this.serial(() => this.lockNow(reason, notify));
+  }
+
+  private async lockNow(reason: 'manual' | 'timeout' | 'system', notify: boolean): Promise<void> {
     if (this.lockTimer) clearTimeout(this.lockTimer);
     this.lockTimer = null;
+    this.lockDeferred = false;
     const engine = this.engine;
     const session = this.session;
-    this.engine = null;
-    this.session = null;
     if (engine) {
+      // While the session is still this one, so the persist callback accepts the last state.
       try {
         engine.flush();
       } catch {
         // already logged by persist
       }
-      await engine.stop().catch(() => undefined);
     }
+    this.engine = null;
+    this.session = null;
+    if (engine) await engine.stop().catch(() => undefined);
     session?.lock();
     if (session && notify) {
       this.log('info', `wallet locked (${reason})`);
@@ -252,11 +299,28 @@ export class WalletService {
   /** Records user activity for the auto-lock timer. */
   touch(): void {
     this.lastActivity = Date.now();
+    this.lockDeferred = false;
+    this.armLockTimer();
+  }
+
+  private armLockTimer(delayMs?: number): void {
     if (this.lockTimer) clearTimeout(this.lockTimer);
     this.lockTimer = null;
     const minutes = this.settings.get().autoLockMinutes;
     if (!this.engine || minutes <= 0) return;
-    this.lockTimer = setTimeout(() => void this.lock('timeout'), minutes * 60_000);
+    this.lockTimer = setTimeout(() => this.idleTimeout(), delayMs ?? minutes * 60_000);
+  }
+
+  /** The idle time is over: locks the wallet, unless work that needs it open (a running swap) is still going on; then it looks again every minute. */
+  private idleTimeout(): void {
+    this.lockTimer = null;
+    if (this.hasActiveWork()) {
+      if (!this.lockDeferred) this.log('info', 'auto-lock postponed: a swap is still running');
+      this.lockDeferred = true;
+      this.armLockTimer(ACTIVE_WORK_RECHECK_MS);
+      return;
+    }
+    void this.lock('timeout');
   }
 
   private requireOpen(): { session: WalletSession; engine: WalletEngine } {
@@ -375,6 +439,7 @@ export class WalletService {
       kind: session.file.kind,
       scheme: session.file.scheme,
       watchOnly: session.watchOnly,
+      keysInMemory: session.keysInMemory,
       balance: { available: s(b.available), pending: s(b.pending), immature: s(b.immature), supports: s(b.supports), claims: s(b.claims), total: s(b.total) },
       receiveAddress: engine.getReceiveAddress(),
       tipHeight: engine.tipHeight,
@@ -435,6 +500,7 @@ export class WalletService {
       if (err instanceof InsufficientFundsError) {
         throw new UserError('insufficientFunds', { needed: formatLbc(err.needed), available: formatLbc(err.available) });
       }
+      if (err instanceof TooManyInputsError) throw new UserError('tooManyCoins', { max: err.max });
       throw new UserError('operationFailed', { detail: (err as Error).message });
     }
   }
@@ -495,6 +561,9 @@ export class WalletService {
         engine.state.swaps = records;
         engine.stateChanged();
       },
+      flush: () => {
+        if (this.engine === engine) engine.flush();
+      },
       receiveAddress: () => engine.newReceiveAddress().address,
       lbc: backendSwapChain({
         backend: () => engine.chain,
@@ -502,6 +571,7 @@ export class WalletService {
         tip: () => engine.state.tip,
         feeRate: () => this.settings.get().feePerByte,
         broadcast: (tx) => engine.broadcast(tx),
+        log: (level, message) => this.log(level, `swap: ${message}`),
       }),
       pay: async (address, amount, password, label) => {
         const draft = this.prepareSend({ address, amount: amount.toString() });

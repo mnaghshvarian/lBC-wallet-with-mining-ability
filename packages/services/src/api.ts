@@ -153,6 +153,8 @@ export interface WalletOverview {
   kind: WalletListItem['kind'];
   scheme: WalletListItem['scheme'];
   watchOnly: boolean;
+  /** The signing keys stay in memory (the wallet was opened while "ask for the password on every send" was off); otherwise sending needs the password. */
+  keysInMemory: boolean;
   balance: BalanceView;
   receiveAddress: string;
   tipHeight: number;

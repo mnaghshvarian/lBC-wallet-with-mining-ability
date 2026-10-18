@@ -14,7 +14,7 @@ export function Unlock({ walletId }: { walletId: string }) {
   const [error, setError] = useState('');
 
   const unlock = async () => {
-    if (!password) return;
+    if (!password || busy) return;
     setBusy(true);
     setError('');
     try {
@@ -45,6 +45,7 @@ export function Unlock({ walletId }: { walletId: string }) {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void unlock()}
               invalid={!!error}
+              disabled={busy}
               autoFocus
               placeholder={t('common.password')}
             />

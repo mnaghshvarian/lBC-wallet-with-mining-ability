@@ -80,7 +80,7 @@ async function main(): Promise<void> {
   });
   void CapApp.addListener('resume', () => {
     const minutes = settings.get().autoLockMinutes;
-    if (wallets.isOpen && minutes > 0 && Date.now() - pausedAt >= minutes * 60_000) void wallets.lock('timeout');
+    if (wallets.isOpen && minutes > 0 && Date.now() - pausedAt >= minutes * 60_000 && !wallets.activeWork()) void wallets.lock('timeout');
     void miner?.setForeground(true);
     // Catch up with swaps and trades at once (timers do not run in the background).
     void swaps.poll();

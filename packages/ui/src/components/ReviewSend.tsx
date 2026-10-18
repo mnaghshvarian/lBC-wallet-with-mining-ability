@@ -10,13 +10,16 @@ import { lbc } from '../lib/format';
 export function ReviewSend({ draft, label, title, onClose, onSent }: { draft: DraftView; label?: string; title?: string; onClose: () => void; onSent?: (txid: string) => void }) {
   const t = useT();
   const settings = useApp((s) => s.settings)!;
+  const overview = useApp((s) => s.overview);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [txid, setTxid] = useState<string | null>(null);
-  const needPassword = settings.requirePasswordToSend;
+  // The keys stay in memory only when the wallet was opened with the setting off; otherwise sending needs the password, whatever the setting says now.
+  const needPassword = settings.requirePasswordToSend || !overview?.keysInMemory;
 
   const send = async () => {
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
@@ -125,7 +128,7 @@ export function ReviewSend({ draft, label, title, onClose, onSent }: { draft: Dr
         </div>
         {needPassword && (
           <Field label={t('common.walletPassword')} error={error || undefined}>
-            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && password && void send()} autoFocus invalid={!!error} />
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && password && void send()} autoFocus invalid={!!error} disabled={busy} />
           </Field>
         )}
         {!needPassword && error && <Callout tone="danger">{error}</Callout>}
