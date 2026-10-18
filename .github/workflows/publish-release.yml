@@ -62,7 +62,11 @@ jobs:
       - name: Publish
         env:
           COMMIT: ${{ steps.built.outputs.commit }}
-        run: gh release edit "$TAG" --target "$COMMIT" --draft=false --latest
+        run: |
+          set -euo pipefail
+          gh release edit "$TAG" --target "$COMMIT" && echo "tag will point at $COMMIT"
+          gh release edit "$TAG" --draft=false && echo "published"
+          gh release edit "$TAG" --latest && echo "marked as the latest release"
       - name: Check the download links
         run: |
           set -euo pipefail
