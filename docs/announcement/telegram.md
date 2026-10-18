@@ -34,8 +34,9 @@ Windows · Mac · Linux (deb, rpm, AppImage, ARM64) · Android
 How you can help 🙏
 1. Try it with a small amount and follow the test checklist: https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/blob/HEAD/docs/TESTING-MAINNET.md
 2. Report bugs or ideas: https://github.com/mnaghshvarian/lBC-wallet-with-mining-ability/issues
-3. Developers and security people: reviews and an audit are very welcome — the code is MIT-licensed.
-4. Translators: help improve the 14 translations.
+3. Run a node if you can: LBRY's own seed nodes are offline and very few public nodes are left. In the app, Node → Start node with "Accept incoming connections" on helps new users join the network.
+4. Developers and security people: reviews and an audit are very welcome — the code is MIT-licensed.
+5. Translators: help improve the 14 translations.
 
 What's next 🗺️
 1️⃣ A decentralized mining pool inside the wallet (P2Pool style — no operator, no pool fee, rewards paid straight from the block)

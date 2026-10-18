@@ -56,7 +56,8 @@ the wallet like any other payment and can be sent on.
 ## 3. Built-in node and solo mining (needs ~150 GB and 1–3 days)
 
 1. **Node** page → choose a folder with enough space → **Start node**.
-   * ✅ Within minutes: several **peers**, headers and blocks counting up, an estimated time left.
+   * ✅ Within a few minutes: at least one **peer** (the LBRY network has few public nodes right
+     now, so 1–3 peers is normal), headers and blocks counting up, an estimated time left.
 2. Leave it running until it shows **Your node is ready** (100 %).
    * ✅ The status in the corner says **your node**; balances and history are the same as before.
 3. **Mining → Solo (full node)**: ✅ it says *Using the built-in node — ready*, and **Start
