@@ -50,7 +50,7 @@ export interface MarketTiming {
   takeMaxAge: number;
 }
 
-export const MARKET_TIMING: MarketTiming = { inviteWait: 10 * 60, lockWithin: 20 * 60, makerWait: 40 * 60, takeMaxAge: 10 * 60 };
+export const MARKET_TIMING: MarketTiming = { inviteWait: 10 * 60, lockWithin: 20 * 60, makerWait: 40 * 60, takeMaxAge: 7 * 60 };
 
 /** What the market needs from the open wallet. */
 export interface MarketWallet {
@@ -130,6 +130,9 @@ export class MarketService {
   private readonly declined = new Set<string>();
   /** Open offers of the wallet last seen open, to take them down when it locks or another opens. */
   private lastOpen: { state: MarketState; offers: MarketOfferRecord[] } | null = null;
+  private lastRoundAt = 0;
+  /** When a relay last said it had sent everything stored for the current message subscription. */
+  private messagesCaughtUpAt = 0;
 
   constructor(
     private readonly platform: Platform,
@@ -206,8 +209,7 @@ export class MarketService {
   private closePool(): void {
     this.boardSub?.close();
     this.boardSub = null;
-    this.messageSub?.close();
-    this.messageSub = null;
+    this.dropMessageSub();
     this.pool?.close();
     this.pool = null;
     this.board.clear();
@@ -224,9 +226,28 @@ export class MarketService {
     return this.pool;
   }
 
+  /** Ends the message subscription; the next round asks the relays again, which resend what they store. */
+  private dropMessageSub(): void {
+    this.messageSub?.close();
+    this.messageSub = null;
+    this.messagesCaughtUpAt = 0;
+  }
+
+  /** True once the relays have delivered everything they stored for our trades and one is still connected. */
+  private caughtUp(): boolean {
+    return this.messagesCaughtUpAt > 0 && (this.pool?.connected ?? 0) > 0;
+  }
+
   private async round(): Promise<void> {
+    const now = this.nowMs();
+    if (this.lastRoundAt && now - this.lastRoundAt > TICK_MS * 4) {
+      // The device slept or the app was suspended: whatever relays sent meanwhile is lost, so ask again.
+      this.log('info', 'resumed after a pause; asking the relays again for trade messages');
+      this.dropMessageSub();
+    }
+    this.lastRoundAt = now;
     const w = this.deps.wallet();
-    const watching = this.nowMs() < this.boardUntil;
+    const watching = now < this.boardUntil;
     if (!w) {
       await this.walletGone();
       if (!watching) this.closePool();
@@ -272,6 +293,8 @@ export class MarketService {
   private async walletGone(): Promise<void> {
     const last = this.lastOpen;
     this.lastOpen = null;
+    // Its messages cannot be handled now; when a wallet is open again the relays are asked afresh.
+    this.dropMessageSub();
     if (!last || !this.pool || last.offers.length === 0) return;
     const pool = this.pool;
     for (const o of last.offers) this.offerRelays.delete(o.id);
@@ -282,8 +305,6 @@ export class MarketService {
         await pool.publish(e);
       }),
     ).catch((err: Error) => this.log('warn', `could not take offers down: ${err.message}`));
-    this.messageSub?.close();
-    this.messageSub = null;
   }
 
   private refreshPrice(): void {
@@ -347,10 +368,13 @@ export class MarketService {
     const list = [...keys].sort();
     const id = list.join(',');
     if (this.messageSub?.keys === id) return;
-    this.messageSub?.close();
-    this.messageSub = null;
+    this.dropMessageSub();
     if (list.length === 0) return;
-    const close = pool.subscribe([messageFilter(list, this.nowSec())], (e) => void this.queue.run(() => this.onMessage(e)).catch((err: Error) => this.log('warn', `message: ${err.message}`)));
+    const close = pool.subscribe(
+      [messageFilter(list, this.nowSec())],
+      (e) => void this.queue.run(() => this.onMessage(e)).catch((err: Error) => this.log('warn', `message: ${err.message}`)),
+      () => (this.messagesCaughtUpAt = this.nowMs()),
+    );
     this.messageSub = { keys: id, close };
   }
 
@@ -428,7 +452,11 @@ export class MarketService {
 
   private async onMessage(e: NostrEvent): Promise<void> {
     const w = this.deps.wallet();
-    if (!w) return;
+    if (!w) {
+      // Locked meanwhile: the relay counts this message as delivered, so ask again once a wallet is open.
+      this.dropMessageSub();
+      return;
+    }
     const state = w.state();
     const to = tagValue(e, 'p');
     const now = this.nowSec();
@@ -600,8 +628,9 @@ export class MarketService {
       t.sentLock = view.code;
       await this.send(state, t, { type: 'lock', trade: t.id, code: view.code });
     }
-    if (t.role === 'maker' && t.status === 'invited' && view.stage === 'send-invite' && age > this.timing.makerWait) {
-      // The taker never locked: give up (nothing of ours is locked yet).
+    if (t.role === 'maker' && t.status === 'invited' && view.stage === 'send-invite' && age > this.timing.makerWait && this.caughtUp()) {
+      // The taker never locked: give up (nothing of ours is locked yet). Only once the relays have
+      // delivered everything they hold: after sleep or an outage, their lock code may still be on its way.
       this.deps.swaps.cancel(view.id);
       await this.send(state, t, { type: 'decline', trade: t.id, reason: 'expired' });
       this.end(state, t, 'expired');
