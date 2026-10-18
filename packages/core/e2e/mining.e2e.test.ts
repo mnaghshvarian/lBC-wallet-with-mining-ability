@@ -72,7 +72,9 @@ describe.skipIf(!lbcdAvailable())('mining against lbcd regtest', () => {
     });
     try {
       await waitFor(() => miner.stats.accepted, (n) => n >= 5, 45_000, 'accepted shares');
-      await waitFor(() => pool.blocks.length, (n) => n >= 2, 45_000, 'pool blocks');
+      // Wait for the main chain, not the pool's count: two shares can solve the same job
+      // before new work arrives, which makes two blocks at one height.
+      await waitFor(() => node.rpc.call<number>('getblockcount'), (h) => h - before >= 2, 45_000, 'two pool blocks on the main chain');
     } finally {
       await miner.stop();
       await threads.destroy();
