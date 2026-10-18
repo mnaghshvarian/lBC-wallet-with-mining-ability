@@ -47,7 +47,7 @@ function usedKeys(): { exact: Set<string>; prefixes: Set<string> } {
 describe('dictionaries', () => {
   it('has a dictionary for every listed language', () => {
     expect(LANGUAGES.map((l) => l.code).sort()).toEqual(Object.keys(DICTIONARIES).sort());
-    expect(LANGUAGES).toHaveLength(14);
+    expect(LANGUAGES).toHaveLength(15);
   });
 
   it('defines every key the code uses', () => {

@@ -104,9 +104,9 @@ files.
 **15 languages** — English, فارسی, العربية, اردو, हिन्दी, Français, Deutsch, Español, Português,
 Nederlands, Русский, 简体中文, 日本語, 한국어, ไทย (right-to-left layouts included).
 
-| Mining | Built-in node | Persian (right to left) | Android |
-| --- | --- | --- | --- |
-| ![Mining](docs/manual/images/mining.png) | ![Node](docs/manual/images/node-running.png) | ![Persian](docs/manual/images/overview-fa.png) | ![Android](docs/manual/images/android-overview.png) |
+| Market | Mining | Built-in node | Persian (right to left) | Android |
+| --- | --- | --- | --- | --- |
+| ![Market](docs/manual/images/market-board.png) | ![Mining](docs/manual/images/mining.png) | ![Node](docs/manual/images/node-running.png) | ![Persian](docs/manual/images/overview-fa.png) | ![Android](docs/manual/images/android-overview.png) |
 
 ## Documentation
 

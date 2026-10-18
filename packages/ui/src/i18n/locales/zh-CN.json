@@ -278,7 +278,8 @@
     "more": "更多",
     "lock": "锁定钱包",
     "switchWallet": "锁定并切换钱包",
-    "swap": "兑换"
+    "swap": "兑换",
+    "market": "市场"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -428,7 +429,11 @@
     "deleteWarning": "请确认你已抄写好助记词。",
     "deleteWarningStrong": "如果没有助记词，“{name}”中的资金将永久丢失。",
     "swapExplorer": "用于兑换的比特币区块浏览器",
-    "swapExplorerHint": "兑换功能通过 Esplora 服务器读取比特币区块链。留空则使用 blockstream.info，并与 mempool.space 交叉核对；你也可以填写自己的服务器。该服务器能看到兑换所用的比特币地址以及你的 IP 地址。"
+    "swapExplorerHint": "兑换功能通过 Esplora 服务器读取比特币区块链。留空则使用 blockstream.info，并与 mempool.space 交叉核对；你也可以填写自己的服务器。该服务器能看到兑换所用的比特币地址以及你的 IP 地址。",
+    "relays": "报价板中继",
+    "relaysHint": "用于传递“市场”报价和交易消息的 Nostr 中继（wss:// 地址，每行 1 个）。留空则使用下方的默认列表。交易双方至少需要有 1 个共同的中继。",
+    "relaysInvalid": "部分地址未保存：中继必须使用 wss:// 地址。",
+    "relaysDefault": "使用默认中继"
   },
   "error": {
     "invalidWalletId": "钱包 ID 无效",
@@ -499,7 +504,19 @@
     "swapTooLate": "已来不及锁定：对方的币剩余锁定时间不足 {hours} 小时。请发起新的兑换。",
     "swapNoExplorer": "请先在“设置”中设置用于兑换的比特币区块浏览器（Esplora）服务器。",
     "swapCannotCancel": "你的币已锁定；如果兑换未能完成，它们会在锁定期结束后自动退回。",
-    "swapStillActive": "此兑换仍在进行中。"
+    "swapStillActive": "此兑换仍在进行中。",
+    "marketUnsupported": "此设备不支持报价板。",
+    "marketTermsNotAccepted": "请先阅读并接受报价板的警告（“市场”页面）。",
+    "marketOfferGone": "此报价已不在报价板上。",
+    "marketOwnOffer": "这是你自己的报价。",
+    "marketOutOfRange": "请为此报价选择 {min} 至 {max} LBC 之间的数量。",
+    "marketNotEnoughLbc": "此操作需要 {needed} LBC，但可用余额只有 {available} LBC。",
+    "marketMinTooSmall": "每笔交易的最低数量至少要值 {btc} BTC（按你的价格约为 {lbc} LBC），否则会被网络手续费吃掉。",
+    "marketLockExpired": "此交易的锁定时限已过，没有锁定任何币。如果该报价仍在，请重新接受。",
+    "marketNoRelay": "无法连接任何中继。请检查你的网络连接，或“设置 → 网络”中的中继列表。",
+    "marketTooMany": "你已有 {count} 个有效报价。请先撤下其中一个。",
+    "marketUnknownTrade": "此钱包中没有这笔交易。",
+    "marketTradeRunning": "此交易仍在进行中。"
   },
   "notice": {
     "received": {
@@ -550,6 +567,17 @@
     "swapRefunded": {
       "title": "兑换已结束",
       "message": "你的 {coin} 已退回给你。"
+    },
+    "marketTaken": {
+      "title": "你的报价已被接受",
+      "message": "有人接受了你报价中的 {amount}。对方钱包会先锁定，之后会提示你锁定你的币。"
+    },
+    "marketAccepted": {
+      "title": "你的交易请求已被接受",
+      "message": "请立即在“市场”页面锁定你的 {coin}（你有 20 分钟时间）。"
+    },
+    "marketDeclined": {
+      "title": "你的交易请求被拒绝了"
     }
   },
   "create": {
@@ -1028,5 +1056,168 @@
     "claimTx": "领取交易",
     "refundTx": "退款交易",
     "history": "历史记录"
+  },
+  "market": {
+    "title": "市场",
+    "sub": "与他人用比特币买卖 LBC。无需交易所，也无需账户：每笔交易都是一次原子兑换。",
+    "postOffer": "发布报价",
+    "board": "报价",
+    "buyLbc": "买入 LBC",
+    "sellLbc": "卖出 LBC",
+    "relays": "已连接 {n}/{total} 个中继",
+    "loading": "正在查找报价…",
+    "noSellers": "目前没有人出售 LBC。你可以发布买入报价，或稍后再来看看。",
+    "noBuyers": "目前没有人购买 LBC。你可以发布卖出报价，或稍后再来看看。",
+    "col": {
+      "price": "每 LBC 价格",
+      "available": "可交易数量",
+      "total": "折合比特币"
+    },
+    "sats": "{n} sats",
+    "above": "高于市场价 {pct}%",
+    "below": "低于市场价 {pct}%",
+    "from": "{min} 起",
+    "yours": "你的报价",
+    "buy": "买入",
+    "sell": "卖出",
+    "price": {
+      "title": "市场价",
+      "source": "{source} · {time}",
+      "loading": "正在加载市场价…",
+      "unavailable": "目前无法加载市场价。交易前，请先到交易所网站查看 LBC 的成交价格。",
+      "oneLbc": "1 LBC",
+      "inBtc": "折合比特币",
+      "inXmr": "折合 Monero",
+      "convert": "换算 LBC 金额",
+      "converted": "{lbc} LBC ≈ {btc} BTC ≈ {xmr} XMR ≈ {usd}",
+      "hint": "仅供参考：LBC 在交易所的成交价格。这里的报价由发布者自行定价。"
+    },
+    "take": {
+      "buyTitle": "买入 LBC",
+      "sellTitle": "卖出 LBC",
+      "offer": "价格为每 LBC {price}。你可以接受 {min} 至 {max} 之间的数量。",
+      "amount": "LBC 数量",
+      "range": "请选择 {min} 至 {max} 之间的数量。",
+      "summary": "你付出 {give}，换得 {get}",
+      "firstLbc": "你的钱包会先锁定你的 {give}，锁定时间最长 48 小时。如果对方没有锁定自己的币，你的 LBC 会在这段时间过后自动退回给你。",
+      "firstBtc": "你需要先从你的比特币钱包向合约支付 {give}。如果对方没有锁定自己的币，这笔比特币会在 48 小时后退回到下方的地址。",
+      "notEnough": "此钱包的可用余额只有 {available}。",
+      "tooSmall": "此金额太小，不适合兑换：网络手续费会吃掉其中的大部分。",
+      "buy": "买入 {amount}",
+      "sell": "卖出 {amount}"
+    },
+    "trade": {
+      "waiting": "正在等待对方钱包响应。对方在线时只需几秒钟；超过 10 分钟仍无响应则会放弃。",
+      "unsent": "尚未发送：无法连接任何中继。一旦有中继可用，就会立即发送。",
+      "invited": "有人接受了你报价中的 {lbc}。对方钱包会先锁定；对方的币获得确认后，会提示你锁定你的币。",
+      "swapping": "兑换正在进行中。",
+      "done": "已完成：双方都已收到付款。",
+      "expired": "未及时收到响应。你的币均未被锁定。",
+      "cancelled": "交易在完成前已停止。原因可在对应的兑换（“兑换”页面）中查看；已锁定的币会在锁定期结束后自动退回。",
+      "declined": {
+        "taken": "对方钱包正在处理其他交易请求。请过几分钟再试。",
+        "closed": "该报价已关闭。",
+        "amount": "对方钱包目前无法满足这个数量。",
+        "price": "条件与报价不符（报价可能已更改）。没有锁定任何币。",
+        "expired": "对方钱包已不再等待你锁定。你的币均未被锁定。"
+      },
+      "status": {
+        "waiting": "已发送",
+        "invited": "已被接受",
+        "swapping": "兑换中",
+        "done": "已完成",
+        "declined": "已被拒绝",
+        "expired": "已过期",
+        "cancelled": "已停止"
+      },
+      "dismiss": "从列表中移除"
+    },
+    "trades": {
+      "title": "你的交易"
+    },
+    "stageText": {
+      "waitTaker": "对方钱包已收到邀请，会先锁定 {other}。目前你无需任何操作。",
+      "lockedMaker": "你的 {give} 已锁定。正在等待对方钱包领取；之后，此钱包会自动领取对方的 {other}。",
+      "lockedTaker": "你的 {give} 已锁定。正在等待对方钱包锁定 {other}，对方最多有 12 小时。"
+    },
+    "lockBy": "请在 {time} 之前锁定，否则对方将不再等待。",
+    "post": {
+      "title": "发布报价",
+      "side": "你想要",
+      "sell": "卖出 LBC（获得比特币）",
+      "buy": "买入 LBC（支付比特币）",
+      "amount": "LBC 数量",
+      "available": "可用余额：{amount}",
+      "price": "每 LBC 的价格（单位：sats）",
+      "useMarket": "使用市场价（{price}，{source}）",
+      "min": "每笔交易的最低数量（LBC）",
+      "minHint": "留空则使用 {amount}，即在此价格下值得支付手续费的最小兑换数量。",
+      "summarySell": "你以 {btc} 卖出 {lbc}",
+      "summaryBuy": "你以 {btc} 买入 {lbc}",
+      "above": "高于市场价 {pct}%。",
+      "below": "低于市场价 {pct}%。",
+      "worth": "按市场价约合 {usd}。",
+      "howSell": "有人接受报价后，对方的比特币会先被锁定。然后会提示你锁定你的 LBC，比特币会转入上方的地址。",
+      "howBuy": "有人接受报价后，对方的 LBC 会先被锁定。然后你需要从你的比特币钱包向合约支付比特币，LBC 会转入此钱包。",
+      "stayOnline": "只有在此钱包处于打开状态时，你的报价才会显示在报价板上；钱包锁定时，报价会被撤下。有人接受报价后，你必须在 12 小时内锁定你的币。",
+      "post": "发布报价"
+    },
+    "mine": {
+      "title": "你的报价",
+      "selling": "卖出 {lbc}",
+      "buying": "买入 {lbc}",
+      "left": "剩余 {left}",
+      "running": {
+        "other": "{count} 笔交易进行中"
+      },
+      "onRelays": {
+        "other": "已发布到 {count} 个中继 · 最近更新：{time}"
+      },
+      "notYet": "尚未发布到任何中继",
+      "status": {
+        "open": "有效",
+        "closed": "已关闭"
+      },
+      "withdraw": "撤下"
+    },
+    "otherCoins": {
+      "title": "想用 USDT、Monero 或其他币付款？",
+      "text": "这里只能进行 LBC 与比特币之间的交易，因为只有这两种币可以在无人托管的情况下完成兑换。请先把你的 USDT、Monero（XMR）或其他币换成比特币（例如使用 Cake Wallet 或 Trust Wallet），然后在这里用比特币进行交易。用户手册中的交易指南介绍了具体步骤。"
+    },
+    "safety": {
+      "title": "交易前须知",
+      "text": "请从小额开始，并将价格与市场价进行比较。在你还有挂出的报价期间，以及在你的交易显示“已完成”之前，请保持 LBC Wallet 处于打开状态，并让此钱包保持解锁。钱包在一段时间无操作后会自动锁定（“设置 → 安全”）。"
+    },
+    "warning": {
+      "title": "报价板：使用前请先阅读",
+      "lead": "在报价板上，用户可以发布和接受报价，以互换 LBC 和比特币。请阅读以下几点，大约需要 1 分钟。",
+      "notExchange": {
+        "title": "这不是交易所",
+        "text": "没有人运营这个报价板，也没有人托管币、审核报价板上的用户、处理纠纷或撤销交易。LBC Wallet 不收取任何费用，也没有账户。报价通过公共 Nostr 中继传递，你的钱包直接与对方的钱包进行交易。"
+      },
+      "settlement": {
+        "title": "币只会通过兑换合约转移",
+        "text": "报价被接受后会成为一次原子兑换：双方各自把币锁定在对应区块链上的合约中。要么双方都收到付款，要么在锁定期结束后各自取回自己的币，锁定期最长可达 48 小时。只要钱包处于打开状态，它就会自动完成这些操作。"
+      },
+      "online": {
+        "title": "双方钱包都必须在线",
+        "text": "只有当发布报价的钱包处于打开状态时，报价才会得到响应。有人接受你的报价后，你必须在 12 小时内锁定你的币。如果你的钱包在锁定期限过后仍处于关闭状态，兑换可能会失败。"
+      },
+      "strangers": {
+        "title": "报价板上的人都是陌生人",
+        "text": "任何人都可以以任意价格发布报价，然后一走了之。有人可能在接受你的报价后始终不锁定，让你的报价被占用长达 40 分钟；也有人可能发布了报价，却在你锁定之后始终不锁定，导致你的币一直被锁定，直到 48 小时后才退回。没有人能不付款就拿走你的币，但你可能会损失时间和网络手续费。"
+      },
+      "relays": {
+        "title": "中继由他人运营",
+        "text": "报价和交易消息都经由 Nostr 中继（由志愿者和公司运营的服务器）传递。消息经过加密，但中继能看到哪些密钥在何时通信，并且可能延迟或丢弃消息。每个报价和每笔交易都使用新的密钥，因此交易不会与你的钱包关联，交易之间也不会相互关联。"
+      },
+      "law": {
+        "title": "受你所在国家的法规约束",
+        "text": "在你居住的地方，加密货币交易可能受到监管：例如许可证、税务、申报要求，或对某些币的禁令。你有责任遵守这些规定。这项功能刚推出，尚未经过审计；这里的任何内容均不构成财务建议。"
+      },
+      "checkStrangers": "我了解没有人审核报价板上的用户，而且一笔交易可能使我的币被锁定长达 48 小时。",
+      "checkRisk": "我使用报价板的风险由我自行承担，并且我会遵守我所在地的法律。",
+      "accept": "我已了解，打开报价板"
+    }
   }
 }

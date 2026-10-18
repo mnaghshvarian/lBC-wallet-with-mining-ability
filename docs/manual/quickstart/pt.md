@@ -82,9 +82,12 @@ carregando, e ela pausa quando a bateria esquenta.
 
 ## 8. Executar o seu próprio nó (opcional, só em computadores)
 
-Clique em **Nó**, escolha uma pasta com cerca de **150 GB** de espaço livre (**Alterar…**) e
-clique em **Iniciar nó**. O primeiro download leva de um a três dias. Quando chegar a 100%, a
-carteira passa a usar o seu próprio nó, e você pode minerar no modo **Solo**.
+Você **não** precisa baixar a blockchain: sem um nó, a carteira usa servidores públicos LBRY e
+verifica cada pagamento com a prova de trabalho dos blocos. No celular, o app sempre funciona assim.
+Se mesmo assim quiser executar o seu próprio nó, clique em **Nó**, escolha uma pasta com cerca de
+**150 GB** de espaço livre (**Alterar…**; a blockchain tem cerca de 100 GB, e não 2 TB) e clique em
+**Iniciar nó**. O primeiro download leva de um a três dias. Quando chegar a 100%, a carteira passa a
+usar o seu próprio nó, e você pode minerar no modo **Solo**.
 
 ## 9. Trocar LBC e bitcoins (opcional)
 
@@ -93,6 +96,18 @@ meio: ou os dois recebem o combinado, ou os dois recuperam os fundos. Um de voc�
 **Iniciar uma troca** e envia o código de convite; o outro clica em **Entrar com um código**.
 Mantenha o app aberto até a troca mostrar **Concluída**. O recurso de troca é novo: comece com um
 valor pequeno. Mais detalhes: [manual, seção 21](../README.md#21-buy-sell-or-swap-lbc).
+
+## 10. Comprar ou vender LBC no Mercado (opcional)
+
+A página **Mercado** mostra ofertas de outros usuários do LBC Wallet para comprar ou vender LBC por
+bitcoins, com o preço das corretoras ao lado, para comparação. Primeiro, leia o aviso da página.
+Clique em **Comprar** ou **Vender** em uma oferta, escolha o valor e o seu endereço Bitcoin e
+confirme: a outra carteira responde em segundos, e a negociação acontece como uma troca (você
+bloqueia primeiro; as duas carteiras resgatam sozinhas). Ou clique em **Publicar uma oferta** para
+definir o seu próprio preço; a oferta fica no quadro enquanto a sua carteira estiver aberta. Só é
+possível negociar LBC e bitcoins dessa forma: para pagar com USDT ou Monero, troque-os primeiro por
+bitcoins (por exemplo, na Cake Wallet ou na Trust Wallet). Mais detalhes:
+[manual, seção 22](../README.md#22-trade-on-the-market).
 
 ## Ajuda
 

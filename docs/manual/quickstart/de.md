@@ -86,10 +86,13 @@ Smartphone lädt, und es pausiert, wenn der Akku warm wird.
 
 ## 8. Eigenen Node betreiben (optional, nur auf Computern)
 
-Klicken Sie auf **Node**, wählen Sie einen Ordner mit etwa **150 GB** freiem Speicherplatz
-(**Ändern…**) und klicken Sie auf **Node starten**. Der erste Download dauert ein bis drei Tage.
-Sobald er 100 % erreicht hat, nutzt die Wallet Ihren eigenen Node, und Sie können im Modus
-**Solo (Full Node)** minen.
+Sie müssen die Blockchain **nicht** herunterladen: Ohne Node nutzt die Wallet öffentliche
+LBRY-Server und prüft jede Zahlung anhand des Proof of Work der Blöcke. Auf Smartphones arbeitet die
+Wallet immer so. Wenn Sie trotzdem einen eigenen Node betreiben möchten, klicken Sie auf **Node**,
+wählen Sie einen Ordner mit etwa **150 GB** freiem Speicherplatz (**Ändern…**; die Blockchain ist
+etwa 100 GB groß, nicht 2 TB) und klicken Sie auf **Node starten**. Der erste Download dauert ein
+bis drei Tage. Sobald er 100 % erreicht hat, nutzt die Wallet Ihren eigenen Node, und Sie können im
+Modus **Solo (Full Node)** minen.
 
 ## 9. LBC und Bitcoin tauschen (optional)
 
@@ -98,6 +101,19 @@ Entweder werden Sie beide bezahlt, oder Sie erhalten beide Ihre Coins zurück. E
 auf **Swap starten** und sendet den Einladungscode; der andere klickt auf **Mit Code beitreten**.
 Lassen Sie die App geöffnet, bis der Swap **Abgeschlossen** anzeigt. Swaps sind neu: Beginnen Sie
 mit einem kleinen Betrag. Mehr dazu: [Handbuch, Abschnitt 21](../README.md#21-buy-sell-or-swap-lbc).
+
+## 10. LBC auf dem Markt kaufen oder verkaufen (optional)
+
+Auf der Seite **Markt** sehen Sie Angebote anderer Nutzer von LBC Wallet, die LBC gegen Bitcoin
+kaufen oder verkaufen möchten, und daneben zum Vergleich den Preis an den Börsen. Lesen Sie zuerst
+den Warnhinweis auf der Seite. Klicken Sie bei einem Angebot auf **Kaufen** oder **Verkaufen**,
+wählen Sie den Betrag und Ihre Bitcoin-Adresse und bestätigen Sie: Die andere Wallet antwortet
+innerhalb von Sekunden, und der Trade läuft als Swap ab (Sie sperren zuerst; beide Wallets holen die
+Coins selbstständig ab). Oder klicken Sie auf **Angebot einstellen**, um Ihren eigenen Preis
+festzulegen; das Angebot bleibt in der Angebotsliste, solange Ihre Wallet geöffnet ist. Nur LBC und
+Bitcoin lassen sich auf diese Weise handeln: Um mit USDT oder Monero zu bezahlen, tauschen Sie diese
+zuerst in Bitcoin (zum Beispiel in Cake Wallet oder Trust Wallet). Mehr dazu:
+[Handbuch, Abschnitt 22](../README.md#22-trade-on-the-market).
 
 ## Hilfe
 

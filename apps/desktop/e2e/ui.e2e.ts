@@ -400,6 +400,18 @@ async function main() {
     await shot(page, '24-phone-more-fa');
     await page.keyboard.press('Escape');
     await page.setViewportSize({ width: 1280, height: 820 });
+
+    // ---------------------------------------------------------------- Hindi (Devanagari, bundled font)
+    await page.locator('.sidebar .nav .nav-item').last().click(); // settings
+    await page.getByRole('combobox').first().selectOption('hi');
+    await page.waitForFunction(() => document.documentElement.lang === 'hi' && document.documentElement.dir === 'ltr');
+    await page.waitForFunction(() => document.fonts.check('16px "Noto Sans Devanagari Variable"', 'अवलोकन'));
+    await page.locator('.nav-item').first().click();
+    await page.waitForTimeout(800);
+    await shot(page, '30-overview-hi');
+    await page.locator('.nav-item').nth(4).click(); // market
+    await page.waitForTimeout(800);
+    await shot(page, '31-market-hi');
     log('UI end-to-end flow passed');
   } catch (err) {
     // Leave evidence for the CI artifacts: what the window showed, and the miner/node logs.

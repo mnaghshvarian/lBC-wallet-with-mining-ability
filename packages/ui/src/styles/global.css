@@ -1471,14 +1471,19 @@ button.list-row {
 :root:lang(ko) body {
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif;
 }
+:root:lang(hi) body {
+  font-family: 'Noto Sans Devanagari Variable', 'Nirmala UI', 'Kohinoor Devanagari', 'Noto Sans Devanagari', 'Mangal', sans-serif;
+  line-height: 1.6;
+}
 :root:lang(th) body {
   font-family: -apple-system, BlinkMacSystemFont, Thonburi, 'Leelawadee UI', 'Noto Sans Thai UI', 'Noto Sans Thai', Tahoma, sans-serif;
   line-height: 1.6;
 }
-/* Letter-spacing tweaks made for Latin text break joined scripts. */
+/* Letter-spacing tweaks made for Latin text break joined scripts (and Devanagari's conjuncts). */
 :root:lang(fa) *,
 :root:lang(ar) *,
-:root:lang(ur) * {
+:root:lang(ur) *,
+:root:lang(hi) * {
   letter-spacing: normal !important;
 }
 

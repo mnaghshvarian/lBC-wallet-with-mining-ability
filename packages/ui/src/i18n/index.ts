@@ -19,6 +19,7 @@ import es from './locales/es.json';
 import pt from './locales/pt.json';
 import ru from './locales/ru.json';
 import ur from './locales/ur.json';
+import hi from './locales/hi.json';
 
 export type Dictionary = { [key: string]: string | Dictionary };
 
@@ -36,6 +37,7 @@ export const LANGUAGES: LanguageInfo[] = [
   { code: 'fa', name: 'فارسی', english: 'Persian', dir: 'rtl' },
   { code: 'ar', name: 'العربية', english: 'Arabic', dir: 'rtl' },
   { code: 'ur', name: 'اردو', english: 'Urdu', dir: 'rtl' },
+  { code: 'hi', name: 'हिन्दी', english: 'Hindi', dir: 'ltr' },
   { code: 'fr', name: 'Français', english: 'French', dir: 'ltr' },
   { code: 'de', name: 'Deutsch', english: 'German', dir: 'ltr' },
   { code: 'es', name: 'Español', english: 'Spanish', dir: 'ltr' },
@@ -63,6 +65,7 @@ export const DICTIONARIES: Record<string, Dictionary> = {
   pt: pt as Dictionary,
   ru: ru as Dictionary,
   ur: ur as Dictionary,
+  hi: hi as Dictionary,
 };
 
 export type Params = Record<string, string | number>;

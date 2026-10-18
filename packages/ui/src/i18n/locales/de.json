@@ -285,7 +285,8 @@
     "more": "Mehr",
     "lock": "Wallet sperren",
     "switchWallet": "Sperren und Wallet wechseln",
-    "swap": "Swap"
+    "swap": "Swap",
+    "market": "Markt"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -437,7 +438,11 @@
     "deleteWarning": "Stellen Sie sicher, dass Sie Ihre Wiederherstellungsphrase aufgeschrieben haben.",
     "deleteWarningStrong": "Ohne sie ist das Guthaben in „{name}“ für immer verloren.",
     "swapExplorer": "Bitcoin-Explorer für Swaps",
-    "swapExplorerHint": "Für Swaps liest die Wallet die Bitcoin-Blockchain über einen Esplora-Server. Lassen Sie das Feld leer, um blockstream.info zu nutzen (abgeglichen mit mempool.space), oder geben Sie Ihren eigenen Server ein. Der Server sieht die Bitcoin-Adressen des Swaps und Ihre IP-Adresse."
+    "swapExplorerHint": "Für Swaps liest die Wallet die Bitcoin-Blockchain über einen Esplora-Server. Lassen Sie das Feld leer, um blockstream.info zu nutzen (abgeglichen mit mempool.space), oder geben Sie Ihren eigenen Server ein. Der Server sieht die Bitcoin-Adressen des Swaps und Ihre IP-Adresse.",
+    "relays": "Relays für die Angebotsliste",
+    "relaysHint": "Nostr-Relays, die die Angebote auf dem Markt und die Nachrichten zu Trades übertragen (wss://-Adressen, eine pro Zeile). Lassen Sie das Feld leer, um die Standardliste unten zu verwenden. Beide Seiten eines Trades brauchen mindestens ein gemeinsames Relay.",
+    "relaysInvalid": "Einige Adressen wurden nicht gespeichert: Relays benötigen eine wss://-Adresse.",
+    "relaysDefault": "Standard-Relays verwenden"
   },
   "error": {
     "invalidWalletId": "Ungültige Wallet-ID",
@@ -508,7 +513,19 @@
     "swapTooLate": "Zu spät zum Sperren: Die Sperrfrist der Gegenseite endet in weniger als {hours} Stunden. Starten Sie einen neuen Swap.",
     "swapNoExplorer": "Legen Sie zuerst in den Einstellungen einen Bitcoin-Explorer-Server (Esplora) für Swaps fest.",
     "swapCannotCancel": "Ihre Coins sind bereits gesperrt; sie kommen nach Ablauf der Sperrfrist automatisch zu Ihnen zurück, falls der Swap nicht abgeschlossen wird.",
-    "swapStillActive": "Dieser Swap läuft noch."
+    "swapStillActive": "Dieser Swap läuft noch.",
+    "marketUnsupported": "Die Angebotsliste ist auf diesem Gerät nicht verfügbar.",
+    "marketTermsNotAccepted": "Lesen und akzeptieren Sie zuerst den Warnhinweis zur Angebotsliste (Seite „Markt“).",
+    "marketOfferGone": "Dieses Angebot steht nicht mehr in der Angebotsliste.",
+    "marketOwnOffer": "Das ist Ihr eigenes Angebot.",
+    "marketOutOfRange": "Wählen Sie für dieses Angebot einen Betrag zwischen {min} und {max} LBC.",
+    "marketNotEnoughLbc": "Dafür sind {needed} LBC nötig, verfügbar sind aber nur {available} LBC.",
+    "marketMinTooSmall": "Die kleinste Teilmenge muss mindestens {btc} BTC wert sein (etwa {lbc} LBC zu Ihrem Preis), sonst würden die Netzwerkgebühren sie aufzehren.",
+    "marketLockExpired": "Die Frist zum Sperren ist für diesen Trade abgelaufen; es wurde nichts gesperrt. Nehmen Sie das Angebot erneut an, falls es noch da ist.",
+    "marketNoRelay": "Es war kein Relay erreichbar. Prüfen Sie Ihre Internetverbindung oder die Relay-Liste unter Einstellungen → Netzwerk.",
+    "marketTooMany": "Sie haben bereits {count} offene Angebote. Ziehen Sie zuerst eines zurück.",
+    "marketUnknownTrade": "In dieser Wallet gibt es keinen solchen Trade.",
+    "marketTradeRunning": "Dieser Trade läuft noch."
   },
   "notice": {
     "received": {
@@ -563,6 +580,17 @@
     "swapRefunded": {
       "title": "Swap beendet",
       "message": "Sie haben Ihre {coin} zurückerhalten."
+    },
+    "marketTaken": {
+      "title": "Ihr Angebot wurde angenommen",
+      "message": "Jemand hat {amount} aus Ihrem Angebot angenommen. Die Wallet der anderen Person sperrt zuerst; danach werden Sie gebeten, Ihren Teil zu sperren."
+    },
+    "marketAccepted": {
+      "title": "Ihre Anfrage wurde angenommen",
+      "message": "Sperren Sie jetzt Ihre {coin} auf der Seite „Markt“ (Sie haben dafür 20 Minuten Zeit)."
+    },
+    "marketDeclined": {
+      "title": "Ihre Anfrage wurde abgelehnt"
     }
   },
   "create": {
@@ -1055,5 +1083,170 @@
     "claimTx": "Transaktion zur Abholung",
     "refundTx": "Transaktion zur Rückerstattung",
     "history": "Verlauf"
+  },
+  "market": {
+    "title": "Markt",
+    "sub": "Kaufen und verkaufen Sie LBC gegen Bitcoin mit anderen Personen. Keine Börse, kein Konto: Jeder Trade ist ein Atomic Swap.",
+    "postOffer": "Angebot einstellen",
+    "board": "Angebote",
+    "buyLbc": "LBC kaufen",
+    "sellLbc": "LBC verkaufen",
+    "relays": "Mit {n} von {total} Relays verbunden",
+    "loading": "Angebote werden gesucht…",
+    "noSellers": "Gerade verkauft niemand LBC. Stellen Sie ein Kaufangebot ein oder schauen Sie später wieder vorbei.",
+    "noBuyers": "Gerade kauft niemand LBC. Stellen Sie ein Verkaufsangebot ein oder schauen Sie später wieder vorbei.",
+    "col": {
+      "price": "Preis pro LBC",
+      "available": "Verfügbar",
+      "total": "In Bitcoin"
+    },
+    "sats": "{n} sats",
+    "above": "{pct} % über dem Marktpreis",
+    "below": "{pct} % unter dem Marktpreis",
+    "from": "ab {min}",
+    "yours": "Ihr Angebot",
+    "buy": "Kaufen",
+    "sell": "Verkaufen",
+    "price": {
+      "title": "Marktpreis",
+      "source": "{source} · {time}",
+      "loading": "Marktpreis wird geladen…",
+      "unavailable": "Der Marktpreis kann gerade nicht geladen werden. Prüfen Sie vor dem Handeln auf der Website einer Börse, zu welchem Preis LBC gehandelt wird.",
+      "oneLbc": "1 LBC",
+      "inBtc": "In Bitcoin",
+      "inXmr": "In Monero",
+      "convert": "LBC-Betrag umrechnen",
+      "converted": "{lbc} LBC ≈ {btc} BTC ≈ {xmr} XMR ≈ {usd}",
+      "hint": "Nur zum Vergleich: der Preis, zu dem LBC an den Börsen gehandelt wird. Die Angebote hier legen ihre eigenen Preise fest."
+    },
+    "take": {
+      "buyTitle": "LBC kaufen",
+      "sellTitle": "LBC verkaufen",
+      "offer": "Preis: {price} pro LBC. Sie können {min} bis {max} davon annehmen.",
+      "amount": "LBC-Betrag",
+      "range": "Wählen Sie einen Betrag zwischen {min} und {max}.",
+      "summary": "Sie geben {give} und erhalten {get}",
+      "firstLbc": "Ihre Wallet sperrt zuerst Ihre {give}, für bis zu 48 Stunden. Wenn die Gegenseite ihren Teil nicht sperrt, kommen Ihre LBC nach Ablauf dieser Zeit von selbst zu Ihnen zurück.",
+      "firstBtc": "Sie zahlen zuerst {give} aus Ihrer Bitcoin-Wallet in einen Vertrag ein. Wenn die Gegenseite ihren Teil nicht sperrt, geht der Betrag nach 48 Stunden an die Adresse unten zurück.",
+      "notEnough": "In dieser Wallet sind nur {available} verfügbar.",
+      "tooSmall": "Dieser Betrag ist für einen Swap zu klein: Die Netzwerkgebühren würden den größten Teil davon aufzehren.",
+      "buy": "{amount} kaufen",
+      "sell": "{amount} verkaufen"
+    },
+    "trade": {
+      "waiting": "Warten auf die Antwort der anderen Wallet. Wenn sie online ist, dauert das nur Sekunden; nach 10 Minuten wird das Warten abgebrochen.",
+      "unsent": "Noch nicht gesendet: Kein Relay ist erreichbar. Wird gesendet, sobald eines erreichbar ist.",
+      "invited": "Jemand hat {lbc} aus Ihrem Angebot angenommen. Die Wallet der anderen Person sperrt zuerst; Sie werden gebeten, Ihren Teil zu sperren, sobald deren Coins bestätigt sind.",
+      "swapping": "Der Swap läuft.",
+      "done": "Abgeschlossen: Beide Seiten wurden bezahlt.",
+      "expired": "Keine rechtzeitige Antwort. Von Ihren Coins wurde nichts gesperrt.",
+      "cancelled": "Der Trade wurde vor dem Abschluss abgebrochen. Der zugehörige Swap (auf der Seite „Swap“) zeigt den Grund; gesperrte Coins kommen nach Ablauf der Sperrfrist von selbst zurück.",
+      "declined": {
+        "taken": "Die andere Wallet bearbeitet gerade andere Anfragen. Versuchen Sie es in ein paar Minuten erneut.",
+        "closed": "Das Angebot wurde geschlossen.",
+        "amount": "Die andere Wallet kann diesen Betrag gerade nicht bedienen.",
+        "price": "Die Bedingungen passten nicht zum Angebot (es hat sich vielleicht geändert). Es wurde nichts gesperrt.",
+        "expired": "Die andere Wallet wartet nicht mehr darauf, dass Sie sperren. Von Ihren Coins wurde nichts gesperrt."
+      },
+      "status": {
+        "waiting": "Gesendet",
+        "invited": "Angenommen",
+        "swapping": "Swap läuft",
+        "done": "Abgeschlossen",
+        "declined": "Abgelehnt",
+        "expired": "Abgelaufen",
+        "cancelled": "Abgebrochen"
+      },
+      "dismiss": "Aus der Liste entfernen"
+    },
+    "trades": {
+      "title": "Ihre Trades"
+    },
+    "stageText": {
+      "waitTaker": "Die andere Wallet hat die Einladung und sperrt zuerst ihre {other}. Sie müssen noch nichts tun.",
+      "lockedMaker": "Ihre {give} sind gesperrt. Es wird gewartet, bis die andere Wallet sie abholt; danach holt diese Wallet deren {other} selbstständig ab.",
+      "lockedTaker": "Ihre {give} sind gesperrt. Es wird gewartet, bis die andere Wallet ihre {other} sperrt; sie hat dafür bis zu 12 Stunden Zeit."
+    },
+    "lockBy": "Sperren Sie bis {time}, sonst wartet die Gegenseite nicht länger.",
+    "post": {
+      "title": "Angebot einstellen",
+      "side": "Sie möchten",
+      "sell": "LBC verkaufen (Bitcoin erhalten)",
+      "buy": "LBC kaufen (mit Bitcoin bezahlen)",
+      "amount": "LBC-Betrag",
+      "available": "Verfügbar: {amount}",
+      "price": "Preis in Satoshis pro LBC",
+      "useMarket": "Marktpreis verwenden ({price}, {source})",
+      "min": "Kleinste Teilmenge, die jemand annehmen kann (LBC)",
+      "minHint": "Leer lassen, um {amount} zu verwenden: den kleinsten Swap, der sich bei diesem Preis trotz der Gebühren lohnt.",
+      "summarySell": "Sie verkaufen {lbc} für {btc}",
+      "summaryBuy": "Sie kaufen {lbc} für {btc}",
+      "above": "{pct} % über dem Marktpreis.",
+      "below": "{pct} % unter dem Marktpreis.",
+      "worth": "Zum Marktpreis etwa {usd} wert.",
+      "howSell": "Wenn jemand es annimmt, werden zuerst die Bitcoin der anderen Person gesperrt. Dann werden Sie gebeten, Ihre LBC zu sperren, und die Bitcoin gehen an die Adresse oben.",
+      "howBuy": "Wenn jemand es annimmt, werden zuerst die LBC der anderen Person gesperrt. Dann zahlen Sie die Bitcoin aus Ihrer Bitcoin-Wallet in einen Vertrag ein, und die LBC gehen an diese Wallet.",
+      "stayOnline": "Ihr Angebot steht nur in der Angebotsliste, solange diese Wallet geöffnet ist, und wird entfernt, sobald sie sich sperrt. Wenn jemand es annimmt, müssen Sie Ihren Teil innerhalb von 12 Stunden sperren.",
+      "post": "Angebot einstellen"
+    },
+    "mine": {
+      "title": "Ihre Angebote",
+      "selling": "Verkauf von {lbc}",
+      "buying": "Kauf von {lbc}",
+      "left": "Noch {left} übrig",
+      "running": {
+        "one": "{count} Trade läuft",
+        "other": "{count} Trades laufen"
+      },
+      "onRelays": {
+        "one": "Auf {count} Relay · erneuert {time}",
+        "other": "Auf {count} Relays · erneuert {time}"
+      },
+      "notYet": "Noch auf keinem Relay",
+      "status": {
+        "open": "Offen",
+        "closed": "Geschlossen"
+      },
+      "withdraw": "Zurückziehen"
+    },
+    "otherCoins": {
+      "title": "Bezahlen mit USDT, Monero oder etwas anderem?",
+      "text": "Hier wird nur LBC gegen Bitcoin gehandelt, denn nur diese beiden lassen sich tauschen, ohne dass jemand die Coins verwahrt. Tauschen Sie Ihre USDT, Monero (XMR) oder anderen Coins zuerst in Bitcoin, zum Beispiel in Cake Wallet oder Trust Wallet, und handeln Sie die Bitcoin dann hier. Die Anleitung zum Handeln im Handbuch zeigt die einzelnen Schritte."
+    },
+    "safety": {
+      "title": "Bevor Sie handeln",
+      "text": "Beginnen Sie mit kleinen Beträgen und vergleichen Sie die Preise mit dem Marktpreis. Lassen Sie LBC Wallet geöffnet und diese Wallet entsperrt, solange Sie Angebote eingestellt haben und bis Ihre Trades „Abgeschlossen“ anzeigen. Die Wallet sperrt sich nach einer Weile ohne Nutzung von selbst (Einstellungen → Sicherheit)."
+    },
+    "warning": {
+      "title": "Die Angebotsliste: Bitte zuerst lesen",
+      "lead": "In der Angebotsliste können Nutzer Angebote zum Tausch von LBC und Bitcoin einstellen und annehmen. Bitte lesen Sie die folgenden Punkte – das dauert eine Minute.",
+      "notExchange": {
+        "title": "Dies ist keine Börse",
+        "text": "Niemand betreibt die Angebotsliste, verwahrt Coins, überprüft die Nutzer, schlichtet Streitfälle oder macht Trades rückgängig. LBC Wallet erhebt keine Gebühren und hat keine Konten. Angebote laufen über öffentliche Nostr-Relays, und Ihre Wallet wickelt alles direkt mit der Wallet der anderen Person ab."
+      },
+      "settlement": {
+        "title": "Coins bewegen sich nur über Swap-Verträge",
+        "text": "Ein angenommenes Angebot wird zu einem Atomic Swap: Jede Seite sperrt Coins in einem Vertrag auf ihrer eigenen Blockchain. Entweder werden beide Seiten bezahlt, oder jede erhält ihre Coins nach Ablauf der Sperrfrist zurück, die bis zu 48 Stunden betragen kann. Ihre Wallet erledigt das selbstständig, solange sie geöffnet ist."
+      },
+      "online": {
+        "title": "Beide Wallets müssen online sein",
+        "text": "Angebote werden nur beantwortet, solange die Wallet, die sie eingestellt hat, geöffnet ist. Wenn jemand Ihr Angebot annimmt, müssen Sie Ihren Teil innerhalb von 12 Stunden sperren. Bleibt Ihre Wallet über die Sperrfristen hinaus geschlossen, kann der Swap fehlschlagen."
+      },
+      "strangers": {
+        "title": "Die Personen in der Angebotsliste sind Ihnen fremd",
+        "text": "Jeder kann ein Angebot zu einem beliebigen Preis einstellen und wieder verschwinden. Jemand kann Ihr Angebot annehmen und nie sperren, wodurch es bis zu 40 Minuten blockiert ist; jemand kann ein Angebot einstellen und nach Ihnen nie sperren, sodass Ihre Coins gesperrt bleiben, bis sie nach 48 Stunden zurückkommen. Niemand kann Ihre Coins nehmen, ohne zu bezahlen, aber Zeit und Netzwerkgebühren können verloren gehen."
+      },
+      "relays": {
+        "title": "Relays werden von Dritten betrieben",
+        "text": "Angebote und Trade-Nachrichten laufen über Nostr-Relays (Server, die von Freiwilligen und Unternehmen betrieben werden). Die Nachrichten sind verschlüsselt, aber Relays sehen, welche Schlüssel wann miteinander kommunizieren, und können Nachrichten verzögern oder verwerfen. Jedes Angebot und jeder Trade nutzt einen neuen Schlüssel, sodass Trades weder mit Ihrer Wallet noch untereinander verknüpft sind."
+      },
+      "law": {
+        "title": "Es gelten die Regeln Ihres Landes",
+        "text": "Der Handel mit Kryptowährungen kann dort, wo Sie leben, reguliert sein: Lizenzen, Steuern, Meldepflichten oder Verbote bestimmter Coins. Sie sind dafür verantwortlich, diese Regeln einzuhalten. Diese Funktion ist neu und wurde nicht auditiert, und nichts hier ist eine Finanzberatung."
+      },
+      "checkStrangers": "Ich verstehe, dass niemand die Personen in der Angebotsliste überprüft und dass ein Trade meine Coins bis zu 48 Stunden lang gesperrt halten kann.",
+      "checkRisk": "Ich nutze die Angebotsliste auf eigenes Risiko und halte die Gesetze an meinem Wohnort ein.",
+      "accept": "Verstanden – Angebotsliste öffnen"
+    }
   }
 }

@@ -292,7 +292,8 @@
     "more": "Mais",
     "lock": "Bloquear carteira",
     "switchWallet": "Bloquear e trocar de carteira",
-    "swap": "Trocar"
+    "swap": "Trocar",
+    "market": "Mercado"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -446,7 +447,11 @@
     "deleteWarning": "Verifique se você tem a sua frase de recuperação anotada.",
     "deleteWarningStrong": "Sem ela, os fundos da carteira “{name}” serão perdidos para sempre.",
     "swapExplorer": "Explorador Bitcoin para trocas",
-    "swapExplorerHint": "As trocas consultam a blockchain Bitcoin em um servidor Esplora. Deixe vazio para usar o blockstream.info (conferido com o mempool.space) ou informe seu próprio servidor. Esse servidor vê os endereços Bitcoin das suas trocas e o seu endereço IP."
+    "swapExplorerHint": "As trocas consultam a blockchain Bitcoin em um servidor Esplora. Deixe vazio para usar o blockstream.info (conferido com o mempool.space) ou informe seu próprio servidor. Esse servidor vê os endereços Bitcoin das suas trocas e o seu endereço IP.",
+    "relays": "Relays do quadro de ofertas",
+    "relaysHint": "Relays Nostr que transmitem as ofertas do Mercado e as mensagens das negociações (endereços wss://, um por linha). Deixe vazio para usar a lista padrão abaixo. Os dois lados de uma negociação precisam ter pelo menos um relay em comum.",
+    "relaysInvalid": "Alguns endereços não foram salvos: os relays precisam de um endereço wss://.",
+    "relaysDefault": "Usar os relays padrão"
   },
   "error": {
     "invalidWalletId": "ID de carteira inválido",
@@ -517,7 +522,19 @@
     "swapTooLate": "Tarde demais para bloquear: faltam menos de {hours} horas para o fim do bloqueio dos fundos da outra parte. Inicie uma nova troca.",
     "swapNoExplorer": "Primeiro, defina em Configurações um servidor Esplora (explorador Bitcoin) para as trocas.",
     "swapCannotCancel": "Seus fundos já estão bloqueados; se a troca não for concluída, eles voltam para você automaticamente após o prazo de bloqueio.",
-    "swapStillActive": "Esta troca ainda está em andamento."
+    "swapStillActive": "Esta troca ainda está em andamento.",
+    "marketUnsupported": "O quadro de ofertas não está disponível neste dispositivo.",
+    "marketTermsNotAccepted": "Primeiro, leia e aceite o aviso do quadro de ofertas (página Mercado).",
+    "marketOfferGone": "Esta oferta não está mais no quadro.",
+    "marketOwnOffer": "Esta é a sua própria oferta.",
+    "marketOutOfRange": "Escolha um valor entre {min} e {max} LBC para esta oferta.",
+    "marketNotEnoughLbc": "São necessários {needed} LBC, mas só há {available} LBC disponíveis.",
+    "marketMinTooSmall": "A menor parte precisa valer pelo menos {btc} BTC (cerca de {lbc} LBC pelo seu preço); senão, as taxas da rede consumiriam esse valor.",
+    "marketLockExpired": "O prazo para bloquear nesta negociação já passou; nada foi bloqueado. Aceite a oferta de novo se ela ainda estiver disponível.",
+    "marketNoRelay": "Não foi possível acessar nenhum relay. Verifique a sua conexão com a internet ou a lista de relays em Configurações → Rede.",
+    "marketTooMany": "Você já tem {count} ofertas abertas. Retire uma delas primeiro.",
+    "marketUnknownTrade": "Esta carteira não tem essa negociação.",
+    "marketTradeRunning": "Esta negociação ainda está em andamento."
   },
   "notice": {
     "received": {
@@ -576,6 +593,17 @@
     "swapRefunded": {
       "title": "Troca não concluída",
       "message": "Seus {coin} voltaram para você."
+    },
+    "marketTaken": {
+      "title": "Sua oferta foi aceita",
+      "message": "Alguém aceitou {amount} da sua oferta. A carteira dessa pessoa bloqueia primeiro; depois, será a sua vez de bloquear."
+    },
+    "marketAccepted": {
+      "title": "Seu pedido foi aceito",
+      "message": "Bloqueie agora os seus {coin} na página Mercado (você tem 20 minutos)."
+    },
+    "marketDeclined": {
+      "title": "Seu pedido foi recusado"
     }
   },
   "create": {
@@ -1082,5 +1110,172 @@
     "claimTx": "Transação de resgate",
     "refundTx": "Transação de reembolso",
     "history": "Histórico"
+  },
+  "market": {
+    "title": "Mercado",
+    "sub": "Compre e venda LBC por bitcoins com outras pessoas. Sem corretora e sem conta: cada negociação é uma troca atômica.",
+    "postOffer": "Publicar uma oferta",
+    "board": "Ofertas",
+    "buyLbc": "Comprar LBC",
+    "sellLbc": "Vender LBC",
+    "relays": "Conectado a {n} de {total} relays",
+    "loading": "Procurando ofertas…",
+    "noSellers": "Ninguém está vendendo LBC agora. Publique uma oferta de compra ou volte mais tarde.",
+    "noBuyers": "Ninguém está comprando LBC agora. Publique uma oferta de venda ou volte mais tarde.",
+    "col": {
+      "price": "Preço por LBC",
+      "available": "Disponível",
+      "total": "Em bitcoins"
+    },
+    "sats": "{n} sats",
+    "above": "{pct}% acima do mercado",
+    "below": "{pct}% abaixo do mercado",
+    "from": "a partir de {min}",
+    "yours": "Sua oferta",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "price": {
+      "title": "Preço de mercado",
+      "source": "{source} · {time}",
+      "loading": "Carregando o preço de mercado…",
+      "unavailable": "Não foi possível carregar o preço de mercado agora. Antes de negociar, veja por quanto o LBC está sendo negociado no site de uma corretora.",
+      "oneLbc": "1 LBC",
+      "inBtc": "Em bitcoins",
+      "inXmr": "Em Monero",
+      "convert": "Converter um valor em LBC",
+      "converted": "{lbc} LBC ≈ {btc} BTC ≈ {xmr} XMR ≈ {usd}",
+      "hint": "Só para comparação: o preço do LBC nas corretoras. As ofertas daqui definem os próprios preços."
+    },
+    "take": {
+      "buyTitle": "Comprar LBC",
+      "sellTitle": "Vender LBC",
+      "offer": "Preço: {price} por LBC. Você pode aceitar de {min} a {max}.",
+      "amount": "Valor em LBC",
+      "range": "Escolha um valor entre {min} e {max}.",
+      "summary": "Você entrega {give} e recebe {get}",
+      "firstLbc": "Sua carteira bloqueia primeiro os seus {give}, por até 48 horas. Se a outra parte não bloquear a parte dela, os seus LBC voltam para você automaticamente depois desse prazo.",
+      "firstBtc": "Primeiro, você paga {give} para um contrato, usando a sua carteira Bitcoin. Se a outra parte não bloquear a parte dela, o valor volta para o endereço abaixo após 48 horas.",
+      "notEnough": "Esta carteira só tem {available} para gastar.",
+      "tooSmall": "Este valor é pequeno demais para uma troca: as taxas da rede consumiriam a maior parte dele.",
+      "buy": "Comprar {amount}",
+      "sell": "Vender {amount}"
+    },
+    "trade": {
+      "waiting": "Aguardando a resposta da outra carteira. Isso leva alguns segundos quando ela está online, e a espera termina após 10 minutos.",
+      "unsent": "Ainda não enviado: nenhum relay está acessível. O envio acontece assim que algum estiver.",
+      "invited": "Alguém aceitou {lbc} da sua oferta. A carteira dessa pessoa bloqueia primeiro; quando o bloqueio dela for confirmado, será a sua vez de bloquear.",
+      "swapping": "A troca está em andamento.",
+      "done": "Negociação concluída: os dois lados foram pagos.",
+      "expired": "Não houve resposta a tempo. Nenhum dos seus fundos foi bloqueado.",
+      "cancelled": "A negociação parou antes de terminar. A troca correspondente (na página Trocar) mostra o motivo; os fundos bloqueados voltam sozinhos após o prazo de bloqueio.",
+      "declined": {
+        "taken": "A outra carteira está ocupada com outros pedidos. Tente de novo em alguns minutos.",
+        "closed": "A oferta foi encerrada.",
+        "amount": "A outra carteira não consegue atender esse valor agora.",
+        "price": "As condições não correspondiam à oferta (talvez ela tenha mudado). Nada foi bloqueado.",
+        "expired": "A outra carteira parou de esperar o seu bloqueio. Nenhum dos seus fundos foi bloqueado."
+      },
+      "status": {
+        "waiting": "Enviada",
+        "invited": "Aceita",
+        "swapping": "Trocando",
+        "done": "Concluída",
+        "declined": "Recusada",
+        "expired": "Expirada",
+        "cancelled": "Interrompida"
+      },
+      "dismiss": "Remover da lista"
+    },
+    "trades": {
+      "title": "Suas negociações"
+    },
+    "stageText": {
+      "waitTaker": "A outra carteira recebeu o convite e bloqueia primeiro os {other} dela. Por enquanto, não há nada a fazer.",
+      "lockedMaker": "Seus {give} estão bloqueados. Aguardando a outra carteira resgatá-los; depois, esta carteira resgata os {other} dela automaticamente.",
+      "lockedTaker": "Seus {give} estão bloqueados. Aguardando a outra carteira bloquear os {other} dela; ela tem até 12 horas."
+    },
+    "lockBy": "Bloqueie até {time}, ou a outra parte vai parar de esperar.",
+    "post": {
+      "title": "Publicar uma oferta",
+      "side": "Você quer",
+      "sell": "Vender LBC (receber bitcoins)",
+      "buy": "Comprar LBC (pagar em bitcoins)",
+      "amount": "Valor em LBC",
+      "available": "Disponível: {amount}",
+      "price": "Preço em satoshis por LBC",
+      "useMarket": "Usar o preço de mercado ({price}, {source})",
+      "min": "Menor parte que alguém pode aceitar (LBC)",
+      "minHint": "Deixe vazio para usar {amount}, a menor troca que compensa as taxas a este preço.",
+      "summarySell": "Você vende {lbc} por {btc}",
+      "summaryBuy": "Você compra {lbc} por {btc}",
+      "above": "{pct}% acima do preço de mercado.",
+      "below": "{pct}% abaixo do preço de mercado.",
+      "worth": "Vale cerca de {usd} pelo preço de mercado.",
+      "howSell": "Quando alguém aceitar, os bitcoins dessa pessoa são bloqueados primeiro. Depois, será a sua vez de bloquear os seus LBC, e os bitcoins vão para o endereço acima.",
+      "howBuy": "Quando alguém aceitar, os LBC dessa pessoa são bloqueados primeiro. Depois, você paga os bitcoins para um contrato usando a sua carteira Bitcoin, e os LBC vão para esta carteira.",
+      "stayOnline": "Sua oferta só fica no quadro enquanto esta carteira estiver aberta e é retirada quando ela é bloqueada. Quando alguém aceitar a oferta, você precisa bloquear a sua parte em até 12 horas.",
+      "post": "Publicar a oferta"
+    },
+    "mine": {
+      "title": "Suas ofertas",
+      "selling": "Vendendo {lbc}",
+      "buying": "Comprando {lbc}",
+      "left": "Restam {left}",
+      "running": {
+        "one": "{count} negociação em andamento",
+        "many": "{count} negociações em andamento",
+        "other": "{count} negociações em andamento"
+      },
+      "onRelays": {
+        "one": "Em {count} relay · renovada {time}",
+        "many": "Em {count} relays · renovada {time}",
+        "other": "Em {count} relays · renovada {time}"
+      },
+      "notYet": "Ainda não está em nenhum relay",
+      "status": {
+        "open": "Aberta",
+        "closed": "Encerrada"
+      },
+      "withdraw": "Retirar"
+    },
+    "otherCoins": {
+      "title": "Vai pagar com USDT, Monero ou outra moeda?",
+      "text": "Aqui só se negocia LBC por bitcoins, porque só essas moedas podem ser trocadas sem que ninguém guarde os fundos. Primeiro, troque os seus USDT, Monero (XMR) ou outras moedas por bitcoins, por exemplo, na Cake Wallet ou na Trust Wallet, e depois negocie esses bitcoins aqui. O guia de negociação do manual mostra o passo a passo."
+    },
+    "safety": {
+      "title": "Antes de negociar",
+      "text": "Comece com valores pequenos e compare os preços com o preço de mercado. Mantenha o LBC Wallet aberto, com esta carteira desbloqueada, enquanto tiver ofertas publicadas e até que as suas negociações mostrem “Concluída”. A carteira se bloqueia sozinha depois de um tempo sem uso (Configurações → Segurança)."
+    },
+    "warning": {
+      "title": "O quadro de ofertas: leia isto primeiro",
+      "lead": "O quadro de ofertas permite publicar e aceitar ofertas para trocar LBC e bitcoins. Por favor, leia estes pontos — leva um minuto.",
+      "notExchange": {
+        "title": "Não é uma corretora",
+        "text": "Ninguém administra o quadro, guarda fundos, verifica as pessoas que o usam, resolve disputas nem reverte negociações. O LBC Wallet não cobra taxas e não tem contas. As ofertas passam por relays Nostr públicos, e a sua carteira negocia diretamente com a carteira da outra pessoa."
+      },
+      "settlement": {
+        "title": "Os fundos só se movem por contratos de troca",
+        "text": "Uma oferta aceita vira uma troca atômica: cada lado bloqueia fundos em um contrato na sua própria blockchain. Ou os dois lados são pagos, ou cada um recupera os seus fundos após o prazo de bloqueio, que pode ser de até 48 horas. A sua carteira faz isso sozinha enquanto estiver aberta."
+      },
+      "online": {
+        "title": "As duas carteiras precisam estar online",
+        "text": "As ofertas só recebem resposta enquanto a carteira que as publicou estiver aberta. Quando alguém aceitar a sua oferta, você precisa bloquear a sua parte em até 12 horas. Se a sua carteira ficar fechada além dos prazos de bloqueio, a troca pode falhar."
+      },
+      "strangers": {
+        "title": "No quadro, você lida com desconhecidos",
+        "text": "Qualquer pessoa pode publicar uma oferta, a qualquer preço, e sumir. Alguém pode aceitar a sua oferta e nunca bloquear, deixando-a indisponível por até 40 minutos; alguém pode publicar uma oferta e nunca bloquear depois de você, mantendo os seus fundos bloqueados até que eles voltem para você após 48 horas. Ninguém pode levar os seus fundos sem pagar, mas é possível perder tempo e taxas da rede."
+      },
+      "relays": {
+        "title": "Os relays são operados por terceiros",
+        "text": "As ofertas e as mensagens das negociações passam por relays Nostr (servidores operados por voluntários e empresas). As mensagens são criptografadas, mas os relays veem quais chaves se comunicam e quando, e podem atrasar ou descartar mensagens. Cada oferta e cada negociação usa uma chave nova, então as negociações não ficam vinculadas à sua carteira nem umas às outras."
+      },
+      "law": {
+        "title": "Valem as regras do seu país",
+        "text": "Negociar criptomoedas pode ser regulamentado onde você mora: licenças, impostos, declarações obrigatórias ou proibição de algumas moedas. Você é responsável por cumprir essas regras. Este recurso é novo e não foi auditado, e nada aqui é aconselhamento financeiro."
+      },
+      "checkStrangers": "Entendo que ninguém verifica as pessoas do quadro e que uma negociação pode manter os meus fundos bloqueados por até 48 horas.",
+      "checkRisk": "Uso o quadro de ofertas por minha conta e risco e cumpro as leis do lugar onde moro.",
+      "accept": "Entendi — abrir o quadro"
+    }
   }
 }

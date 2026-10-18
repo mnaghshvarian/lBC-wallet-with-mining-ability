@@ -285,7 +285,8 @@
     "more": "Meer",
     "lock": "Wallet vergrendelen",
     "switchWallet": "Vergrendelen en van wallet wisselen",
-    "swap": "Swap"
+    "swap": "Swap",
+    "market": "Markt"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -437,7 +438,11 @@
     "deleteWarning": "Zorg dat je je herstelzin hebt opgeschreven.",
     "deleteWarningStrong": "Zonder herstelzin ben je het geld in “{name}” voorgoed kwijt.",
     "swapExplorer": "Bitcoin-explorer voor swaps",
-    "swapExplorerHint": "Voor swaps leest de wallet de Bitcoin-blockchain via een Esplora-server. Laat dit veld leeg om blockstream.info te gebruiken, met mempool.space als controle, of voer je eigen server in. Die server ziet de Bitcoin-adressen van de swap en je IP-adres."
+    "swapExplorerHint": "Voor swaps leest de wallet de Bitcoin-blockchain via een Esplora-server. Laat dit veld leeg om blockstream.info te gebruiken, met mempool.space als controle, of voer je eigen server in. Die server ziet de Bitcoin-adressen van de swap en je IP-adres.",
+    "relays": "Relays voor de markt",
+    "relaysHint": "Nostr-relays die de aanbiedingen en handelsberichten van de Markt doorgeven (wss://-adressen, één per regel). Laat dit veld leeg om de standaardlijst hieronder te gebruiken. Beide partijen van een trade moeten minstens één relay gemeenschappelijk hebben.",
+    "relaysInvalid": "Sommige adressen zijn niet opgeslagen: relays hebben een wss://-adres nodig.",
+    "relaysDefault": "Standaardrelays gebruiken"
   },
   "error": {
     "invalidWalletId": "Ongeldige wallet-ID",
@@ -508,7 +513,19 @@
     "swapTooLate": "Te laat om te vergrendelen: de munten van de andere partij blijven nog minder dan {hours} uur vergrendeld. Start een nieuwe swap.",
     "swapNoExplorer": "Stel eerst via Instellingen een Bitcoin-explorerserver (Esplora) voor swaps in.",
     "swapCannotCancel": "Je munten zijn al vergrendeld; ze komen na de vergrendeltijd automatisch terug als de swap niet wordt afgerond.",
-    "swapStillActive": "Deze swap loopt nog."
+    "swapStillActive": "Deze swap loopt nog.",
+    "marketUnsupported": "De markt is niet beschikbaar op dit apparaat.",
+    "marketTermsNotAccepted": "Lees en accepteer eerst de waarschuwing over de markt (pagina “Markt”).",
+    "marketOfferGone": "Dit aanbod staat niet meer op de markt.",
+    "marketOwnOffer": "Dit is je eigen aanbod.",
+    "marketOutOfRange": "Kies voor dit aanbod een bedrag tussen {min} en {max} LBC.",
+    "marketNotEnoughLbc": "Hiervoor is {needed} LBC nodig, maar je besteedbare saldo is {available} LBC.",
+    "marketMinTooSmall": "Het kleinste deel moet minstens {btc} BTC waard zijn (ongeveer {lbc} LBC tegen jouw prijs), anders zouden de netwerkkosten het opslokken.",
+    "marketLockExpired": "De tijd om voor deze trade te vergrendelen is voorbij; er is niets vergrendeld. Neem het aanbod opnieuw aan als het er nog staat.",
+    "marketNoRelay": "Geen enkele relay was bereikbaar. Controleer je internetverbinding of de lijst met relays in Instellingen → Netwerk.",
+    "marketTooMany": "Je hebt al {count} openstaande aanbiedingen. Trek er eerst een in.",
+    "marketUnknownTrade": "Deze wallet kent deze trade niet.",
+    "marketTradeRunning": "Deze trade loopt nog."
   },
   "notice": {
     "received": {
@@ -563,6 +580,17 @@
     "swapRefunded": {
       "title": "Swap beëindigd",
       "message": "Je hebt je {coin} teruggekregen."
+    },
+    "marketTaken": {
+      "title": "Je aanbod is aangenomen",
+      "message": "Iemand heeft {amount} van je aanbod aangenomen. De wallet van de ander vergrendelt eerst; daarna word je gevraagd om jouw deel te vergrendelen."
+    },
+    "marketAccepted": {
+      "title": "Je aanvraag is geaccepteerd",
+      "message": "Vergrendel nu je {coin} op de pagina “Markt” (je hebt 20 minuten)."
+    },
+    "marketDeclined": {
+      "title": "Je aanvraag is afgewezen"
     }
   },
   "create": {
@@ -1055,5 +1083,170 @@
     "claimTx": "Ophaaltransactie",
     "refundTx": "Terugbetalingstransactie",
     "history": "Geschiedenis"
+  },
+  "market": {
+    "title": "Markt",
+    "sub": "Koop en verkoop LBC tegen Bitcoin, met andere mensen. Geen handelsplatform, geen account: elke trade is een atomic swap.",
+    "postOffer": "Aanbod plaatsen",
+    "board": "Aanbod",
+    "buyLbc": "LBC kopen",
+    "sellLbc": "LBC verkopen",
+    "relays": "Verbonden met {n} van {total} relays",
+    "loading": "Aanbiedingen zoeken…",
+    "noSellers": "Er verkoopt nu niemand LBC. Plaats een aanbod om te kopen, of kijk later nog eens.",
+    "noBuyers": "Er koopt nu niemand LBC. Plaats een aanbod om te verkopen, of kijk later nog eens.",
+    "col": {
+      "price": "Prijs per LBC",
+      "available": "Beschikbaar",
+      "total": "In Bitcoin"
+    },
+    "sats": "{n} sats",
+    "above": "{pct}% boven de markt",
+    "below": "{pct}% onder de markt",
+    "from": "vanaf {min}",
+    "yours": "Van jou",
+    "buy": "Kopen",
+    "sell": "Verkopen",
+    "price": {
+      "title": "Marktprijs",
+      "source": "{source} · {time}",
+      "loading": "Marktprijs laden…",
+      "unavailable": "De marktprijs kan nu niet worden geladen. Kijk voordat je handelt op de website van een handelsplatform wat LBC daar kost.",
+      "oneLbc": "1 LBC",
+      "inBtc": "In Bitcoin",
+      "inXmr": "In Monero",
+      "convert": "Bedrag in LBC omrekenen",
+      "converted": "{lbc} LBC ≈ {btc} BTC ≈ {xmr} XMR ≈ {usd}",
+      "hint": "Alleen ter vergelijking: wat LBC op handelsplatformen kost. Wie hier een aanbod plaatst, kiest zelf de prijs."
+    },
+    "take": {
+      "buyTitle": "LBC kopen",
+      "sellTitle": "LBC verkopen",
+      "offer": "Prijs: {price} per LBC. Je kunt {min} tot {max} van dit aanbod aannemen.",
+      "amount": "Bedrag in LBC",
+      "range": "Kies een bedrag tussen {min} en {max}.",
+      "summary": "Jij geeft {give} en krijgt {get}",
+      "firstLbc": "Je wallet vergrendelt eerst je {give}, voor maximaal 48 uur. Als de ander zijn deel niet vergrendelt, komt je LBC na die tijd vanzelf naar je terug.",
+      "firstBtc": "Jij betaalt eerst {give} vanuit je Bitcoin-wallet in een contract. Als de ander zijn deel niet vergrendelt, gaat het bedrag na 48 uur terug naar het adres hieronder.",
+      "notEnough": "Deze wallet heeft maar {available} te besteden.",
+      "tooSmall": "Dit bedrag is te klein voor een swap: het meeste zou opgaan aan netwerkkosten.",
+      "buy": "{amount} kopen",
+      "sell": "{amount} verkopen"
+    },
+    "trade": {
+      "waiting": "Wacht op antwoord van de andere wallet. Als die online is, duurt dat een paar seconden; na 10 minuten stopt het wachten.",
+      "unsent": "Nog niet verzonden: er is geen relay bereikbaar. Het wordt verzonden zodra er een bereikbaar is.",
+      "invited": "Iemand heeft {lbc} van je aanbod aangenomen. De wallet van de ander vergrendelt eerst; zodra die munten zijn bevestigd, word je gevraagd om jouw deel te vergrendelen.",
+      "swapping": "De swap loopt.",
+      "done": "Afgerond: beide partijen zijn betaald.",
+      "expired": "Geen antwoord op tijd. Er is niets van jou vergrendeld.",
+      "cancelled": "De trade is gestopt voordat hij klaar was. De bijbehorende swap (op de pagina “Swap”) laat zien waarom; vergrendelde munten komen na de vergrendeltijd vanzelf terug.",
+      "declined": {
+        "taken": "De andere wallet is bezig met andere aanvragen. Probeer het over een paar minuten opnieuw.",
+        "closed": "Het aanbod is gesloten.",
+        "amount": "De andere wallet kan nu niet op dat bedrag ingaan.",
+        "price": "De voorwaarden kwamen niet overeen met het aanbod (misschien is het gewijzigd). Er is niets vergrendeld.",
+        "expired": "De andere wallet is gestopt met wachten op jouw vergrendeling. Er is niets van jou vergrendeld."
+      },
+      "status": {
+        "waiting": "Verzonden",
+        "invited": "Aangenomen",
+        "swapping": "Swap loopt",
+        "done": "Afgerond",
+        "declined": "Afgewezen",
+        "expired": "Verlopen",
+        "cancelled": "Gestopt"
+      },
+      "dismiss": "Uit de lijst verwijderen"
+    },
+    "trades": {
+      "title": "Je trades"
+    },
+    "stageText": {
+      "waitTaker": "De andere wallet heeft de uitnodiging en vergrendelt eerst zijn {other}. Je hoeft nog niets te doen.",
+      "lockedMaker": "Je {give} is vergrendeld. Wacht tot de andere wallet die ophaalt; daarna haalt deze wallet vanzelf de {other} van de ander op.",
+      "lockedTaker": "Je {give} is vergrendeld. Wacht tot de andere wallet zijn {other} vergrendelt; die heeft daar maximaal 12 uur voor."
+    },
+    "lockBy": "Vergrendel uiterlijk {time}, anders stopt de andere partij met wachten.",
+    "post": {
+      "title": "Aanbod plaatsen",
+      "side": "Je wilt",
+      "sell": "LBC verkopen (Bitcoin krijgen)",
+      "buy": "LBC kopen (Bitcoin betalen)",
+      "amount": "Bedrag in LBC",
+      "available": "Besteedbaar: {amount}",
+      "price": "Prijs in satoshi's per LBC",
+      "useMarket": "Marktprijs gebruiken ({price}, {source})",
+      "min": "Kleinste deel dat iemand kan aannemen (LBC)",
+      "minHint": "Laat leeg voor {amount}: de kleinste swap die bij deze prijs de netwerkkosten waard is.",
+      "summarySell": "Je verkoopt {lbc} voor {btc}",
+      "summaryBuy": "Je koopt {lbc} voor {btc}",
+      "above": "{pct}% boven de marktprijs.",
+      "below": "{pct}% onder de marktprijs.",
+      "worth": "Ongeveer {usd} waard tegen de marktprijs.",
+      "howSell": "Als iemand je aanbod aanneemt, wordt eerst de Bitcoin van de ander vergrendeld. Daarna word je gevraagd om je LBC te vergrendelen, en de Bitcoin komt binnen op het adres hierboven.",
+      "howBuy": "Als iemand je aanbod aanneemt, wordt eerst de LBC van de ander vergrendeld. Daarna betaal je de Bitcoin vanuit je Bitcoin-wallet in een contract, en de LBC komt binnen in deze wallet.",
+      "stayOnline": "Je aanbod staat alleen op de markt zolang deze wallet open is, en wordt ingetrokken zodra de wallet wordt vergrendeld. Als iemand het aanneemt, moet je jouw deel binnen 12 uur vergrendelen.",
+      "post": "Aanbod plaatsen"
+    },
+    "mine": {
+      "title": "Je aanbiedingen",
+      "selling": "Je verkoopt {lbc}",
+      "buying": "Je koopt {lbc}",
+      "left": "Nog {left} over",
+      "running": {
+        "one": "{count} lopende trade",
+        "other": "{count} lopende trades"
+      },
+      "onRelays": {
+        "one": "Op {count} relay · vernieuwd {time}",
+        "other": "Op {count} relays · vernieuwd {time}"
+      },
+      "notYet": "Nog op geen enkele relay",
+      "status": {
+        "open": "Open",
+        "closed": "Gesloten"
+      },
+      "withdraw": "Intrekken"
+    },
+    "otherCoins": {
+      "title": "Betalen met USDT, Monero of iets anders?",
+      "text": "Hier wordt alleen LBC tegen Bitcoin verhandeld, omdat alleen die te ruilen zijn zonder dat iemand de munten onder zich heeft. Wissel je USDT, Monero (XMR) of andere munten eerst om naar Bitcoin, bijvoorbeeld in Cake Wallet of Trust Wallet, en verhandel die Bitcoin daarna hier. De handelsgids in de handleiding laat de stappen zien."
+    },
+    "safety": {
+      "title": "Voordat je gaat handelen",
+      "text": "Begin met kleine bedragen en vergelijk prijzen met de marktprijs. Houd LBC Wallet open en deze wallet ontgrendeld zolang je aanbiedingen open zijn en tot je trades op “Afgerond” staan. De wallet vergrendelt zichzelf na een tijdje zonder activiteit (Instellingen → Beveiliging)."
+    },
+    "warning": {
+      "title": "De markt: lees dit eerst",
+      "lead": "Op de markt kunnen mensen aanbiedingen plaatsen en aannemen om LBC en Bitcoin te ruilen. Lees deze punten even door – dat kost een minuut.",
+      "notExchange": {
+        "title": "Het is geen handelsplatform",
+        "text": "Niemand beheert de markt, bewaart munten, controleert de mensen die er handelen, beslecht geschillen of draait trades terug. LBC Wallet rekent geen kosten en heeft geen accounts. Aanbiedingen gaan via openbare Nostr-relays, en je wallet doet rechtstreeks zaken met de wallet van de ander."
+      },
+      "settlement": {
+        "title": "Munten worden alleen via swapcontracten verplaatst",
+        "text": "Een aangenomen aanbod wordt een atomic swap: elke partij vergrendelt munten in een contract op de bijbehorende blockchain. Óf beide partijen worden betaald, óf elke partij krijgt de eigen munten terug na de vergrendeltijd, die tot 48 uur kan duren. Je wallet doet dit vanzelf zolang hij open is."
+      },
+      "online": {
+        "title": "Beide wallets moeten online zijn",
+        "text": "Op aanbiedingen wordt alleen gereageerd zolang de wallet die ze heeft geplaatst open is. Als iemand je aanbod aanneemt, moet je jouw deel binnen 12 uur vergrendelen. Als je wallet langer gesloten blijft dan de vergrendeltijden, kan de swap mislukken."
+      },
+      "strangers": {
+        "title": "De mensen op de markt zijn onbekenden",
+        "text": "Iedereen kan een aanbod plaatsen, tegen elke prijs, en weer verdwijnen. Iemand kan je aanbod aannemen en nooit vergrendelen, waardoor het tot 40 minuten geblokkeerd is; iemand kan een aanbod plaatsen en na jou nooit vergrendelen, waardoor je munten vergrendeld blijven tot ze na 48 uur terugkomen. Niemand kan je munten afpakken zonder te betalen, maar je kunt wel tijd en netwerkkosten verliezen."
+      },
+      "relays": {
+        "title": "Relays worden door anderen beheerd",
+        "text": "Aanbiedingen en handelsberichten gaan via Nostr-relays (servers die worden beheerd door vrijwilligers en bedrijven). Berichten zijn versleuteld, maar relays zien welke sleutels met elkaar communiceren en wanneer, en kunnen berichten vertragen of tegenhouden. Elk aanbod en elke trade gebruikt een nieuwe sleutel, zodat trades niet aan je wallet of aan elkaar gekoppeld zijn."
+      },
+      "law": {
+        "title": "De regels van je land gelden",
+        "text": "Handelen in crypto kan gereguleerd zijn waar je woont: vergunningen, belastingen, meldplichten of verboden op bepaalde munten. Je bent er zelf verantwoordelijk voor dat je je daaraan houdt. Deze functie is nieuw en is niet geaudit, en niets hier is financieel advies."
+      },
+      "checkStrangers": "Ik begrijp dat niemand de mensen op de markt controleert, en dat een trade mijn munten tot 48 uur vergrendeld kan houden.",
+      "checkRisk": "Ik gebruik de markt op eigen risico en houd me aan de wetten die gelden waar ik woon.",
+      "accept": "Begrepen – markt openen"
+    }
   }
 }

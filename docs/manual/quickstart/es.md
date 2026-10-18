@@ -82,9 +82,12 @@ cargando, y se pausa cuando la batería se calienta.
 
 ## 8. Ejecutar tu propio nodo (opcional, solo en computadoras)
 
-Haz clic en **Nodo**, elige una carpeta con unos **150 GB** de espacio libre (**Cambiar…**) y haz
-clic en **Iniciar nodo**. La primera descarga tarda entre uno y tres días. Cuando llegue al 100 %,
-la billetera usará tu propio nodo y podrás minar en modo **En solitario**.
+**No** necesitas descargar la blockchain: sin un nodo, la billetera usa servidores públicos de LBRY
+y verifica cada pago con la prueba de trabajo de los bloques. Los teléfonos siempre funcionan así.
+Si aun así quieres ejecutar tu propio nodo, haz clic en **Nodo**, elige una carpeta con unos
+**150 GB** de espacio libre (**Cambiar…**; la cadena ocupa unos 100 GB, no 2 TB) y haz clic en
+**Iniciar nodo**. La primera descarga tarda entre uno y tres días. Cuando llegue al 100 %, la
+billetera usará tu propio nodo y podrás minar en modo **En solitario**.
 
 ## 9. Intercambiar LBC y bitcoins (opcional)
 
@@ -94,6 +97,18 @@ hace clic en **Iniciar un intercambio** y envía el código de invitación; el o
 **Unirse con un código**. Mantén la app abierta hasta que el intercambio muestre **Completado**. La
 función de intercambio es nueva: empieza con una cantidad pequeña. Más detalles:
 [manual, sección 21](../README.md#21-buy-sell-or-swap-lbc).
+
+## 10. Comprar o vender LBC en el Mercado (opcional)
+
+**Mercado** muestra ofertas de otros usuarios de LBC Wallet para comprar o vender LBC por bitcoins,
+con el precio de los exchanges al lado para comparar. Primero lee la advertencia de la página. Haz
+clic en **Comprar** o **Vender** en una oferta, elige la cantidad y tu dirección de Bitcoin, y
+confirma: la otra billetera responde en segundos y la operación se realiza como un intercambio (tú
+bloqueas primero; las dos billeteras cobran por sí solas). O haz clic en **Publicar una oferta**
+para fijar tu propio precio; la oferta sigue en el tablero mientras tu billetera esté abierta. Solo
+se pueden intercambiar LBC y bitcoins de esta forma: para pagar con USDT o Monero, primero cámbialos
+por bitcoins (por ejemplo, en Cake Wallet o Trust Wallet). Más detalles:
+[manual, sección 22](../README.md#22-trade-on-the-market).
 
 ## Ayuda
 

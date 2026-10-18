@@ -6,7 +6,7 @@ export const DEFAULT_POOL = 'stratum+tcp://lbrypool.net:3334';
 export const SETTINGS_FILE = 'settings.json';
 
 /** UI languages the app ships with. */
-export const LANGUAGES = ['en', 'fa', 'ar', 'fr', 'de', 'zh-CN', 'ja', 'ko', 'th', 'nl', 'es', 'pt', 'ru', 'ur'] as const;
+export const LANGUAGES = ['en', 'fa', 'ar', 'fr', 'de', 'zh-CN', 'ja', 'ko', 'th', 'nl', 'es', 'pt', 'ru', 'ur', 'hi'] as const;
 
 /** `device` names the miner at the pool by default ("desktop" or "phone"). */
 export function defaultSettings(cpuCount: number, device: 'desktop' | 'phone' = 'desktop'): Settings {

@@ -45,7 +45,7 @@ describe('settings sanitizing', () => {
   });
 
   it('accepts every shipped language', () => {
-    for (const lang of ['fa', 'ar', 'zh-CN', 'ur', 'th', 'nl']) expect(sanitize({ language: lang }, base, CPUS).language).toBe(lang);
+    for (const lang of ['fa', 'ar', 'zh-CN', 'ur', 'hi', 'th', 'nl']) expect(sanitize({ language: lang }, base, CPUS).language).toBe(lang);
   });
 
   it('bounds mining and node settings', () => {

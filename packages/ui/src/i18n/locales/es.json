@@ -292,7 +292,8 @@
     "more": "Más",
     "lock": "Bloquear billetera",
     "switchWallet": "Bloquear y cambiar de billetera",
-    "swap": "Intercambiar"
+    "swap": "Intercambiar",
+    "market": "Mercado"
   },
   "brand": {
     "mainnet": "LBRY Credits"
@@ -446,7 +447,11 @@
     "deleteWarning": "Asegúrate de tener anotada tu frase de recuperación.",
     "deleteWarningStrong": "Sin ella, los fondos de “{name}” se pierden para siempre.",
     "swapExplorer": "Explorador de Bitcoin para intercambios",
-    "swapExplorerHint": "Los intercambios consultan la blockchain de Bitcoin en un servidor Esplora. Déjalo vacío para usar blockstream.info (contrastado con mempool.space) o indica tu propio servidor. Ese servidor ve las direcciones de Bitcoin de tus intercambios y tu dirección IP."
+    "swapExplorerHint": "Los intercambios consultan la blockchain de Bitcoin en un servidor Esplora. Déjalo vacío para usar blockstream.info (contrastado con mempool.space) o indica tu propio servidor. Ese servidor ve las direcciones de Bitcoin de tus intercambios y tu dirección IP.",
+    "relays": "Relés del tablero de ofertas",
+    "relaysHint": "Relés de Nostr que transmiten las ofertas del Mercado y los mensajes de las operaciones (direcciones wss://, una por línea). Déjalo vacío para usar la lista predeterminada de abajo. Las dos partes de una operación necesitan al menos un relé en común.",
+    "relaysInvalid": "Algunas direcciones no se guardaron: los relés necesitan una dirección wss://.",
+    "relaysDefault": "Usar los relés predeterminados"
   },
   "error": {
     "invalidWalletId": "ID de billetera no válido",
@@ -517,7 +522,19 @@
     "swapTooLate": "Demasiado tarde para bloquear: a los fondos de la otra parte les quedan menos de {hours} horas de bloqueo. Inicia un intercambio nuevo.",
     "swapNoExplorer": "Primero indica en Configuración un servidor Esplora (explorador de Bitcoin) para los intercambios.",
     "swapCannotCancel": "Tus fondos ya están bloqueados; si el intercambio no se completa, los recuperarás automáticamente cuando termine el plazo de bloqueo.",
-    "swapStillActive": "Este intercambio sigue en curso."
+    "swapStillActive": "Este intercambio sigue en curso.",
+    "marketUnsupported": "El tablero de ofertas no está disponible en este dispositivo.",
+    "marketTermsNotAccepted": "Primero lee y acepta la advertencia del tablero de ofertas (página Mercado).",
+    "marketOfferGone": "Esta oferta ya no está en el tablero.",
+    "marketOwnOffer": "Esta es tu propia oferta.",
+    "marketOutOfRange": "Elige una cantidad de entre {min} y {max} LBC para esta oferta.",
+    "marketNotEnoughLbc": "Se necesitan {needed} LBC, pero solo tienes {available} LBC disponibles.",
+    "marketMinTooSmall": "La parte mínima debe valer al menos {btc} BTC (unos {lbc} LBC a tu precio); si no, las comisiones de red se la comerían.",
+    "marketLockExpired": "Ya pasó el plazo para bloquear en esta operación; no se bloqueó nada. Vuelve a aceptar la oferta si sigue disponible.",
+    "marketNoRelay": "No se pudo conectar con ningún relé. Revisa tu conexión a internet o la lista de relés en Configuración → Red.",
+    "marketTooMany": "Ya tienes {count} ofertas abiertas. Primero retira una.",
+    "marketUnknownTrade": "Esta billetera no tiene esa operación.",
+    "marketTradeRunning": "Esta operación sigue en curso."
   },
   "notice": {
     "received": {
@@ -576,6 +593,17 @@
     "swapRefunded": {
       "title": "Intercambio no completado",
       "message": "Tus {coin} ya están de vuelta."
+    },
+    "marketTaken": {
+      "title": "Aceptaron tu oferta",
+      "message": "Alguien aceptó {amount} de tu oferta. Su billetera bloquea primero; después se te pedirá que bloquees lo tuyo."
+    },
+    "marketAccepted": {
+      "title": "Aceptaron tu solicitud",
+      "message": "Bloquea ahora tus {coin} en la página Mercado (tienes 20 minutos)."
+    },
+    "marketDeclined": {
+      "title": "Rechazaron tu solicitud"
     }
   },
   "create": {
@@ -1082,5 +1110,172 @@
     "claimTx": "Transacción de cobro",
     "refundTx": "Transacción de reembolso",
     "history": "Historial"
+  },
+  "market": {
+    "title": "Mercado",
+    "sub": "Compra y vende LBC por bitcoins con otras personas. Sin exchange ni cuenta: cada operación es un intercambio atómico.",
+    "postOffer": "Publicar una oferta",
+    "board": "Ofertas",
+    "buyLbc": "Comprar LBC",
+    "sellLbc": "Vender LBC",
+    "relays": "Conectado a {n} de {total} relés",
+    "loading": "Buscando ofertas…",
+    "noSellers": "Ahora mismo nadie vende LBC. Publica una oferta de compra o vuelve más tarde.",
+    "noBuyers": "Ahora mismo nadie compra LBC. Publica una oferta de venta o vuelve más tarde.",
+    "col": {
+      "price": "Precio por LBC",
+      "available": "Disponible",
+      "total": "En bitcoins"
+    },
+    "sats": "{n} sats",
+    "above": "{pct} % por encima del mercado",
+    "below": "{pct} % por debajo del mercado",
+    "from": "desde {min}",
+    "yours": "Tu oferta",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "price": {
+      "title": "Precio de mercado",
+      "source": "{source} · {time}",
+      "loading": "Cargando el precio de mercado…",
+      "unavailable": "Ahora mismo no se puede cargar el precio de mercado. Antes de operar, consulta a qué precio se cotiza LBC en el sitio web de un exchange.",
+      "oneLbc": "1 LBC",
+      "inBtc": "En bitcoins",
+      "inXmr": "En Monero",
+      "convert": "Convertir una cantidad de LBC",
+      "converted": "{lbc} LBC ≈ {btc} BTC ≈ {xmr} XMR ≈ {usd}",
+      "hint": "Solo para comparar: el precio al que se cotiza LBC en los exchanges. Las ofertas de aquí fijan sus propios precios."
+    },
+    "take": {
+      "buyTitle": "Comprar LBC",
+      "sellTitle": "Vender LBC",
+      "offer": "Precio: {price} por LBC. Puedes tomar desde {min} hasta {max}.",
+      "amount": "Cantidad de LBC",
+      "range": "Elige una cantidad de entre {min} y {max}.",
+      "summary": "Das {give} y recibes {get}",
+      "firstLbc": "Tu billetera bloquea primero tus {give}, durante un máximo de 48 horas. Si la otra parte no bloquea lo suyo, tus LBC vuelven a ti automáticamente cuando termina ese plazo.",
+      "firstBtc": "Primero pagas {give} a un contrato desde tu billetera de Bitcoin. Si la otra parte no bloquea lo suyo, esa cantidad vuelve a la dirección de abajo al cabo de 48 horas.",
+      "notEnough": "Esta billetera solo tiene {available} para gastar.",
+      "tooSmall": "Esta cantidad es demasiado pequeña para un intercambio: las comisiones de red se llevarían la mayor parte.",
+      "buy": "Comprar {amount}",
+      "sell": "Vender {amount}"
+    },
+    "trade": {
+      "waiting": "Esperando la respuesta de la otra billetera. Si está en línea, tarda unos segundos; la espera termina a los 10 minutos.",
+      "unsent": "Aún no se envió: no hay ningún relé disponible. Se enviará en cuanto haya uno.",
+      "invited": "Alguien aceptó {lbc} de tu oferta. Su billetera bloquea primero; se te pedirá que bloquees lo tuyo cuando lo suyo esté confirmado.",
+      "swapping": "El intercambio está en curso.",
+      "done": "Operación completada: las dos partes recibieron su pago.",
+      "expired": "No hubo respuesta a tiempo. No se bloqueó ninguno de tus fondos.",
+      "cancelled": "La operación se detuvo antes de terminar. Su intercambio (en la página Intercambiar) muestra el motivo; los fondos bloqueados vuelven solos al terminar el plazo de bloqueo.",
+      "declined": {
+        "taken": "La otra billetera está ocupada con otras solicitudes. Vuelve a intentarlo en unos minutos.",
+        "closed": "La oferta se cerró.",
+        "amount": "La otra billetera no puede cubrir esa cantidad ahora.",
+        "price": "Las condiciones no coincidían con la oferta (puede que haya cambiado). No se bloqueó nada.",
+        "expired": "La otra billetera dejó de esperar tu bloqueo. No se bloqueó ninguno de tus fondos."
+      },
+      "status": {
+        "waiting": "Enviada",
+        "invited": "Aceptada",
+        "swapping": "Intercambiando",
+        "done": "Completada",
+        "declined": "Rechazada",
+        "expired": "Expirada",
+        "cancelled": "Detenida"
+      },
+      "dismiss": "Quitar de la lista"
+    },
+    "trades": {
+      "title": "Tus operaciones"
+    },
+    "stageText": {
+      "waitTaker": "La otra billetera tiene la invitación y bloquea primero sus {other}. Por ahora no tienes que hacer nada.",
+      "lockedMaker": "Tus {give} están bloqueados. Esperando a que la otra billetera los cobre; después, esta billetera cobrará sus {other} automáticamente.",
+      "lockedTaker": "Tus {give} están bloqueados. Esperando a que la otra billetera bloquee sus {other}; tiene hasta 12 horas."
+    },
+    "lockBy": "Bloquea antes del {time}; si no, la otra parte dejará de esperar.",
+    "post": {
+      "title": "Publicar una oferta",
+      "side": "Quieres",
+      "sell": "Vender LBC (recibir bitcoins)",
+      "buy": "Comprar LBC (pagar con bitcoins)",
+      "amount": "Cantidad de LBC",
+      "available": "Disponible: {amount}",
+      "price": "Precio en satoshis por LBC",
+      "useMarket": "Usar el precio de mercado ({price}, {source})",
+      "min": "Parte mínima que alguien puede tomar (LBC)",
+      "minHint": "Déjalo vacío para usar {amount}, el intercambio más pequeño que compensa sus comisiones a este precio.",
+      "summarySell": "Vendes {lbc} por {btc}",
+      "summaryBuy": "Compras {lbc} por {btc}",
+      "above": "{pct} % por encima del precio de mercado.",
+      "below": "{pct} % por debajo del precio de mercado.",
+      "worth": "Vale unos {usd} al precio de mercado.",
+      "howSell": "Cuando alguien la acepte, primero se bloquearán sus bitcoins. Después se te pedirá que bloquees tus LBC, y los bitcoins llegarán a la dirección de arriba.",
+      "howBuy": "Cuando alguien la acepte, primero se bloquearán sus LBC. Después pagarás los bitcoins a un contrato desde tu billetera de Bitcoin, y los LBC llegarán a esta billetera.",
+      "stayOnline": "Tu oferta solo está en el tablero mientras esta billetera esté abierta, y se retira cuando la billetera se bloquea. Cuando alguien la acepte, debes bloquear tu parte en un plazo de 12 horas.",
+      "post": "Publicar la oferta"
+    },
+    "mine": {
+      "title": "Tus ofertas",
+      "selling": "Vendiendo {lbc}",
+      "buying": "Comprando {lbc}",
+      "left": "Quedan {left}",
+      "running": {
+        "one": "{count} operación en curso",
+        "many": "{count} operaciones en curso",
+        "other": "{count} operaciones en curso"
+      },
+      "onRelays": {
+        "one": "En {count} relé · renovada {time}",
+        "many": "En {count} relés · renovada {time}",
+        "other": "En {count} relés · renovada {time}"
+      },
+      "notYet": "Aún no está en ningún relé",
+      "status": {
+        "open": "Abierta",
+        "closed": "Cerrada"
+      },
+      "withdraw": "Retirar"
+    },
+    "otherCoins": {
+      "title": "¿Pagas con USDT, Monero u otra moneda?",
+      "text": "Aquí solo se cambian LBC por bitcoins, porque son las únicas monedas que se pueden intercambiar sin que nadie custodie los fondos. Primero cambia tus USDT, Monero (XMR) u otras monedas por bitcoins, por ejemplo en Cake Wallet o Trust Wallet, y luego opera aquí con esos bitcoins. La guía de operaciones del manual explica los pasos."
+    },
+    "safety": {
+      "title": "Antes de operar",
+      "text": "Empieza con cantidades pequeñas y compara los precios con el precio de mercado. No cierres LBC Wallet y mantén esta billetera desbloqueada mientras tengas ofertas publicadas y hasta que tus operaciones muestren “Completada”. La billetera se bloquea sola tras un tiempo sin uso (Configuración → Seguridad)."
+    },
+    "warning": {
+      "title": "El tablero de ofertas: lee esto primero",
+      "lead": "El tablero de ofertas permite publicar y aceptar ofertas para intercambiar LBC y bitcoins. Lee estos puntos, por favor: te llevará un minuto.",
+      "notExchange": {
+        "title": "No es un exchange",
+        "text": "Nadie gestiona el tablero, custodia fondos, verifica a las personas que lo usan, resuelve disputas ni revierte operaciones. LBC Wallet no cobra comisiones y no tiene cuentas. Las ofertas viajan por relés públicos de Nostr, y tu billetera trata directamente con la billetera de la otra persona."
+      },
+      "settlement": {
+        "title": "Los fondos solo se mueven mediante contratos de intercambio",
+        "text": "Una oferta aceptada se convierte en un intercambio atómico: cada parte bloquea fondos en un contrato de su propia blockchain. O las dos partes reciben su pago, o cada una recupera sus fondos al terminar el plazo de bloqueo, que puede ser de hasta 48 horas. Tu billetera lo hace por sí sola mientras esté abierta."
+      },
+      "online": {
+        "title": "Las dos billeteras deben estar en línea",
+        "text": "Las ofertas solo reciben respuesta mientras la billetera que las publicó esté abierta. Cuando alguien acepte tu oferta, debes bloquear tu parte en un plazo de 12 horas. Si tu billetera sigue cerrada después de los plazos de bloqueo, el intercambio puede fallar."
+      },
+      "strangers": {
+        "title": "En el tablero tratas con desconocidos",
+        "text": "Cualquiera puede publicar una oferta, a cualquier precio, y desaparecer. Alguien puede aceptar tu oferta y nunca bloquear sus fondos, con lo que tu oferta deja de estar disponible durante un máximo de 40 minutos; alguien puede publicar una oferta y nunca bloquear después de ti, con lo que tus fondos quedan bloqueados hasta que vuelvan a ti al cabo de 48 horas. Nadie puede quedarse con tus fondos sin pagar, pero puedes perder tiempo y comisiones de red."
+      },
+      "relays": {
+        "title": "Los relés los gestionan terceros",
+        "text": "Las ofertas y los mensajes de las operaciones pasan por relés de Nostr (servidores gestionados por voluntarios y empresas). Los mensajes están cifrados, pero los relés ven qué claves se comunican y cuándo, y pueden retrasar o descartar mensajes. Cada oferta y cada operación usa una clave nueva, así que las operaciones no quedan vinculadas a tu billetera ni entre sí."
+      },
+      "law": {
+        "title": "Se aplican las normas de tu país",
+        "text": "Operar con criptomonedas puede estar regulado donde vives: licencias, impuestos, obligaciones de declarar o prohibiciones de algunas monedas. Eres responsable de cumplir esas normas. Esta función es nueva y no se ha auditado, y nada de lo que hay aquí es asesoramiento financiero."
+      },
+      "checkStrangers": "Entiendo que nadie verifica a las personas del tablero y que una operación puede mantener mis fondos bloqueados hasta 48 horas.",
+      "checkRisk": "Uso el tablero de ofertas por mi cuenta y riesgo, y cumplo las leyes del lugar donde vivo.",
+      "accept": "Entendido, abrir el tablero"
+    }
   }
 }

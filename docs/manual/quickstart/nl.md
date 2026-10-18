@@ -80,7 +80,10 @@ is, en het pauzeert als de batterij warm wordt.
 
 ## 8. Je eigen node draaien (optioneel, alleen op computers)
 
-Klik op **Node**, kies een map met ongeveer **150 GB** vrije ruimte (**Wijzigen…**) en klik op
+Je hoeft de blockchain **niet** te downloaden: zonder node gebruikt de wallet openbare LBRY-servers
+en controleert hij elke betaling aan de hand van de proof-of-work van de blokken. Telefoons werken
+altijd zo. Wil je toch je eigen node draaien? Klik dan op **Node**, kies een map met ongeveer
+**150 GB** vrije ruimte (**Wijzigen…**; de blockchain is ongeveer 100 GB, niet 2 TB) en klik op
 **Node starten**. De eerste download duurt één tot drie dagen. Zodra die op 100% staat, gebruikt de
 wallet je eigen node en kun je **Solo** minen.
 
@@ -92,6 +95,18 @@ jullie klikt op **Swap starten** en stuurt de uitnodigingscode; de ander klikt o
 **Deelnemen met een code**. Houd de app open tot de swap op **Voltooid** staat. Swaps zijn nieuw:
 begin met een klein bedrag. Meer informatie:
 [handleiding, onderdeel 21](../README.md#21-buy-sell-or-swap-lbc).
+
+## 10. LBC kopen of verkopen op de Markt (optioneel)
+
+**Markt** toont aanbiedingen van andere gebruikers van LBC Wallet om LBC te kopen of te verkopen
+tegen Bitcoin, met de prijs op handelsplatformen ernaast ter vergelijking. Lees eerst de
+waarschuwing op de pagina. Klik bij een aanbod op **Kopen** of **Verkopen**, kies het bedrag en je
+Bitcoin-adres en bevestig: de andere wallet antwoordt binnen een paar seconden, en de trade verloopt
+als een swap (jij vergrendelt eerst; beide wallets halen de munten vanzelf op). Of klik op
+**Aanbod plaatsen** om zelf je prijs te kiezen; je aanbod blijft op de markt staan zolang je wallet
+open is. Op deze manier kun je alleen LBC en Bitcoin verhandelen: wil je met USDT of Monero betalen,
+wissel die dan eerst om naar Bitcoin (bijvoorbeeld in Cake Wallet of Trust Wallet). Meer informatie:
+[handleiding, onderdeel 22](../README.md#22-trade-on-the-market).
 
 ## Hulp
 

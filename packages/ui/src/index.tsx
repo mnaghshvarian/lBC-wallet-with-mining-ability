@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 // Persian, Arabic and Urdu text (SIL Open Font License); other scripts use system fonts.
 import '@fontsource-variable/vazirmatn/index.css';
+import '@fontsource-variable/noto-sans-devanagari/index.css';
 import './styles/global.css';
 
 export { App };

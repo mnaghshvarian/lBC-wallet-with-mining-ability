@@ -85,10 +85,13 @@ quand la batterie chauffe.
 
 ## 8. Faire tourner votre propre nœud (facultatif, ordinateurs uniquement)
 
-Cliquez sur **Nœud**, choisissez un dossier disposant d’environ **150 Go** d’espace libre
-(**Modifier…**), puis cliquez sur **Démarrer le nœud**. Le premier téléchargement prend entre un et
-trois jours. Quand il atteint 100 %, le portefeuille utilise votre propre nœud et vous pouvez miner
-en mode **Solo**.
+Vous n’avez **pas** besoin de télécharger la blockchain : sans nœud, le portefeuille utilise des
+serveurs LBRY publics et vérifie chaque paiement par rapport à la preuve de travail des blocs. Les
+téléphones fonctionnent toujours ainsi. Si vous voulez tout de même faire tourner votre propre nœud,
+cliquez sur **Nœud**, choisissez un dossier disposant d’environ **150 Go** d’espace libre
+(**Modifier…** ; la chaîne fait environ 100 Go, et non 2 To), puis cliquez sur **Démarrer le nœud**.
+Le premier téléchargement prend entre un et trois jours. Quand il atteint 100 %, le portefeuille
+utilise votre propre nœud et vous pouvez miner en mode **Solo**.
 
 ## 9. Échanger des LBC et des bitcoins (facultatif)
 
@@ -98,6 +101,20 @@ récupérez tous les deux vos fonds. L’un de vous deux clique sur **Démarrer 
 code d’invitation ; l’autre clique sur **Rejoindre avec un code**. Gardez l’application ouverte
 jusqu’à ce que l’échange affiche **Terminé**. La fonction d’échange est nouvelle : commencez avec
 une petite somme. Pour en savoir plus : [manuel, section 21](../README.md#21-buy-sell-or-swap-lbc).
+
+## 10. Acheter ou vendre des LBC sur le Marché (facultatif)
+
+La page **Marché** affiche les offres d’autres utilisateurs de LBC Wallet qui veulent acheter ou
+vendre des LBC contre des bitcoins, avec, à titre de comparaison, le prix pratiqué sur les
+plateformes d’échange. Lisez d’abord l’avertissement affiché sur la page. Cliquez sur **Acheter** ou
+**Vendre** à côté d’une offre, choisissez le montant et votre adresse Bitcoin, puis confirmez :
+l’autre portefeuille répond en quelques secondes, et l’opération se déroule sous la forme d’un
+échange (vous bloquez en premier ; les deux portefeuilles encaissent ensuite automatiquement). Vous
+pouvez aussi cliquer sur **Publier une offre** pour fixer votre propre prix ; l’offre reste sur le
+tableau tant que votre portefeuille est ouvert. Seuls les LBC et les bitcoins peuvent s’échanger
+ainsi : pour payer en USDT ou en Monero, convertissez-les d’abord en bitcoins (par exemple dans
+Cake Wallet ou Trust Wallet). Pour en savoir plus :
+[manuel, section 22](../README.md#22-trade-on-the-market).
 
 ## Aide
 
