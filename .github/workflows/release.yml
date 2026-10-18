@@ -1,8 +1,10 @@
 name: Release
 
 # Builds the installers for Linux, Windows and macOS and the Android APK, and
-# attaches them (with SHA-256 checksums) to a draft GitHub release. Push a tag
-# like v1.0.0 to publish; run it manually to only build (artifacts in the run).
+# attaches them (with SHA-256 checksums) to a draft GitHub release. Either push a
+# tag like v1.1.0, or run it from the Actions tab ("Run workflow") with the
+# version number; run it without a version to only build (artifacts in the run).
+# The draft is published by hand after checking it.
 #
 # Optional signing secrets (see docs/BUILDING.md):
 #   Android: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
@@ -14,6 +16,11 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version for the draft release, e.g. 1.1.0 (must match apps/desktop/package.json). Empty: only build.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -21,17 +28,39 @@ permissions:
 jobs:
   draft:
     name: Draft the release
-    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
+      - name: Release tag
+        id: tag
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          elif [ -n "$INPUT_VERSION" ]; then
+            tag="v${INPUT_VERSION#v}"
+          else
+            echo "No version given: only building (the installers are attached to this run)."
+            exit 0
+          fi
+          version="$(jq -r .version apps/desktop/package.json)"
+          if [ "$tag" != "v$version" ]; then
+            echo "::error::$tag does not match the app version $version in apps/desktop/package.json"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Create the draft release with its notes (once)
+        if: steps.tag.outputs.tag != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
-            gh release create "$GITHUB_REF_NAME" --draft --title "LBC Wallet ${GITHUB_REF_NAME#v}" --notes-file docs/release-notes.md
-          gh release upload "$GITHUB_REF_NAME" docs/manual/LBC-Wallet-Manual.pdf DISCLAIMER.md --clobber
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "LBC Wallet ${TAG#v}" --notes-file docs/release-notes.md
+          gh release upload "$TAG" docs/manual/LBC-Wallet-Manual.pdf DISCLAIMER.md --clobber
 
   build:
     name: Package (${{ matrix.os }})
@@ -81,6 +110,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAG: ${{ needs.draft.outputs.tag }}
         run: |
           # Secrets that are not configured arrive as empty strings; electron-builder would
           # try to import an empty CSC_LINK as a certificate, so drop them.
@@ -96,7 +126,7 @@ jobs:
             EXTRA=(-c.mac.identity=- -c.mac.hardenedRuntime=false)
           fi
           PUBLISH=never
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then PUBLISH=always; fi
+          if [ -n "$TAG" ]; then PUBLISH=always; fi
           npx electron-builder --config electron-builder.yml ${{ matrix.target }} --publish "$PUBLISH" "${EXTRA[@]}"
       - name: Checksums
         shell: bash
@@ -108,12 +138,13 @@ jobs:
             | xargs -0 "${SUM[@]}" > SHA256SUMS-${{ runner.os }}.txt
           cat SHA256SUMS-${{ runner.os }}.txt
       - name: Attach the checksums to the release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: needs.draft.outputs.tag != ''
         shell: bash
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" release/*/SHA256SUMS-*.txt --clobber
+          TAG: ${{ needs.draft.outputs.tag }}
+        run: gh release upload "$TAG" release/*/SHA256SUMS-*.txt --clobber
       - uses: actions/upload-artifact@v7
         with:
           name: lbc-wallet-${{ runner.os }}
@@ -183,17 +214,18 @@ jobs:
           cd apps/mobile/release && sha256sum "$NAME" > SHA256SUMS-Android.txt && cat SHA256SUMS-Android.txt
           rm -f "$LBC_ANDROID_KEYSTORE"
       - name: Attach the APK to the release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: needs.draft.outputs.tag != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.draft.outputs.tag }}
           TEST_KEY: ${{ steps.apk.outputs.test_key }}
         run: |
-          gh release upload "$GITHUB_REF_NAME" apps/mobile/release/*.apk apps/mobile/release/SHA256SUMS-Android.txt --clobber
+          gh release upload "$TAG" apps/mobile/release/*.apk apps/mobile/release/SHA256SUMS-Android.txt --clobber
           if [ "$TEST_KEY" = "true" ]; then
-            gh release view "$GITHUB_REF_NAME" --json body -q .body > "$RUNNER_TEMP/notes.md"
+            gh release view "$TAG" --json body -q .body > "$RUNNER_TEMP/notes.md"
             if ! grep -q "temporary signing key" "$RUNNER_TEMP/notes.md"; then
               printf '\n> ⚠️ **The Android APK of this release is signed with a temporary signing key.** It installs and works, but a later version signed with the project'"'"'s permanent key will not install over it: you would have to uninstall this one first (write down your recovery phrase before you do).\n' >> "$RUNNER_TEMP/notes.md"
-              gh release edit "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
+              gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
             fi
           fi
       - uses: actions/upload-artifact@v7

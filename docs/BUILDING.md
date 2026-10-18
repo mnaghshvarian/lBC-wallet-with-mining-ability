@@ -125,8 +125,9 @@ version can update the previous one.
 ## Releases
 
 1. Bump `version` in `apps/desktop/package.json` and `apps/mobile/package.json`.
-2. Push a tag such as `v1.1.0`. The [release workflow](../.github/workflows/release.yml) creates a
-   **draft** release with the notes in [`docs/release-notes.md`](release-notes.md), builds and
+2. Push a tag such as `v1.1.0` — or, without git, open **Actions → Release → Run workflow** on
+   GitHub and enter the version (`1.1.0`). The [release workflow](../.github/workflows/release.yml)
+   checks that it matches the app version and creates a **draft** release with the notes in [`docs/release-notes.md`](release-notes.md), builds and
    tests on Linux, Windows and macOS (bundling `lbcd` for each), builds the APK, writes SHA-256
    checksums and attaches everything.
 3. Review the draft and publish it. Only then do the `releases/latest/download/…` links in the
