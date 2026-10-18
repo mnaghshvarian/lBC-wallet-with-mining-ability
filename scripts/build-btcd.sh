@@ -8,8 +8,13 @@
 #
 # Like scripts/build-lbcd.sh, the source is the published release, fetched
 # through the Go module proxy and checked against the hash pinned below (the
-# value recorded in sum.golang.org). Needs Go 1.22 or newer.
+# value recorded in sum.golang.org). btcd needs Go 1.25: the go command fetches
+# exactly that release if this computer's Go differs (also through the module
+# proxy, checked against sum.golang.org), even where GOTOOLCHAIN=local is set
+# (as GitHub's setup-go does). Needs Go 1.21 or newer to start.
 set -euo pipefail
+
+export GOTOOLCHAIN=go1.25.0+auto
 
 BTCD_MODULE=github.com/btcsuite/btcd
 BTCD_VERSION=v0.26.2
