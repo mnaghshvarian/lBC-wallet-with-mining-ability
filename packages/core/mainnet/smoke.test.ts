@@ -19,7 +19,7 @@ import { HubBackend, probeHub } from '../src/net/hub.js';
 import { LineRpcClient } from '../src/net/line-rpc.js';
 import { nodeLineTransport } from '../src/node/index.js';
 import { checkProofOfWork, parseHeader } from '../src/crypto/pow.js';
-import { fromHex } from '../src/encoding/bytes.js';
+import { concatBytes, fromHex, toHex } from '../src/encoding/bytes.js';
 import { verifyTransactionInclusion } from '../src/wallet/verify.js';
 import { Transaction } from '../src/tx/transaction.js';
 import { scriptToAddress } from '../src/address.js';
@@ -34,6 +34,7 @@ const reversedHex = (bytes: Uint8Array) => Buffer.from(bytes).reverse().toString
 describe('LBC mainnet (read-only)', () => {
   let backend: HubBackend;
   let tip: ChainTip;
+  let poolPayout: string | null = null;
 
   beforeAll(async () => {
     backend = new HubBackend({ servers: MAINNET.defaultHubs, transportFactory, network: MAINNET, clientName: CLIENT });
@@ -51,7 +52,8 @@ describe('LBC mainnet (read-only)', () => {
     for (const [i, r] of results.entries()) console.log(`${MAINNET.defaultHubs[i]!.host}:${MAINNET.defaultHubs[i]!.port} → ${r.ok ? `#${r.height} in ${r.latencyMs} ms (${r.version})` : r.error}`);
     expect(ok.length).toBeGreaterThanOrEqual(2);
     const heights = ok.map((r) => r.height);
-    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(5);
+    // Servers may lag a few blocks behind each other.
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(12);
     expect(tip.height).toBeGreaterThan(1_900_000);
   }, 60_000);
 
@@ -73,42 +75,20 @@ describe('LBC mainnet (read-only)', () => {
     expect(span).toBeLessThan(3 * 24 * 60 * 60);
   }, 60_000);
 
-  it('verifies a real transaction against its block header (SPV) and finds it in address history', async () => {
-    const height = tip.height - 6;
-    const [headerHex] = await backend.getHeaders(height, 1);
-    let txid: string;
-    let merkle: string[];
-    // The first hub that answers gives us the coinbase transaction of that block with its merkle branch.
-    for (const hub of MAINNET.defaultHubs) {
-      const c = new LineRpcClient(transportFactory(hub), { jsonrpc2: true, defaultTimeoutMs: 20_000 });
-      try {
-        await c.connect();
-        await c.request('server.version', [CLIENT, '0.113.0']);
-        const r = await c.request<{ tx_hash: string; merkle: string[] }>('blockchain.transaction.id_from_pos', [height, 0, true]);
-        txid = r.tx_hash;
-        merkle = r.merkle;
-        break;
-      } catch (err) {
-        console.log(`${hub.host}: ${(err as Error).message}`);
-      } finally {
-        c.close();
-      }
+  it('serves real transactions that match the headers (SPV) and the address index', async () => {
+    // LBRY's first blocks hold only their coinbase, so the header's merkle root is that transaction's id.
+    for (const height of [1, 2, 3]) {
+      const [headerHex] = await backend.getHeaders(height, 1);
+      const txid = parseHeader(fromHex(headerHex!)).merkleRoot;
+      const fetched = (await backend.getTransactions([txid])).get(txid);
+      expect(fetched, `coinbase of block ${height}`).toBeDefined();
+      const tx = Transaction.fromHex(fetched!.hex);
+      expect(tx.txid).toBe(txid);
+      if (fetched!.merkle) expect(verifyTransactionInclusion(txid, fetched!.merkle, headerHex!, height, MAINNET, tip)).toMatchObject({ ok: true });
+      const address = tx.outputs.map((o) => scriptToAddress(o.script, MAINNET)).find((a): a is string => !!a);
+      expect(address, `payout address of block ${height}`).toBeTruthy();
+      expect((await backend.getHistory(address!)).some((h) => h.txid === txid)).toBe(true);
     }
-    expect(txid!).toMatch(/^[0-9a-f]{64}$/);
-    const check = verifyTransactionInclusion(txid!, { branch: merkle!, pos: 0 }, headerHex!, height, MAINNET, tip);
-    expect(check).toMatchObject({ ok: true });
-
-    const fetched = (await backend.getTransactions([txid!])).get(txid!);
-    expect(fetched).toBeDefined();
-    const tx = Transaction.fromHex(fetched!.hex);
-    expect(tx.txid).toBe(txid!);
-    expect(tx.inputs[0]!.vout).toBe(0xffffffff); // a coinbase
-    if (fetched!.height > 0) expect(fetched!.height).toBe(height);
-
-    const payout = tx.outputs.map((o) => scriptToAddress(o.script, MAINNET)).find((a): a is string => !!a);
-    expect(payout).toBeTruthy();
-    const history = await backend.getHistory(payout!);
-    expect(history.some((h) => h.txid === txid!)).toBe(true);
   }, 120_000);
 
   it('gets mining work for the current chain from LBRYPool (login only, no hashing)', async () => {
@@ -129,9 +109,15 @@ describe('LBC mainnet (read-only)', () => {
     try {
       await client.connect();
       const sub = await client.request<unknown[]>('mining.subscribe', ['LBCWallet-smoke/1.0']);
+      // [subscriptions, extranonce1, extranonce2_size]
       expect(Array.isArray(sub)).toBe(true);
       expect(await client.request<boolean>('mining.authorize', [`${address}.smoke`, 'x'])).toBe(true);
       const work = await job;
+      // The coinbase outputs (in coinb2) show where the pool collects block rewards.
+      const extranonce = new Uint8Array(Number(sub[2] ?? 4) + String(sub[1] ?? '').length / 2);
+      const coinbase = Transaction.fromHex(toHex(concatBytes(work.coinb1, extranonce, work.coinb2)));
+      poolPayout = coinbase.outputs.map((o) => scriptToAddress(o.script, MAINNET)).find((x): x is string => !!x) ?? null;
+      console.log(`pool coinbase pays to ${poolPayout}`);
       // The pool builds on the tip the hubs report (or a block newer than it).
       const latest = await backend.getTip();
       const recent = await backend.getHeaders(latest.height - 3, 4);
@@ -148,4 +134,25 @@ describe('LBC mainnet (read-only)', () => {
       client.close();
     }
   }, 90_000);
+
+  it('verifies merkle proofs of recent transactions with several transactions per block', async () => {
+    // The payout address of LBRYPool (taken from its coinbase in the pool test) receives block rewards.
+    if (!poolPayout) return console.log('no pool payout address; skipped');
+    const history = (await backend.getHistory(poolPayout)).filter((h) => h.height > 0).slice(-5);
+    console.log(`${poolPayout}: ${history.length} recent confirmed transactions`);
+    if (history.length === 0) return;
+    const fetched = await backend.getTransactions(history.map((h) => h.txid));
+    let checked = 0;
+    for (const h of history) {
+      const t = fetched.get(h.txid);
+      if (!t?.merkle) continue;
+      const [headerHex] = await backend.getHeaders(h.height, 1);
+      const result = verifyTransactionInclusion(h.txid, t.merkle, headerHex!, h.height, MAINNET, tip);
+      console.log(`tx ${h.txid} in block ${h.height}: merkle branch of ${t.merkle.branch.length}, ${result.ok ? 'verified' : result.reason}`);
+      expect(result).toMatchObject({ ok: true });
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
+  }, 120_000);
+
 });

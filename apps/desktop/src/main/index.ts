@@ -91,6 +91,7 @@ if (!app.requestSingleInstanceLock()) {
       hubHeight: () => wallets.overview()?.backend.height ?? null,
     });
     wallets.setLocalNode(() => node.localNode());
+    let lastBlockNotice = 0;
     const miner = new MinerService({
       settings,
       miningInfo,
@@ -99,7 +100,10 @@ if (!app.requestSingleInstanceLock()) {
       onStats: (st) => send('miner:stats', st),
       onLog: (e) => send('miner:log', e),
       onBlock: (b) => {
-        if (b.accepted) send('notice', { kind: 'block-found', code: 'blockFound', params: { height: b.height } });
+        // One notice per few seconds, even where blocks come fast (test networks).
+        if (!b.accepted || Date.now() - lastBlockNotice < 10_000) return;
+        lastBlockNotice = Date.now();
+        send('notice', { kind: 'block-found', code: 'blockFound', params: { height: b.height } });
       },
     });
 

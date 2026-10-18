@@ -12,6 +12,9 @@ const log = logger('miner');
 
 const PAUSE_CHECK_MS = 5_000;
 
+const LOG_LINES_PER_SECOND = 20;
+const STATS_INTERVAL_MS = 250;
+
 function stoppedStats(threads: number): MinerStatsView {
   return {
     state: 'stopped',
@@ -127,18 +130,54 @@ export class MinerService {
     return [...this.logs];
   }
 
+  // On easy networks (regtest, testnet) solo mining finds blocks many times a
+  // second; the window and the log file get a bounded stream so they stay usable.
+  private logWindow = { start: 0, sent: 0, held: 0 };
+
   private addLog(level: MinerLogEntry['level'], message: string) {
     const entry = { level, message, at: Date.now() };
     this.logs.push(entry);
     if (this.logs.length > 500) this.logs.splice(0, this.logs.length - 500);
+    if (entry.at - this.logWindow.start >= 1000) {
+      if (this.logWindow.held > 0) {
+        const note: MinerLogEntry = { level: 'info', message: `… ${this.logWindow.held} more lines`, at: entry.at };
+        log('info', note.message);
+        this.deps.onLog(note);
+      }
+      this.logWindow = { start: entry.at, sent: 0, held: 0 };
+    }
+    if (level !== 'error' && this.logWindow.sent >= LOG_LINES_PER_SECOND) {
+      this.logWindow.held++;
+      return;
+    }
+    this.logWindow.sent++;
     log(level, message);
     this.deps.onLog(entry);
   }
 
+  private statsSentAt = 0;
+  private statsTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Keeps the latest stats; the window gets at most a few updates a second, state changes at once. */
   private publish(s: MinerStatsView) {
+    const stateChanged = s.state !== this.stats.state || s.paused !== this.stats.paused;
     this.stats = s;
     if (s.hashrateAvg > 0 && s.threads > 0) this.perThreadRate = s.hashrateAvg / s.threads;
-    this.deps.onStats(this.status());
+    const send = () => {
+      this.statsSentAt = Date.now();
+      this.deps.onStats(this.status());
+    };
+    const wait = STATS_INTERVAL_MS - (Date.now() - this.statsSentAt);
+    if (stateChanged || wait <= 0) {
+      if (this.statsTimer) clearTimeout(this.statsTimer);
+      this.statsTimer = null;
+      send();
+    } else {
+      this.statsTimer ??= setTimeout(() => {
+        this.statsTimer = null;
+        send();
+      }, wait);
+    }
   }
 
   private resolvePayout(settings: Settings): string {

@@ -13,13 +13,14 @@
  */
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import { _android as android, type AndroidDevice, type Page } from 'playwright-core';
 import { REGTEST } from '../../../packages/core/src/networks';
 import { AddressDeriver, deriveAccountKey, publicOnly } from '../../../packages/core/src/keys/hd';
 
-const appDir = resolve(__dirname, '..');
+const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(appDir, '../..');
 const PKG = 'io.github.mnaghshvarian.lbcwallet';
 const APK = process.env.APK ?? join(appDir, 'android/app/build/outputs/apk/debug/app-debug.apk');

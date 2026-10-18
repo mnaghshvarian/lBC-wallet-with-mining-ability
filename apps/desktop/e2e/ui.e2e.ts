@@ -271,6 +271,11 @@ async function main() {
     await page.locator('.stat', { hasText: 'Shares' }).locator('.positive').filter({ hasText: /^[1-9]/ }).waitFor({ timeout: 90_000 });
     await page.waitForTimeout(6000);
     await shot(page, '13-mining');
+    // A short sequence for the manual's animation of the miner at work.
+    for (let i = 0; i < 6; i++) {
+      await page.waitForTimeout(1200);
+      await page.screenshot({ path: join(shotsDir, `anim-mining-${i}.png`) });
+    }
     await page.getByRole('button', { name: 'Stop mining' }).click();
     await page.getByRole('button', { name: 'Start mining' }).waitFor({ timeout: 15_000 });
 
@@ -333,6 +338,21 @@ async function main() {
     await page.locator('.nav-item', { hasText: 'Overview' }).click();
     await page.waitForTimeout(1000);
     await shot(page, '20-overview-after');
+
+    // ---------------------------------------------------------------- phone layout (English)
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('.bottom-nav button').first().click();
+    await page.locator('.page').evaluate((el) => el.scrollTo(0, 0));
+    await shot(page, '25-phone-overview');
+    await page.locator('.bottom-nav button', { hasText: 'Receive' }).click();
+    await shot(page, '26-phone-receive');
+    await page.locator('.bottom-nav button', { hasText: 'Send' }).click();
+    await shot(page, '27-phone-send');
+    await page.locator('.bottom-nav button').last().click();
+    await page.locator('.sheet').waitFor();
+    await shot(page, '28-phone-more');
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1280, height: 820 });
 
     // ---------------------------------------------------------------- Persian (right to left)
     await page.locator('.nav-item', { hasText: 'Settings' }).click();

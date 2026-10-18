@@ -37,4 +37,5 @@ jobs:
       - name: Public hubs, headers with proof of work, a real transaction's merkle proof, LBRYPool login
         run: npm run test:mainnet -w @lbcwallet/core
       - name: The built-in node finds peers by itself and syncs mainnet blocks
+        if: ${{ !cancelled() }}
         run: LBCD_BIN="$PWD/apps/desktop/resources/bin/linux-x64/lbcd" npx tsx apps/desktop/mainnet/node-sync.ts 8
