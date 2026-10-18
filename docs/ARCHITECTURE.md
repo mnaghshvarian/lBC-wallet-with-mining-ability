@@ -69,7 +69,10 @@ The engine follows the Electrum model on top of LBRY hubs:
 4. Fetch missing transactions with `blockchain.transaction.get_batch` and check that each
    one hashes to the txid that was asked for.
 5. For confirmed transactions, verify the merkle proof against the block header and check the
-   header's LBRY proof of work (and that recent headers carry a plausible difficulty).
+   header's LBRY proof of work (and that recent headers carry a plausible difficulty). Cached
+   headers near the tip are dropped on every new block, and a failed check is retried with a
+   fresh proof and header (up to three times per height), so a reorganisation that replaces
+   a block cannot leave a transaction stuck as unverified.
 
 Compatibility notes for both hub implementations (Python `lbryio/hub` and `herald.go`) are
 in `packages/core/src/net/hub.ts`. A full-node backend (`LbcdBackend`) offers the same
@@ -100,8 +103,14 @@ Writes are atomic (temp file + fsync + rename) and the previous version is kept 
 ```
 
 * **Hash function** — `SHA256d → SHA512 → RIPEMD160(halves) → SHA256d` over the 112-byte
-  LBRY header, written in C (`packages/miner-wasm/src/lbry_scan.c`) with a SHA-256 midstate,
-  compiled to an 8.7 KB WebAssembly module and embedded in the app.
+  LBRY header, written in C (`packages/miner-wasm/src/lbry_scan.c`) with a SHA-256 midstate.
+  It is compiled twice: a WebAssembly SIMD build that hashes four nonces per pass in 128-bit
+  lanes (SHA-512 two at a time in 64-bit lanes), about 3.2× faster, and a portable scalar build
+  used where SIMD is unavailable. Both are embedded in the app. CI rebuilds them from C and
+  requires a byte-identical result, and the tests check every hit of both against the
+  TypeScript reference.
+* **Pausing** — the main process stops and restarts the utility process when the laptop
+  switches to battery or, with *only when idle*, when the system idle timer shows recent input.
 * **Pool mode** — Stratum v1 with the LBRY `mining.notify` variant (claimtrie root after the
   previous-block hash, both word-swapped) and the 256× LBRY share-difficulty convention used by
   yiimp/NOMP pools. The e2e suite checks the header the miner builds against a NOMP-style
@@ -122,5 +131,8 @@ Writes are atomic (temp file + fsync + rename) and the previous version is kept 
 * Auto-lock after inactivity, on sleep and on screen lock.
 * Electron fuses: `runAsNode`, `NODE_OPTIONS` and inspector arguments disabled; asar
   integrity validation on.
+* The spellchecker is disabled for every session (no dictionary downloads), and the app's
+  own HTTPS requests follow the SOCKS5 setting. A net-log based audit in CI checks that the
+  app makes no unexpected requests.
 
 See [SECURITY.md](SECURITY.md) for the threat model.
