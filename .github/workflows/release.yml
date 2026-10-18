@@ -66,7 +66,7 @@ jobs:
             printf '\n> ⚠️ **The Android APK of this release is signed with a temporary signing key.** It installs and works, but a later version signed with the project'"'"'s permanent key will not install over it: you would have to uninstall this one first (write down your recovery phrase before you do).\n' >> "$notes"
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --notes-file "$notes" --target "$GITHUB_SHA"
+            gh release edit "$TAG" --notes-file "$notes"
           else
             gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "LBC Wallet ${TAG#v}" --notes-file "$notes"
           fi

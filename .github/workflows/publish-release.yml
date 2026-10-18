@@ -1,15 +1,14 @@
 name: Publish release
 
 # Publishes a draft that the Release workflow built, after checking that every
-# file the README links to is attached. Run it from the Actions tab ("Run
-# workflow") with the version, e.g. 1.3.0. The tag is created on the commit the
-# newest successful Release run built from (or the commit given), so the tag's
-# source code always matches the files. Changes made with the workflow's own
-# token do not start other workflows, so creating the tag here does not rebuild
-# the release.
+# file the README links to is attached and that the tag will point at the commit
+# the files were built from. Run it from the Actions tab ("Run workflow") with the
+# version, e.g. 1.3.0.
 #
-# A release that is already published can only have its tag moved, with
-# "fix_tag", and only right after publishing, before anyone relies on the tag.
+# The workflow's token cannot write tags in this repository (GitHub answers 403),
+# so the tag has to come from the maintainer: either push the tag before running
+# the Release workflow (it then builds from the tag), or push it at the built
+# commit before publishing: git push origin <commit>:refs/tags/vX.Y.Z
 
 on:
   workflow_dispatch:
@@ -21,11 +20,6 @@ on:
         description: 'Commit the files were built from (default: the newest successful Release run)'
         required: false
         default: ''
-      fix_tag:
-        description: 'Move an existing tag to that commit (only right after publishing)'
-        type: boolean
-        required: false
-        default: false
 
 permissions:
   contents: write
@@ -39,17 +33,16 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       TAG: v${{ inputs.version }}
-      FIX_TAG: ${{ inputs.fix_tag }}
     steps:
       - name: Check the release and its files
         id: release
         run: |
           set -euo pipefail
-          gh release view "$TAG" --json isDraft,name,assets > release.json
+          gh release view "$TAG" --json isDraft,name,assets,targetCommitish > release.json
           draft=$(jq -r '.isDraft' release.json)
           echo "draft=$draft" >> "$GITHUB_OUTPUT"
-          if [ "$draft" != true ] && [ "$FIX_TAG" != true ]; then
-            echo "::error::$TAG is already published (run again with fix_tag to move its tag)"
+          if [ "$draft" != true ]; then
+            echo "::error::$TAG is already published"
             exit 1
           fi
           names=$(jq -r '.assets[].name' release.json)
@@ -77,27 +70,27 @@ jobs:
           [ -n "$COMMIT" ] || { echo "::error::no successful Release run found; pass the commit"; exit 1; }
           echo "The files were built from $COMMIT"
           echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
-      - name: Point the tag at that commit
+      - name: Check that the tag will point at that commit
         env:
           COMMIT: ${{ steps.built.outputs.commit }}
         run: |
           set -euo pipefail
           if sha=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null); then
-            if [ "$sha" = "$COMMIT" ]; then
-              echo "$TAG is already at $COMMIT"
-            elif [ "$FIX_TAG" = true ]; then
-              gh api -X PATCH "repos/$GH_REPO/git/refs/tags/$TAG" -f sha="$COMMIT" -F force=true > /dev/null
-              echo "moved $TAG from $sha to $COMMIT"
-            else
-              echo "::error::$TAG is at $sha, not at $COMMIT; run again with fix_tag to move it"
+            if [ "$sha" != "$COMMIT" ]; then
+              echo "::error::$TAG is at $sha but the files were built from $COMMIT. Move the tag (git push --force origin $COMMIT:refs/tags/$TAG) or rebuild from the tag with the Release workflow, then run again."
               exit 1
             fi
+            echo "$TAG exists at $COMMIT"
           else
-            gh api -X POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$TAG" -f sha="$COMMIT" > /dev/null
-            echo "created $TAG at $COMMIT"
+            target=$(jq -r '.targetCommitish' release.json)
+            full=$(gh api "repos/$GH_REPO/commits/$target" --jq '.sha' 2>/dev/null || echo "$target")
+            if [ "$full" != "$COMMIT" ]; then
+              echo "::error::the draft would create $TAG at $target, but the files were built from $COMMIT. Push the tag first (git push origin $COMMIT:refs/tags/$TAG), then run again."
+              exit 1
+            fi
+            echo "$TAG will be created at $COMMIT"
           fi
       - name: Publish
-        if: steps.release.outputs.draft == 'true'
         run: |
           set -euo pipefail
           gh release edit "$TAG" --draft=false && echo "published"

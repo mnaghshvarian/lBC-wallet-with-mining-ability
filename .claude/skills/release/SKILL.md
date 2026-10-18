@@ -77,12 +77,14 @@ their click.
 Trigger `publish-release.yml` with `workflow_dispatch` and input `version` (e.g.
 `mcp__github__actions_run_trigger`, `workflow_id: publish-release.yml`, `inputs: {"version":
 "1.3.0"}`), or from the Actions tab. It checks that every file the README links to is on the
-draft, finds the commit the newest successful Release run built from, creates the tag `vX.Y.Z` on
-that commit (GitHub would otherwise create it on the draft's original target, which a rebuilt
-draft keeps), publishes, marks the release as latest and checks the `releases/latest/download/…`
-links. Changes made with the workflow's own token start no other workflow, so creating the tag
-does not rebuild the release. If a tag ended up on the wrong commit, run the workflow again with
-`fix_tag` right away, before anyone relies on the tag; never force-push a tag by hand.
+draft, finds the commit the newest successful Release run built from, checks that the tag
+`vX.Y.Z` exists at that commit (or that the draft will create it there), publishes, marks the
+release as latest and checks the `releases/latest/download/…` links. The workflow's token cannot
+write tags in this repository, and a draft refreshed by a later Release run keeps its original
+target commit, so the safe order is: the maintainer pushes the tag at the commit to release, the
+Release workflow builds from it, then the Publish release workflow publishes. If the workflow
+reports a tag or target on the wrong commit, tell the maintainer the exact `git push` it printed;
+never force-push a tag yourself without being asked.
 
 Only after publishing do the download links in the README and the manual work; drafts are
 invisible to everyone but the maintainer, and `releases/latest` ignores them.

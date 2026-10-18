@@ -136,8 +136,9 @@ version can update the previous one.
    tests on Linux, Windows and macOS (bundling `lbcd` for each), builds the APK, writes SHA-256
    checksums and attaches everything.
 3. Review the draft and publish it with **Actions → Publish release → Run workflow** (enter the
-   version). The workflow checks that every file the manual links to is attached, creates the tag
-   on the commit the files were built from, publishes and checks the download links. Only then do
+   version). The workflow checks that every file the manual links to is attached and that the
+   tag points at the commit the files were built from, publishes and checks the download links
+   (push the tag first: the workflow's token cannot create tags in this repository). Only then do
    the `releases/latest/download/…` links in the manual point at it.
 
 Desktop builds are unsigned unless these secrets exist:
