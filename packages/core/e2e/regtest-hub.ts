@@ -45,6 +45,17 @@ export async function startRegtestHub(rpc: LbcdRpc, options: { port?: number; po
   let tip = { height: -1, hash: '', hex: '' };
   let mempoolKey = '';
 
+  const blockHeights = new Map<string, number>();
+  /** Height of a block, from the block itself (never from the moving tip). */
+  async function heightOf(blockHash: string): Promise<number> {
+    let h = blockHeights.get(blockHash);
+    if (h === undefined) {
+      h = (await rpc.call<{ height: number }>('getblockheader', [blockHash, true])).height;
+      blockHeights.set(blockHash, h);
+    }
+    return h;
+  }
+
   async function txidsOf(blockHash: string): Promise<string[]> {
     let t = blockTxs.get(blockHash);
     if (!t) {
@@ -67,7 +78,7 @@ export async function startRegtestHub(rpc: LbcdRpc, options: { port?: number; po
     const mempoolSet = new Set(await rpc.call<string[]>('getrawmempool'));
     for (const r of rows) {
       if (r.blockhash && (r.confirmations ?? 0) > 0) {
-        const height = tip.height - (r.confirmations ?? 0) + 1;
+        const height = await heightOf(r.blockhash);
         const pos = (await txidsOf(r.blockhash)).indexOf(r.txid);
         confirmed.push({ tx_hash: r.txid, height, pos });
       } else {
@@ -108,7 +119,9 @@ export async function startRegtestHub(rpc: LbcdRpc, options: { port?: number; po
       case 'blockchain.block.headers': {
         const [start, count] = params as [number, number];
         const out: string[] = [];
-        for (let h = start; h < start + Math.min(count, 2016) && h <= tip.height; h++) {
+        // Serve up to the node's current height (the cached tip can lag behind between polls).
+        const best = await rpc.call<number>('getblockcount');
+        for (let h = start; h < start + Math.min(count, 2016) && h <= best; h++) {
           const hash = await rpc.call<string>('getblockhash', [h]);
           out.push(await rpc.call<string>('getblockheader', [hash, false]));
         }
@@ -136,7 +149,7 @@ export async function startRegtestHub(rpc: LbcdRpc, options: { port?: number; po
             if (tx.blockhash && (tx.confirmations ?? 0) > 0) {
               const txids = await txidsOf(tx.blockhash);
               const pos = txids.indexOf(txid);
-              out[txid] = [tx.hex, { block_height: tip.height - (tx.confirmations ?? 0) + 1, merkle: merkleBranch(txids, pos), pos }];
+              out[txid] = [tx.hex, { block_height: await heightOf(tx.blockhash), merkle: merkleBranch(txids, pos), pos }];
             } else {
               out[txid] = [tx.hex, { block_height: -1 }];
             }

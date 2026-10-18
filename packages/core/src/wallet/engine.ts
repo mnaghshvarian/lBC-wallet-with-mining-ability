@@ -59,6 +59,10 @@ export interface PaymentDraft {
 export type KeyProvider = (chain: number, index: number) => Uint8Array;
 
 const PENDING_EXPIRY_MS = 3 * 60 * 60 * 1000;
+/** Blocks this close to the tip may still be reorganised away. */
+const REORG_GUARD = 10;
+/** SPV checks per transaction and height before it is reported as unverifiable. */
+const MAX_VERIFY_ATTEMPTS = 3;
 
 /**
  * Keeps a wallet's view of the chain up to date and builds transactions.
@@ -80,7 +84,8 @@ export class WalletEngine extends Emitter<EngineEvents> {
   private readonly headerCache = new Map<number, string>();
   private readonly queue = new TaskQueue();
   private readonly subscribed = new Set<string>();
-  private readonly verifyTried = new Set<string>();
+  /** SPV attempts per txid@height: a reorg can make a proof or a cached header stale, so failures are retried. */
+  private readonly verifyAttempts = new Map<string, number>();
   private unsubscribers: (() => void)[] = [];
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private running = false;
@@ -383,6 +388,8 @@ export class WalletEngine extends Emitter<EngineEvents> {
     const prev = this.state.tip;
     this.state.tip = { height: tip.height, header: tip.header };
     if (!prev || prev.header !== tip.header) {
+      // Blocks near the tip can still be replaced by a reorg; don't trust their cached headers.
+      for (const h of this.headerCache.keys()) if (h > tip.height - REORG_GUARD) this.headerCache.delete(h);
       void this.queue.run(() => this.reconcile().catch(() => undefined)).then(() => this.changed());
     }
   }
@@ -477,11 +484,12 @@ export class WalletEngine extends Emitter<EngineEvents> {
   }
 
   private async verifyConfirmations(): Promise<void> {
+    const attemptKey = (t: TxRecord) => `${t.txid}@${t.height}`;
     const todo = Object.values(this.state.txs).filter(
-      (t) => t.height > 0 && (t.verified === undefined || t.blockTime === undefined) && !this.verifyTried.has(`${t.txid}@${t.height}`),
+      (t) => t.height > 0 && (t.verified !== true || t.blockTime === undefined) && (this.verifyAttempts.get(attemptKey(t)) ?? 0) < MAX_VERIFY_ATTEMPTS,
     );
     if (todo.length === 0) return;
-    for (const t of todo) this.verifyTried.add(`${t.txid}@${t.height}`);
+    for (const t of todo) this.verifyAttempts.set(attemptKey(t), (this.verifyAttempts.get(attemptKey(t)) ?? 0) + 1);
     if (this.backend.untrusted) {
       const needProof = todo.filter((t) => !t.merkle).map((t) => t.txid);
       if (needProof.length) {
@@ -505,7 +513,13 @@ export class WalletEngine extends Emitter<EngineEvents> {
         const result = verifyTransactionInclusion(rec.txid, rec.merkle, header, rec.height, this.network, this.state.tip);
         rec.verified = result.ok;
         rec.blockTime = result.blockTime;
-        if (!result.ok) this.log('warn', `SPV verification failed for ${rec.txid}: ${result.reason}`);
+        if (!result.ok) {
+          // Fetch a fresh proof and header next time in case the block at this height was replaced.
+          rec.merkle = undefined;
+          this.headerCache.delete(rec.height);
+          const retry = (this.verifyAttempts.get(attemptKey(rec)) ?? 0) < MAX_VERIFY_ATTEMPTS;
+          this.log('warn', `SPV verification failed for ${rec.txid}: ${result.reason}${retry ? ' (will retry)' : ''}`);
+        }
       } catch (err) {
         this.log('warn', `could not verify ${rec.txid}: ${(err as Error).message}`);
       }
